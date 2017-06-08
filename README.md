@@ -8,18 +8,20 @@ type User struct {
     Nickname string
 }
 
+u := User{}
+
 db, err := reiner.New('yamiodymel:yamiodymel@/test?charset=utf8')
 
-id := db.insert('users', reiner.H{
-    "username": User.username,
-    "password": User.password,
-    "birthday": User.birthday,
-    "nickname": User.nickname,
+id := db.Insert('users', reiner.H{
+    "username": u.Username,
+    "password": u.Password,
+    "birthday": u.Birthday,
+    "nickname": u.Nickname,
 })
 
 u = User{}
 
-if err := db.where("username", User.username).getOne("users").scan(&u); err != nil {
+if err := db.Where("username", User.username).GetOne("users").Scan(&u); err != nil {
     // xxxxx
 }
 if u == nil {
