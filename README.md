@@ -308,19 +308,62 @@ db.Bind(&users).Get("users")
 
 ### Common
 
+```go
+err := db.Where("id", 1).Delete("users")
+if err != nil {
+    panic(err)
+}
+if db.Count != 0 {
+    fmt.Println("Deleted successfully!")
+}
+```
+
+&nbsp;
+
 ## Order
+
+```go
+db.OrderBy("id", "ASC")
+db.OrderBy("login", "DESC")
+db.OrderBy("RAND ()")
+
+db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
+```
+
+### By Values
+
+```go
+db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"})
+db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
+```
+
+&nbsp;
 
 ## Group
 
+&nbsp;
+
 ## Join
+
+&nbsp;
 
 ## Subqueries
 
+&nbsp;
+
 ## Has
+
+&nbsp;
 
 ## Helpers
 
+&nbsp;
+
 ## Transactions
+
+&nbsp;
 
 ## Lock
 
