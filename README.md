@@ -35,6 +35,8 @@ if err != nil {
 }
 ```
 
+&nbsp;
+
 ## Insert
 
 ### Traditional/Replace
@@ -89,6 +91,8 @@ data := reiner.FieldGroup{
 err := db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
+
+&nbsp;
 
 ## Update
 
@@ -155,6 +159,8 @@ err := db.Bind(&users).Paginate("users", page)
 // fmt.Println("Showing %d out of %d", page, db.TotalPages)
 ```
 
+&nbsp;
+
 ## Raw Queries
 
 ### Common
@@ -200,6 +206,8 @@ query := "(
 )"
 err := db.Bind(&results).RawQuery(query, params)
 ```
+
+&nbsp;
 
 ## Conditions
 
@@ -292,6 +300,8 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
+&nbsp;
+
 ## Delete
 
 ### Common
@@ -311,6 +321,8 @@ db.Bind(&users).Get("users")
 ## Transactions
 
 ## Lock
+
+&nbsp;
 
 ## Query Keywords
 
