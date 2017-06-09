@@ -321,10 +321,15 @@ db.SetQueryOption("LOW_PRIORITY").Insert("users", data)
 // Equals: INSERT LOW_PRIORITY INTO table ...
 
 db.SetQueryOption("FOR UPDATE").Get("users")
-// Eqlas: SELECT * FROM users FOR UPDATE;
+// Equals: SELECT * FROM users FOR UPDATE;
+
+db.SetQueryOption("SQL_NO_CACHE").Get("users")
+// Equals: GIVES: SELECT SQL_NO_CACHE * FROM users;
 ```
 
 ### Multiple
 
 ```go
+db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
+// GIVES: INSERT LOW_PRIORITY IGNORE INTO users ...
 ```
