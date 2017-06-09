@@ -91,13 +91,13 @@ err := db.Limit(10).Update("users", data)
 err := db.Get("users", reiner.O{
 	Scan: &u,
 })
-// or with limit.
+// or with the limit.
 err := db.Limit(10).Get("users", reiner.O{
 	Scan: &u,
 })
 ```
 
-##### Columns
+#### Specified Columns
 
 ```go
 err := db.Get("users", reiner.O{
@@ -107,12 +107,34 @@ err := db.Get("users", reiner.O{
 // count := db.Count
 ```
 
+#### Single Row
 
+```go
+err := db.Where("id", 1).GetOne("users", reiner.O{
+	Scan: &user,
+})
+// or with the custom query.
+err := db.GetOne("users", reiner.O{
+	Query: "sum(id), count(*) as cnt",
+	Scan:  &stats,
+})
+```
 
+#### Get Value
 
-
-
-
+```go
+err := db.GetValue("users", "username", reiner.O{
+	Scan: &usernames,
+})
+// or with the limit.
+err := db.Limit(5).GetValue("users", "username", reiner.O{
+	Scan: &usernames,
+})
+// or with the function.
+err := db.GetValue("users", "count(*)", reiner.O{
+	Scan: &total,
+})
+```
 
 
 
