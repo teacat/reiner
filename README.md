@@ -89,11 +89,11 @@ err := db.Limit(10).Update("users", data)
 
 ```go
 err := db.Get("users", reiner.O{
-    Scan: &u,
+	Scan: &u,
 })
 // or with limit.
 err := db.Limit(10).Get("users", reiner.O{
-    Scan: &u,
+	Scan: &u,
 })
 ```
 
@@ -101,9 +101,10 @@ err := db.Limit(10).Get("users", reiner.O{
 
 ```go
 err := db.Get("users", reiner.O{
-	Scan:    &u,
+	Scan:    &users,
 	Columns: {"username", "nickname"},
 })
+// count := db.Count
 ```
 
 
