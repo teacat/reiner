@@ -15,7 +15,7 @@ if err != nil {
 
 ### Insert
 
-#### Traditional
+#### Traditional/Replace
 
 ```go
 err := db.Insert("users", reiner.H{
@@ -45,13 +45,13 @@ lastInsertID := "id"
 
 err := db.OnDuplicate(updateColumns, lastInsertID).Insert("users", reiner.H{
 	"username":  "YamiOdymel",
-    "password":  "test",
+	"password":  "test",
 	"createdAt": db.Now(),
 })
 // id := db.LastInsertID
 ```
 
-#### Insert Multiple
+#### Multiple
 
 ```go
 data := reiner.Hs{
@@ -76,9 +76,14 @@ err := db.Where("username", "YamiOdymel").Update("users", reiner.H{
 	"username": "Karisu",
 	"password": "123456",
 })
+// count := db.Count
 ```
 
-###
+#### Limit
+
+```go
+err := db.Limit(10).Update("users", data)
+```
 
 
 
