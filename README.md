@@ -2,6 +2,14 @@
 
 The Golang database ORM with 1990s style.
 
+## What is it?
+
+## Why?
+
+## Thread Safe?
+
+## Usage
+
 ### Conenction
 
 ```go
@@ -88,63 +96,97 @@ err := db.Limit(10).Update("users", data)
 ### Select
 
 ```go
-err := db.Get("users", reiner.O{
-	Scan: &u,
-})
-// or with the limit.
-err := db.Limit(10).Get("users", reiner.O{
-	Scan: &u,
-})
+err := db.Bind(&users).Get("users")
+```
+
+#### Limit
+
+```go
+err := db.Bind(&users).Limit(10).Get("users")
 ```
 
 #### Specified Columns
 
 ```go
-err := db.Get("users", reiner.O{
-	Scan:    &users,
-	Columns: {"username", "nickname"},
-})
+err := db.Bind(&users).Columns("username", "nickname").Get("users")
 // count := db.Count
 ```
 
 #### Single Row
 
 ```go
-err := db.Where("id", 1).GetOne("users", reiner.O{
-	Scan: &user,
-})
+err := db.Bind(&user).Where("id", 1).GetOne("users")
 // or with the custom query.
-err := db.GetOne("users", reiner.O{
+err := db.Bind(&stats).GetOne("users", reiner.O{
 	Query: "sum(id), count(*) as cnt",
-	Scan:  &stats,
 })
 ```
 
 #### Get Value
 
 ```go
-err := db.GetValue("users", "username", reiner.O{
-	Scan: &usernames,
-})
+err := db.Bind(&usernames).GetValue("users", "username")
 // or with the limit.
-err := db.Limit(5).GetValue("users", "username", reiner.O{
-	Scan: &usernames,
-})
+err := db.Bind(&usernames).Limit(5).GetValue("users", "username")
 // or with the function.
-err := db.GetValue("users", "count(*)", reiner.O{
-	Scan: &total,
-})
+err := db.Bind(&total).GetValue("users", "count(*)")
 ```
 
+#### Paginate
 
+```go
+page := 1
+db.PageLimit = 2
 
+err := db.Bind(&users).Paginate("users", page)
+// fmt.Println("Showing %d out of %d", page, db.TotalPages)
+```
 
+### Raw Queries
 
+#### Common
 
+```go
+err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", reiner.V{10})
+```
 
+#### Single Row
 
+```go
+err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", reiner.V{10})
+```
 
+#### Single Value
 
+```go
+err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", reiner.V{10})
+```
+
+#### Single Value From Multiple Rows
+
+```go
+err := db.Bind(&usernames).RawQueryValue("SELECT username FROM users LIMIT 10")
+```
+
+#### Advanced
+
+```go
+params := reiner.V{1, "admin"}
+err := db.Bind(&users).RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", params)
+
+// will handle any SQL query.
+params = reiner.V{10, 1, 10, 11, 2, 10}
+query := "(
+    SELECT a FROM t1
+        WHERE a = ? AND B = ?
+        ORDER BY a LIMIT ?
+) UNION (
+    SELECT a FROM t2
+        WHERE a = ? AND B = ?
+        ORDER BY a LIMIT ?
+)"
+err := db.Bind(&results).RawQuery(query, params)
+```
 
 ```go
 type User struct {
