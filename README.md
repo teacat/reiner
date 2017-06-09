@@ -38,7 +38,7 @@ err := db.Insert("users", reiner.H{
 ```go
 err := db.Insert("users", reiner.H{
 	"username":  "YamiOdymel",
-	"password":  db.Func("SHA1(?)", []string{"secretpassword+salt"}),
+	"password":  db.Func("SHA1(?)", reiner.V{"secretpassword+salt"}),
 	"expires":   db.Now("+1Y"),
 	"createdAt": db.Now(),
 })
@@ -48,10 +48,9 @@ err := db.Insert("users", reiner.H{
 #### On Duplicate
 
 ```go
-updateColumns := []string{"updatedAt"}
 lastInsertID := "id"
 
-err := db.OnDuplicate(updateColumns, lastInsertID).Insert("users", reiner.H{
+err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.H{
 	"username":  "YamiOdymel",
 	"password":  "test",
 	"createdAt": db.Now(),
@@ -229,6 +228,7 @@ db.Where("id", 50, ">=").Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE id >= 50;
 ```
 
+#### Between / Not Between
 
 ```go
 type User struct {
