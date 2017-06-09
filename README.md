@@ -33,7 +33,7 @@ if u == nil {
 $db->join("users u", "p.tenantID=u.tenantID", "LEFT");
 $db->joinWhere("users u", "u.tenantID", 5);
 $products = $db->get ("products p", null, "u.name, p.productName");
-``
+```
 
 ```go
 err := db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
