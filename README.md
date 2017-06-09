@@ -85,7 +85,26 @@ err := db.Where("username", "YamiOdymel").Update("users", reiner.H{
 err := db.Limit(10).Update("users", data)
 ```
 
+### Select
 
+```go
+err := db.Get("users", reiner.O{
+    Scan: &u,
+})
+// or with limit.
+err := db.Limit(10).Get("users", reiner.O{
+    Scan: &u,
+})
+```
+
+##### Columns
+
+```go
+err := db.Get("users", reiner.O{
+	Scan:    &u,
+	Columns: {"username", "nickname"},
+})
+```
 
 
 
