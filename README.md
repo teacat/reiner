@@ -12,6 +12,12 @@ A MySQL ORM written in Golang which lets you controll everything, just like writ
 
 # Thread Safe?
 
+# Installtion
+
+```bash
+$ go get github.com/TeaMeow/Reiner
+```
+
 # Helper Types
 
 ```go
