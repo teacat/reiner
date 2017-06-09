@@ -188,6 +188,48 @@ query := "(
 err := db.Bind(&results).RawQuery(query, params)
 ```
 
+### Conditions
+
+#### Equals
+
+```go
+db.Where("id", 1)
+db.Where("username", "admin")
+db.Bind(&users).Get("users")
+
+// Equals: SELECT * FROM users WHERE id=1 AND username='admin';
+```
+
+##### Having
+
+```go
+db.Where("id", 1)
+db.Having("username", "admin")
+db.Bind(&users).Get("users")
+
+// Equals: SELECT * FROM users WHERE id=1 HAVING username='admin';
+```
+
+##### Columns Comparison
+
+```go
+// WRONG
+db.Where("lastLogin", "createdAt")
+// CORRECT
+db.Where("lastLogin = createdAt")
+
+db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users WHERE lastLogin = createdAt;
+```
+
+#### Custom
+
+```go
+db.Where("id", 50, ">=").Bind(&users).Get("users")
+// Equals: SELECT * FROM users WHERE id >= 50;
+```
+
+
 ```go
 type User struct {
     Username string
