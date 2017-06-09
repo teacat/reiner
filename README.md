@@ -110,6 +110,8 @@ err := db.Where("username", "YamiOdymel").Update("users", reiner.Fields{
 err := db.Limit(10).Update("users", data)
 ```
 
+&nbsp;
+
 ## Select
 
 ```go
