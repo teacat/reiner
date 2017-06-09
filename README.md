@@ -1,10 +1,14 @@
 # Reiner
 
-The Golang database ORM with 1990s style.
+A Golang database ORM with the 1990's style. Flexible, and no struct tags needed. More actually, it's just [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) but in Golang.
 
 # What is it?
 
+A MySQL ORM written in Golang which lets you controll everything, just like writing a query but simpler, join tables are now easier than before.
+
 # Why?
+
+[Gorm](https://github.com/jinzhu/gorm) is great as fuck, but it's not really fits with a complex SQL query usage, and Reiner solved the problem. Reiner also decoupling the function usage with the struct (Loose coupling).
 
 # Thread Safe?
 
@@ -390,6 +394,19 @@ sq.Get("users")
 sq := db.SubQuery("sq")
 sq.Get("users")
 ```
+
+```go
+ids := db.SubQuery()
+
+```
+
+$ids = $db->subQuery ();
+$ids->where ("qty", 2, ">");
+$ids->get ("products", null, "userId");
+
+$db->where ("id", $ids, 'in');
+$res = $db->get ("users");
+// Gives SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 
 &nbsp;
 
