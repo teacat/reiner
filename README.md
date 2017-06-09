@@ -238,6 +238,11 @@ db.Bind(&users).Get("users")
 #### Custom
 
 ```go
+db.Bind(&users).Where("id", reiner.Options{
+	Values:   {50},
+	Operator: ">=",
+}).Get("users")
+
 db.Bind(&users).Where("id", 50, ">=").Get("users")
 // Equals: SELECT * FROM users WHERE id >= 50;
 ```
@@ -245,6 +250,11 @@ db.Bind(&users).Where("id", 50, ">=").Get("users")
 #### Between / Not Between
 
 ```go
+db.Bind(&users).Where("id", reiner.Options{
+	Values:   {0, 20},
+	Operator: "BETWEEN",
+}).Get("users")
+
 db.Bind(&users).Where("id", reiner.Values{0, 20}, "BETWEEN").Get("users")
 // Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
@@ -253,8 +263,8 @@ db.Bind(&users).Where("id", reiner.Values{0, 20}, "BETWEEN").Get("users")
 
 ```go
 db.Bind(&users).Where("id", reiner.Options{
-    Values: {1, 5, 27, -1, "d"},
-    Operator: "IN",
+	Values:   {1, 5, 27, -1, "d"},
+	Operator: "IN",
 }).Get("users")
 
 db.Bind(&users).Where("id", reiner.Values{1, 5, 27, -1, "d"}, "IN").Get("users")
