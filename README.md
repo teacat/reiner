@@ -343,13 +343,53 @@ db.Bind(&users).Get("users")
 
 ## Group
 
+```go
+db.GroupBy("name").Bind(&users).Get("users")
+// Equals: SELECT * FROM users GROUP BY name;
+```
+
 &nbsp;
 
 ## Join
 
+```go
+db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
+db.Where("u.id", 6)
+
+db.Bind(&products).Get("products p", "u.name, p.productName")
+```
+
+### Conditions
+
+```go
+db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
+db.JoinWhere("users u", "u.tenantID", 5)
+
+db.Bind(&products).Get("products p", "u.name, p.productName")
+// Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
+```
+
+```go
+db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
+db.JoinOrWhere("users u", "u.tenantID", 5)
+
+db.Bind(&products).Get("products p", "u.name, p.productName")
+// Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
+```
+
 &nbsp;
 
 ## Subqueries
+
+```go
+sq := db.SubQuery()
+sq.Get("users")
+```
+
+```go
+sq := db.SubQuery("sq")
+sq.Get("users")
+```
 
 &nbsp;
 
