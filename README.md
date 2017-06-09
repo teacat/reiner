@@ -2,13 +2,13 @@
 
 The Golang database ORM with 1990s style.
 
-## What is it?
+# What is it?
 
-## Why?
+# Why?
 
-## Thread Safe?
+# Thread Safe?
 
-## Helper Types
+# Helper Types
 
 ```go
 reiner.Fields{
@@ -22,9 +22,9 @@ reiner.Options{
 }
 ```
 
-## Usage
+# Usage
 
-### Conenction
+## Conenction
 
 ```go
 import "github.com/TeaMeow/Reiner"
@@ -35,9 +35,9 @@ if err != nil {
 }
 ```
 
-### Insert
+## Insert
 
-#### Traditional/Replace
+### Traditional/Replace
 
 ```go
 err := db.Insert("users", reiner.Fields{
@@ -47,7 +47,7 @@ err := db.Insert("users", reiner.Fields{
 // id := db.LastInsertID
 ```
 
-#### Functions
+### Functions
 
 ```go
 err := db.Insert("users", reiner.Fields{
@@ -59,7 +59,7 @@ err := db.Insert("users", reiner.Fields{
 // id := db.LastInsertID
 ```
 
-#### On Duplicate
+### On Duplicate
 
 ```go
 lastInsertID := "id"
@@ -72,7 +72,7 @@ err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.
 // id := db.LastInsertID
 ```
 
-#### Multiple
+### Multiple
 
 ```go
 data := reiner.FieldGroup{
@@ -90,7 +90,7 @@ err := db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
 
-### Update
+## Update
 
 ```go
 err := db.Where("username", "YamiOdymel").Update("users", reiner.Fields{
@@ -100,32 +100,32 @@ err := db.Where("username", "YamiOdymel").Update("users", reiner.Fields{
 // count := db.Count
 ```
 
-#### Limit
+### Limit
 
 ```go
 err := db.Limit(10).Update("users", data)
 ```
 
-### Select
+## Select
 
 ```go
 err := db.Bind(&users).Get("users")
 ```
 
-#### Limit
+### Limit
 
 ```go
 err := db.Bind(&users).Limit(10).Get("users")
 ```
 
-#### Specified Columns
+### Specified Columns
 
 ```go
 err := db.Bind(&users).Columns("username", "nickname").Get("users")
 // count := db.Count
 ```
 
-#### Single Row
+### Single Row
 
 ```go
 err := db.Bind(&user).Where("id", 1).GetOne("users")
@@ -135,7 +135,7 @@ err := db.Bind(&stats).GetOne("users", reiner.Option{
 })
 ```
 
-#### Get Value
+### Get Value
 
 ```go
 err := db.Bind(&usernames).GetValue("users", "username")
@@ -145,7 +145,7 @@ err := db.Bind(&usernames).Limit(5).GetValue("users", "username")
 err := db.Bind(&total).GetValue("users", "count(*)")
 ```
 
-#### Paginate
+### Paginate
 
 ```go
 page := 1
@@ -155,40 +155,40 @@ err := db.Bind(&users).Paginate("users", page)
 // fmt.Println("Showing %d out of %d", page, db.TotalPages)
 ```
 
-### Raw Queries
+## Raw Queries
 
-#### Common
+### Common
 
 ```go
 err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", reiner.Values{10})
 ```
 
-#### Single Row
+### Single Row
 
 ```go
 err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", reiner.Values{10})
 ```
 
-#### Single Value
+### Single Value
 
 ```go
 err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", reiner.Values{10})
 ```
 
-#### Single Value From Multiple Rows
+### Single Value From Multiple Rows
 
 ```go
 err := db.Bind(&usernames).RawQueryValue("SELECT username FROM users LIMIT 10")
 ```
 
-#### Advanced
+### Advanced
 
 ```go
 params := reiner.Values{1, "admin"}
 err := db.Bind(&users).RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", params)
 
 // will handle any SQL query.
-params = reiner.V{10, 1, 10, 11, 2, 10}
+params = reiner.Values{10, 1, 10, 11, 2, 10}
 query := "(
     SELECT a FROM t1
         WHERE a = ? AND B = ?
@@ -201,9 +201,9 @@ query := "(
 err := db.Bind(&results).RawQuery(query, params)
 ```
 
-### Conditions
+## Conditions
 
-#### Equals
+### Equals
 
 ```go
 db.Where("id", 1)
@@ -213,7 +213,7 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
-##### Having
+#### Having
 
 ```go
 db.Where("id", 1)
@@ -223,7 +223,7 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
-##### Columns Comparison
+#### Columns Comparison
 
 ```go
 // WRONG
@@ -235,43 +235,28 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE lastLogin = createdAt;
 ```
 
-#### Custom
+### Custom
 
 ```go
-db.Bind(&users).Where("id", reiner.Options{
-	Values:   {50},
-	Operator: ">=",
-}).Get("users")
-
 db.Bind(&users).Where("id", 50, ">=").Get("users")
 // Equals: SELECT * FROM users WHERE id >= 50;
 ```
 
-#### Between / Not Between
+### Between / Not Between
 
 ```go
-db.Bind(&users).Where("id", reiner.Options{
-	Values:   {0, 20},
-	Operator: "BETWEEN",
-}).Get("users")
-
 db.Bind(&users).Where("id", reiner.Values{0, 20}, "BETWEEN").Get("users")
 // Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
-#### In / Not In
+### In / Not In
 
 ```go
-db.Bind(&users).Where("id", reiner.Options{
-	Values:   {1, 5, 27, -1, "d"},
-	Operator: "IN",
-}).Get("users")
-
 db.Bind(&users).Where("id", reiner.Values{1, 5, 27, -1, "d"}, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
-#### Or / And Or
+### Or / And Or
 
 ```go
 db.Where("firstName", "John")
@@ -281,34 +266,65 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE firstName='John' OR firstName='peter'
 ```
 
-#### Null
+### Null
 
-#### Raw
+```go
+db.Where("lastName", reiner.NULL, "IS NOT")
+db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users where lastName IS NOT NULL
+```
 
-#### Raw With Params
+### Raw
 
-### Delete
+```go
+db.Where("id != companyId")
+db.Where("DATE(createdAt) = DATE(lastLogin)")
+db.Bind(&users).Get("users")
+```
 
-#### Common
+### Raw With Params
 
-### Order
+```go
+db.Where("(id = ? or id = ?)", reiner.Fields{6, 2})
+db.Where("login", "mike")
 
-### Group
+db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
+```
 
-### Join
+## Delete
 
-### Subqueries
+### Common
 
-### Has
+## Order
 
-### Helpers
+## Group
 
-### Transactions
+## Join
 
-### Lock
+## Subqueries
 
-### Query Keywords
+## Has
 
-#### Common
+## Helpers
 
-#### Multiple
+## Transactions
+
+## Lock
+
+## Query Keywords
+
+### Common
+
+```go
+db.SetQueryOption("LOW_PRIORITY").Insert("users", data)
+// Equals: INSERT LOW_PRIORITY INTO table ...
+
+db.SetQueryOption("FOR UPDATE").Get("users")
+// Eqlas: SELECT * FROM users FOR UPDATE;
+```
+
+### Multiple
+
+```go
+```
