@@ -1,5 +1,7 @@
 # Reiner
 
+The Golang database ORM with 1990s style.
+
 ### Conenction
 
 ```go
@@ -11,29 +13,72 @@ if err != nil {
 }
 ```
 
-### Traditional Insertion
+### Insert
+
+#### Traditional
 
 ```go
-id, err := db.Insert("users", reiner.H{
-    "username": "YamiOdymel",
-    "password": "test",
+err := db.Insert("users", reiner.H{
+	"username": "YamiOdymel",
+	"password": "test",
+})
+// id := db.LastInsertID
+```
+
+#### Functions
+
+```go
+err := db.Insert("users", reiner.H{
+	"username":  "YamiOdymel",
+	"password":  db.Func("SHA1(?)", []string{"secretpassword+salt"}),
+	"expires":   db.Now("+1Y"),
+	"createdAt": db.Now(),
+})
+// id := db.LastInsertID
+```
+
+#### On Duplicate
+
+```go
+updateColumns := []string{"updatedAt"}
+lastInsertID := "id"
+
+err := db.OnDuplicate(updateColumns, lastInsertID).Insert("users", reiner.H{
+	"username":  "YamiOdymel",
+    "password":  "test",
+	"createdAt": db.Now(),
+})
+// id := db.LastInsertID
+```
+
+#### Insert Multiple
+
+```go
+data := reiner.Hs{
+	reiner.H{
+		"username": "YamiOdymel",
+		"password": "test",
+	},
+	reiner.H{
+		"username": "Karisu",
+		"password": "12345",
+	},
+}
+
+err := db.InsertMulti("users", data)
+// ids := db.LastInsertIDs
+```
+
+### Update
+
+```go
+err := db.Where("username", "YamiOdymel").Update("users", reiner.H{
+	"username": "Karisu",
+	"password": "123456",
 })
 ```
 
-### Struct Insertion
-
-```go
-type User struct {
-    Username, Password string
-}
-
-u := User{"YamiOdymel", "test"}
-id, err := db.Insert("users", u)
-```
-
-
-
-
+###
 
 
 
