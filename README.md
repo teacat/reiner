@@ -230,53 +230,38 @@ db.Where("id", 50, ">=").Bind(&users).Get("users")
 
 #### Between / Not Between
 
-```go
-type User struct {
-    Username string
-    Password string
-    Birthday string
-    Nickname string
-}
+#### In / Not In
 
-u := User{}
+#### Or / And Or
 
-db, err := reiner.New('yamiodymel:yamiodymel@/test?charset=utf8')
+#### Null
 
-id := db.Insert('users', reiner.H{
-    "username": u.Username,
-    "password": u.Password,
-    "birthday": u.Birthday,
-    "nickname": u.Nickname,
-})
+#### Raw
 
-u = User{}
+#### Raw With Params
 
-if err := db.Where("username", User.username).GetOne("users").Scan(&u); err != nil {
-    // xxxxx
-}
-if u == nil {
+### Delete
 
-}
-```
+#### Common
 
-```php
-$db->join("users u", "p.tenantID=u.tenantID", "LEFT");
-$db->joinWhere("users u", "u.tenantID", 5);
-$products = $db->get ("products p", null, "u.name, p.productName");
-```
+### Order
 
-```go
-func main() {
-	err := db.
-		Join("users u", "p.tenantID = u.tenantID", "LEFT").
-		JoinWhere("users u", "u.tenantID", 5).
-		Get("products p", 30, "u.name, p.productName").
-		Scan(&u)
-	if err != nil {
-		panic(err)
-	}
-	if db.Count == 0 {
-		panic("No rows")
-	}
-}
-```
+### Group
+
+### Join
+
+### Subqueries
+
+### Has
+
+### Helpers
+
+### Transactions
+
+### Lock
+
+### Query Keywords
+
+#### Common
+
+#### Multiple
