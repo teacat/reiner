@@ -21,13 +21,17 @@ $ go get github.com/TeaMeow/Reiner
 # Helper Types
 
 ```go
-reiner.Fields{
-    "name": "value",
-}
+// F for fields.
+type F map[string]interface{}
 
-reiner.Values{"value1", "value2"}
+// Fs for field group.
+type Fs []F{}
 
-reiner.Options{
+// V for values.
+type V []interface{}
+
+// O for options.
+type O struct {
 
 }
 ```
@@ -482,9 +486,7 @@ fmt.Println("Last executed query was %s", db.LastQuery())
 ## Transactions
 
 ```go
-db.StartTransaction()
-
-err := db.Insert("myTable", data)
+err := db.StartTransaction().Insert("myTable", data)
 if err != nil {
 	db.Rollback()
 } else {
