@@ -6,72 +6,67 @@ type DB struct {
 }
 
 //
-func (d *DB) Insert() {
+func (d *DB) Insert(tableName string, data interface{}) {
 
 }
 
 //
-func (d *DB) OnDuplicate() {
+func (d *DB) OnDuplicate(columns []string, lastInsertID string) {
 
 }
 
 //
-func (d *DB) InsertMulti() {
+func (d *DB) InsertMulti(tableName string, data interface{}) {
 
 }
 
 //
-func (d *DB) Where() {
+func (d *DB) Where(property string, value interface{}, operator string) {
 
 }
 
 //
-func (d *DB) OrWhere() {
+func (d *DB) OrWhere(property string, value interface{}, operator string) {
 
 }
 
 //
-func (d *DB) Update() {
+func (d *DB) Update(tableName string, data interface{}) {
 
 }
 
 //
-func (d *DB) Limit() {
+func (d *DB) Limit(count int) {
 
 }
 
 //
-func (d *DB) Update() {
+func (d *DB) Bind(model interface{}) {
 
 }
 
 //
-func (d *DB) Bind() {
+func (d *DB) Get(tableName string, columns string) {
 
 }
 
 //
-func (d *DB) Get() {
+func (d *DB) GetOne(tableName string, columns string) {
 
 }
 
 //
-func (d *DB) GetOne() {
+func (d *DB) GetValue(tableName string, column string) {
 
 }
 
 //
-func (d *DB) GetValue() {
+func (d *DB) Paginate(tableName string, paging int) {
 
 }
 
 //
-func (d *DB) Paginate() {
-
-}
-
-//
-func (d *DB) RawQuery() {
+func (d *DB) RawQuery(query string, data ...interface{}) {
 
 }
 

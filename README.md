@@ -63,7 +63,7 @@ if err != nil {
 ### Traditional/Replace
 
 ```go
-err := db.Insert("users", reiner.H{
+err := db.Insert("users", map[string]string{
 	"username": "YamiOdymel",
 	"password": "test",
 })
@@ -73,7 +73,7 @@ err := db.Insert("users", reiner.H{
 ### Functions
 
 ```go
-err := db.Insert("users", reiner.H{
+err := db.Insert("users", map[string]interface{}{
 	"username":  "YamiOdymel",
 	"password":  db.Func("SHA1(?)", "secretpassword+salt"),
 	"expires":   db.Now("+1Y"),
@@ -87,7 +87,7 @@ err := db.Insert("users", reiner.H{
 ```go
 lastInsertID := "id"
 
-err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", map[string]interface{}{
+err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", map[string]interface{}{
 	"username":  "YamiOdymel",
 	"password":  "test",
 	"createdAt": db.Now(),
@@ -118,7 +118,7 @@ err := db.InsertMulti("users", data)
 ## Update
 
 ```go
-err := db.Where("username", "YamiOdymel").Update("users", reiner.H{
+err := db.Where("username", "YamiOdymel").Update("users", map[string]string{
 	"username": "Karisu",
 	"password": "123456",
 })
@@ -427,7 +427,7 @@ db.Where("id", idSubQuery, "IN").Get("users")
 idSubQuery := db.SubQuery()
 idSubQuery.Where("id", 6).GetOne("users", "name")
 
-err := db.insert("products", reiner.H{
+err := db.Insert("products", map[string]interface{}{
 	"productName": "test product",
 	"userID":      idSubQuery,
 	"lastUpdated": db.Now(),
@@ -488,7 +488,7 @@ if !db.Ping() {
 ```go
 err := db.Get("users")
 // And ... Get the last executed query like this.
-fmt.Println("Last executed query was %s", db.LastQuery())
+fmt.Println("Last executed query was %s", db.LastQuery)
 ```
 
 ## Transactions
