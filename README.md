@@ -98,12 +98,12 @@ err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", map[s
 ### Multiple
 
 ```go
-data := reiner.Hs{
-	reiner.H{
+data := []map[string]string{
+	map[string]string{
 		"username": "YamiOdymel",
 		"password": "test",
 	},
-	reiner.H{
+	map[string]string{
 		"username": "Karisu",
 		"password": "12345",
 	},
