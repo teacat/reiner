@@ -486,8 +486,8 @@ if !db.Ping() {
 ### Last Query
 
 ```go
-db.Get("users")
-
+err := db.Get("users")
+// And ... Get the last executed query like this.
 fmt.Println("Last executed query was %s", db.LastQuery())
 ```
 
@@ -507,7 +507,7 @@ if err != nil {
 ```go
 db.SetLockMethod("WRITE").Lock("users")
 
-// Calling another `Lock()` will unlock the first lock. You could also use `Unlock()`
+// Calling another `Lock()` will unlock the first lock. You could also use `Unlock()`.
 db.Unlock()
 
 // Lock the multiple tables at the same time is easy.
@@ -545,3 +545,14 @@ migration := db.Migration()
 migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
 // Equals: CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
+
+|          |           |            |           |        |
+|----------|-----------|------------|-----------|--------|
+| TinyInt  | SmallInt  | MediumInt  | Int       | BigInt |
+| Char     | Varchar   |            |           |        |
+| Binary   | VarBinary | Bit        |           |        |
+| TinyText | Text      | MediumText | LongText  |        |
+| TinyBlob | Blob      | MediumBlob | LongBlob  |        |
+| Date     | DateTime  | Time       | Timestamp | Year   |
+| Double   | Decimal   | Float      |           |        |
+| Enum     | Set       |            |           |        |
