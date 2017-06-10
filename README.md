@@ -49,7 +49,7 @@ if err != nil {
 }
 ```
 
-&nbsp;
+
 
 ## Insert
 
@@ -106,7 +106,7 @@ err := db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
 
-&nbsp;
+
 
 ## Update
 
@@ -124,7 +124,7 @@ err := db.Where("username", "YamiOdymel").Update("users", reiner.Fields{
 err := db.Limit(10).Update("users", data)
 ```
 
-&nbsp;
+
 
 ## Select
 
@@ -175,7 +175,7 @@ err := db.Bind(&users).Paginate("users", page)
 // fmt.Println("Showing %d out of %d", page, db.TotalPages)
 ```
 
-&nbsp;
+
 
 ## Raw Queries
 
@@ -223,7 +223,7 @@ query := "(
 err := db.Bind(&results).RawQuery(query, params)
 ```
 
-&nbsp;
+
 
 ## Conditions
 
@@ -316,7 +316,7 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
-&nbsp;
+
 
 ## Delete
 
@@ -329,7 +329,7 @@ if err == nil && db.Count != 0 {
 }
 ```
 
-&nbsp;
+
 
 ## Order
 
@@ -350,7 +350,7 @@ db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
 ```
 
-&nbsp;
+
 
 ## Group
 
@@ -359,7 +359,7 @@ db.GroupBy("name").Bind(&users).Get("users")
 // Equals: SELECT * FROM users GROUP BY name;
 ```
 
-&nbsp;
+
 
 ## Join
 
@@ -388,7 +388,7 @@ db.Bind(&products).Get("products p", "u.name, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
 ```
 
-&nbsp;
+
 
 ## Subqueries
 
@@ -447,7 +447,7 @@ db.Where("", sub, "EXISTS").Get("products")
 // Equals: SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
-&nbsp;
+
 
 ## Has
 
@@ -461,7 +461,7 @@ if db.Has("users") {
 }
 ```
 
-&nbsp;
+
 
 ## Helpers
 
@@ -481,7 +481,7 @@ db.Get("users")
 fmt.Println("Last executed query was %s", db.LastQuery())
 ```
 
-&nbsp;
+
 
 ## Transactions
 
@@ -494,7 +494,7 @@ if err != nil {
 }
 ```
 
-&nbsp;
+
 
 ## Lock
 
@@ -508,7 +508,7 @@ db.Unlock()
 db.SetLockMethod("READ")->Lock("users", "log")
 ```
 
-&nbsp;
+
 
 ## Query Keywords
 
@@ -530,4 +530,11 @@ db.SetQueryOption("SQL_NO_CACHE").Get("users")
 ```go
 db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
 // GIVES: INSERT LOW_PRIORITY IGNORE INTO users ...
+```
+
+# Table Migrations
+
+```go
+migration := db.Migration()
+migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
 ```
