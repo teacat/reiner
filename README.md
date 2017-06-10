@@ -113,8 +113,6 @@ err := db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
 
-
-
 ## Update
 
 ```go
@@ -542,6 +540,7 @@ db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
 
 ```go
 migration := db.Migration()
+
 migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
 // Equals: CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```

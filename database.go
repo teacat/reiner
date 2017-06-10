@@ -1,8 +1,17 @@
 package main
 
+import "database/sql"
+import _ "github.com/go-sql-driver/mysql"
+
 type DB struct {
-	Count     int
-	LastQuery string
+	connection *sql.DB
+	Count      int
+	LastQuery  string
+}
+
+func New(dsn string) (*DB, error) {
+	db, err := sql.Open("mysql", "user:password@/dbname")
+	return &DB{connection: db}, err
 }
 
 //
@@ -71,42 +80,42 @@ func (d *DB) RawQuery(query string, data ...interface{}) {
 }
 
 //
-func (d *DB) RawQueryOne() {
+func (d *DB) RawQueryOne(query string, data ...interface{}) {
 
 }
 
 //
-func (d *DB) RawQueryValue() {
+func (d *DB) RawQueryValue(query string, data ...interface{}) {
 
 }
 
 //
-func (d *DB) Having() {
+func (d *DB) Having(property string, value interface{}, operator string) {
 
 }
 
 //
-func (d *DB) OrHaving() {
+func (d *DB) OrHaving(property string, value interface{}, operator string) {
 
 }
 
 //
-func (d *DB) Delete() {
+func (d *DB) Delete(tableName string) {
 
 }
 
 //
-func (d *DB) OrderBy() {
+func (d *DB) OrderBy(values ...string) {
 
 }
 
 //
-func (d *DB) GroupBy() {
+func (d *DB) GroupBy(column string) {
 
 }
 
 //
-func (d *DB) Join() {
+func (d *DB) Join(tableName string, condition string, direction string) {
 
 }
 
@@ -171,12 +180,12 @@ func (d *DB) Commit() {
 }
 
 //
-func (d *DB) SetLockMethod() {
+func (d *DB) SetLockMethod(method ...string) {
 
 }
 
 //
-func (d *DB) Lock() {
+func (d *DB) Lock(tableNames ...string) {
 
 }
 
@@ -186,7 +195,7 @@ func (d *DB) Unlock() {
 }
 
 //
-func (d *DB) SetQueryOption() {
+func (d *DB) SetQueryOption(options ...string) {
 
 }
 
