@@ -8,8 +8,8 @@ A MySQL ORM written in Golang which lets you controll everything, just like writ
 
 * Almost full-featured ORM
 * Easy to remember, understand
-* SQL Builder
-* Table Migrations
+* SQL builder
+* Table migrations
 * Sub queries
 * Transactions
 
@@ -63,7 +63,7 @@ if err != nil {
 ### Traditional/Replace
 
 ```go
-err := db.Insert("users", reiner.Fields{
+err := db.Insert("users", reiner.F{
 	"username": "YamiOdymel",
 	"password": "test",
 })
@@ -73,9 +73,9 @@ err := db.Insert("users", reiner.Fields{
 ### Functions
 
 ```go
-err := db.Insert("users", reiner.Fields{
+err := db.Insert("users", reiner.F{
 	"username":  "YamiOdymel",
-	"password":  db.Func("SHA1(?)", reiner.Values{"secretpassword+salt"}),
+	"password":  db.Func("SHA1(?)", reiner.V{"secretpassword+salt"}),
 	"expires":   db.Now("+1Y"),
 	"createdAt": db.Now(),
 })
@@ -87,7 +87,7 @@ err := db.Insert("users", reiner.Fields{
 ```go
 lastInsertID := "id"
 
-err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.Fields{
+err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.F{
 	"username":  "YamiOdymel",
 	"password":  "test",
 	"createdAt": db.Now(),
@@ -98,12 +98,12 @@ err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.
 ### Multiple
 
 ```go
-data := reiner.FieldGroup{
-	reiner.Fields{
+data := reiner.Fs{
+	reiner.F{
 		"username": "YamiOdymel",
 		"password": "test",
 	},
-	reiner.Fields{
+	reiner.F{
 		"username": "Karisu",
 		"password": "12345",
 	},
@@ -118,7 +118,7 @@ err := db.InsertMulti("users", data)
 ## Update
 
 ```go
-err := db.Where("username", "YamiOdymel").Update("users", reiner.Fields{
+err := db.Where("username", "YamiOdymel").Update("users", reiner.F{
 	"username": "Karisu",
 	"password": "123456",
 })
@@ -189,19 +189,19 @@ err := db.Bind(&users).Paginate("users", page)
 ### Common
 
 ```go
-err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", reiner.Values{10})
+err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", reiner.V{10})
 ```
 
 ### Single Row
 
 ```go
-err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", reiner.Values{10})
+err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", reiner.V{10})
 ```
 
 ### Single Value
 
 ```go
-err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", reiner.Values{10})
+err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", reiner.V{10})
 ```
 
 ### Single Value From Multiple Rows
@@ -213,11 +213,11 @@ err := db.Bind(&usernames).RawQueryValue("SELECT username FROM users LIMIT 10")
 ### Advanced
 
 ```go
-params := reiner.Values{1, "admin"}
+params := reiner.V{1, "admin"}
 err := db.Bind(&users).RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", params)
 
 // will handle any SQL query.
-params = reiner.Values{10, 1, 10, 11, 2, 10}
+params = reiner.V{10, 1, 10, 11, 2, 10}
 query := "(
     SELECT a FROM t1
         WHERE a = ? AND B = ?
@@ -276,14 +276,14 @@ db.Bind(&users).Where("id", 50, ">=").Get("users")
 ### Between / Not Between
 
 ```go
-db.Bind(&users).Where("id", reiner.Values{0, 20}, "BETWEEN").Get("users")
+db.Bind(&users).Where("id", reiner.V{0, 20}, "BETWEEN").Get("users")
 // Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
 ### In / Not In
 
 ```go
-db.Bind(&users).Where("id", reiner.Values{1, 5, 27, -1, "d"}, "IN").Get("users")
+db.Bind(&users).Where("id", reiner.V{1, 5, 27, -1, "d"}, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
@@ -316,7 +316,7 @@ db.Bind(&users).Get("users")
 ### Raw With Params
 
 ```go
-db.Where("(id = ? or id = ?)", reiner.Values{6, 2})
+db.Where("(id = ? or id = ?)", reiner.V{6, 2})
 db.Where("login", "mike")
 
 db.Bind(&users).Get("users")
@@ -425,7 +425,7 @@ db.Where("id", ids, "IN").Get("users")
 userIDQ := db.subQuery()
 userIDQ.Where("id", 6).GetOne("users", "name")
 
-err := db.insert("products", reiner.Fields{
+err := db.insert("products", reiner.F{
 	"productName": "test product",
 	"userID":      userIDQ,
 	"lastUpdated": db.Now(),
