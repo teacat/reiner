@@ -63,7 +63,7 @@ if err != nil {
 ### Traditional/Replace
 
 ```go
-err := db.Insert("users", reiner.F{
+err := db.Insert("users", reiner.H{
 	"username": "YamiOdymel",
 	"password": "test",
 })
@@ -73,9 +73,9 @@ err := db.Insert("users", reiner.F{
 ### Functions
 
 ```go
-err := db.Insert("users", reiner.F{
+err := db.Insert("users", reiner.H{
 	"username":  "YamiOdymel",
-	"password":  db.Func("SHA1(?)", reiner.V{"secretpassword+salt"}),
+	"password":  db.Func("SHA1(?)", "secretpassword+salt"),
 	"expires":   db.Now("+1Y"),
 	"createdAt": db.Now(),
 })
@@ -87,7 +87,7 @@ err := db.Insert("users", reiner.F{
 ```go
 lastInsertID := "id"
 
-err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.F{
+err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.H{
 	"username":  "YamiOdymel",
 	"password":  "test",
 	"createdAt": db.Now(),
@@ -98,12 +98,12 @@ err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.
 ### Multiple
 
 ```go
-data := reiner.Fs{
-	reiner.F{
+data := reiner.Hs{
+	reiner.H{
 		"username": "YamiOdymel",
 		"password": "test",
 	},
-	reiner.F{
+	reiner.H{
 		"username": "Karisu",
 		"password": "12345",
 	},
@@ -118,7 +118,7 @@ err := db.InsertMulti("users", data)
 ## Update
 
 ```go
-err := db.Where("username", "YamiOdymel").Update("users", reiner.F{
+err := db.Where("username", "YamiOdymel").Update("users", reiner.H{
 	"username": "Karisu",
 	"password": "123456",
 })
@@ -148,7 +148,7 @@ err := db.Bind(&users).Limit(10).Get("users")
 ### Specified Columns
 
 ```go
-err := db.Bind(&users).Columns("username", "nickname").Get("users")
+err := db.Bind(&users).Get("users", "username, nickname")
 // count := db.Count
 ```
 
@@ -157,9 +157,7 @@ err := db.Bind(&users).Columns("username", "nickname").Get("users")
 ```go
 err := db.Bind(&user).Where("id", 1).GetOne("users")
 // or with the custom query.
-err := db.Bind(&stats).GetOne("users", reiner.Option{
-	Query: "sum(id), count(*) as cnt",
-})
+err := db.Bind(&stats).GetOne("users", "sum(id), count(*) as cnt")
 ```
 
 ### Get Value
@@ -189,19 +187,19 @@ err := db.Bind(&users).Paginate("users", page)
 ### Common
 
 ```go
-err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", reiner.V{10})
+err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", 10)
 ```
 
 ### Single Row
 
 ```go
-err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", reiner.V{10})
+err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
 ```
 
 ### Single Value
 
 ```go
-err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", reiner.V{10})
+err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
 ```
 
 ### Single Value From Multiple Rows
@@ -213,12 +211,11 @@ err := db.Bind(&usernames).RawQueryValue("SELECT username FROM users LIMIT 10")
 ### Advanced
 
 ```go
-params := reiner.V{1, "admin"}
-err := db.Bind(&users).RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", params)
+err := db.Bind(&users).RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
 
 // will handle any SQL query.
-params = reiner.V{10, 1, 10, 11, 2, 10}
-query := "(
+params := []int{10, 1, 10, 11, 2, 10}
+query := `(
     SELECT a FROM t1
         WHERE a = ? AND B = ?
         ORDER BY a LIMIT ?
@@ -226,8 +223,8 @@ query := "(
     SELECT a FROM t2
         WHERE a = ? AND B = ?
         ORDER BY a LIMIT ?
-)"
-err := db.Bind(&results).RawQuery(query, params)
+)`
+err := db.Bind(&results).RawQuery(query, params...)
 ```
 
 
@@ -276,14 +273,14 @@ db.Bind(&users).Where("id", 50, ">=").Get("users")
 ### Between / Not Between
 
 ```go
-db.Bind(&users).Where("id", reiner.V{0, 20}, "BETWEEN").Get("users")
+db.Bind(&users).Where("id", []int{0, 20}, "BETWEEN").Get("users")
 // Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
 ### In / Not In
 
 ```go
-db.Bind(&users).Where("id", reiner.V{1, 5, 27, -1, "d"}, "IN").Get("users")
+db.Bind(&users).Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
@@ -316,7 +313,7 @@ db.Bind(&users).Get("users")
 ### Raw With Params
 
 ```go
-db.Where("(id = ? or id = ?)", reiner.V{6, 2})
+db.Where("(id = ? or id = ?)", []int{6, 2})
 db.Where("login", "mike")
 
 db.Bind(&users).Get("users")
@@ -425,7 +422,7 @@ db.Where("id", ids, "IN").Get("users")
 userIDQ := db.subQuery()
 userIDQ.Where("id", 6).GetOne("users", "name")
 
-err := db.insert("products", reiner.F{
+err := db.insert("products", reiner.H{
 	"productName": "test product",
 	"userID":      userIDQ,
 	"lastUpdated": db.Now(),
