@@ -424,7 +424,7 @@ db.Where("id", idSubQuery, "IN").Get("users")
 ### Insert
 
 ```go
-idSubQuery := db.subQuery()
+idSubQuery := db.SubQuery()
 idSubQuery.Where("id", 6).GetOne("users", "name")
 
 err := db.insert("products", reiner.H{
@@ -545,17 +545,6 @@ migration := db.Migration()
 migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
 // Equals: CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
-
-|          |           |            |           |        |
-|----------|-----------|------------|-----------|--------|
-| TinyInt  | SmallInt  | MediumInt  | Int       | BigInt |
-| Char     | Varchar   |            |           |        |
-| Binary   | VarBinary | Bit        |           |        |
-| TinyText | Text      | MediumText | LongText  |        |
-| TinyBlob | Blob      | MediumBlob | LongBlob  |        |
-| Date     | DateTime  | Time       | Timestamp | Year   |
-| Double   | Decimal   | Float      |           |        |
-| Enum     | Set       |            |           |        |
 
 
 | Numbers   | Strings    | Binaries  | Blobs      | Times     | Floatings | Enums |
