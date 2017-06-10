@@ -87,7 +87,7 @@ err := db.Insert("users", reiner.H{
 ```go
 lastInsertID := "id"
 
-err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", reiner.H{
+err := db.Columns("updatedAt").OnDuplicate(lastInsertID).Insert("users", map[string]interface{}{
 	"username":  "YamiOdymel",
 	"password":  "test",
 	"createdAt": db.Now(),
@@ -137,19 +137,21 @@ err := db.Limit(10).Update("users", data)
 
 ```go
 err := db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users
 ```
 
 ### Limit
 
 ```go
 err := db.Bind(&users).Limit(10).Get("users")
+// Equals: SELECT * FROM users LIMIT 10
 ```
 
 ### Specified Columns
 
 ```go
 err := db.Bind(&users).Get("users", "username, nickname")
-// count := db.Count
+// Equals: SELECT username, nickname FROM users
 ```
 
 ### Single Row
@@ -236,8 +238,8 @@ err := db.Bind(&results).RawQuery(query, params...)
 ```go
 db.Where("id", 1)
 db.Where("username", "admin")
-db.Bind(&users).Get("users")
 
+db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
@@ -246,8 +248,8 @@ db.Bind(&users).Get("users")
 ```go
 db.Where("id", 1)
 db.Having("username", "admin")
-db.Bind(&users).Get("users")
 
+db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
@@ -298,6 +300,7 @@ db.Bind(&users).Get("users")
 
 ```go
 db.Where("lastName", reiner.NULL, "IS NOT")
+
 db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users where lastName IS NOT NULL
 ```
@@ -307,7 +310,9 @@ db.Bind(&users).Get("users")
 ```go
 db.Where("id != companyId")
 db.Where("DATE(createdAt) = DATE(lastLogin)")
+
 db.Bind(&users).Get("users")
+// Equals: SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
 ```
 
 ### Raw With Params
@@ -397,34 +402,34 @@ db.Bind(&products).Get("products p", "u.name, p.productName")
 ## Subqueries
 
 ```go
-sq := db.SubQuery()
-sq.Get("users")
+subQuery := db.SubQuery()
+subQuery.Get("users")
 ```
 
 ```go
-sq := db.SubQuery("sq")
-sq.Get("users")
+subQuery := db.SubQuery("sq")
+subQuery.Get("users")
 ```
 
 ### Select
 
 ```go
-ids := db.SubQuery()
-ids.Where("qty", 2, ">").Get("products", "userId")
+idSubQuery := db.SubQuery()
+idSubQuery.Where("qty", 2, ">").Get("products", "userId")
 
-db.Where("id", ids, "IN").Get("users")
+db.Where("id", idSubQuery, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
 ### Insert
 
 ```go
-userIDQ := db.subQuery()
-userIDQ.Where("id", 6).GetOne("users", "name")
+idSubQuery := db.subQuery()
+idSubQuery.Where("id", 6).GetOne("users", "name")
 
 err := db.insert("products", reiner.H{
 	"productName": "test product",
-	"userID":      userIDQ,
+	"userID":      idSubQuery,
 	"lastUpdated": db.Now(),
 })
 // Equals: INSERT INTO PRODUCTS (productName, userId, lastUpdated) values ("test product", (SELECT name FROM users WHERE id = 6), NOW());
@@ -433,30 +438,29 @@ err := db.insert("products", reiner.H{
 ### Join
 
 ```go
-usersQ := db.SubQuery("u")
-userQ.Where("active", 1).Get("users")
+userSubQuery := db.SubQuery("u")
+userSubQuery.Where("active", 1).Get("users")
 
-db.Join(usersQ, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
+db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
 ```
 
 ### Exist / Not Exist
 
 ```go
-sub := db.SubQuery()
-sub.Where("company", "testCompany")
-sub.Get("users", "userId")
+subQuery := db.SubQuery()
+subQuery.Where("company", "testCompany")
+subQuery.Get("users", "userId")
 
-db.Where("", sub, "EXISTS").Get("products")
+db.Where("", subQuery, "EXISTS").Get("products")
 // Equals: SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
-
-
 
 ## Has
 
 ```go
-db.Where("username", "yamiodymel").Where("password", "123456")
+db.Where("username", "yamiodymel")
+db.Where("password", "123456")
 
 if db.Has("users") {
 	fmt.Println("Logged in successfully!")
@@ -465,9 +469,9 @@ if db.Has("users") {
 }
 ```
 
-
-
 ## Helpers
+
+### Connection
 
 ```go
 db.Disconnect()
@@ -479,13 +483,13 @@ if !db.Ping() {
 }
 ```
 
+### Last Query
+
 ```go
 db.Get("users")
 
 fmt.Println("Last executed query was %s", db.LastQuery())
 ```
-
-
 
 ## Transactions
 
@@ -497,8 +501,6 @@ if err != nil {
 	db.Commit()
 }
 ```
-
-
 
 ## Lock
 
@@ -533,7 +535,7 @@ db.SetQueryOption("SQL_NO_CACHE").Get("users")
 
 ```go
 db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
-// GIVES: INSERT LOW_PRIORITY IGNORE INTO users ...
+// Gives: INSERT LOW_PRIORITY IGNORE INTO users ...
 ```
 
 # Table Migrations
@@ -541,4 +543,5 @@ db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
 ```go
 migration := db.Migration()
 migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
+// Equals: CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
