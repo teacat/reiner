@@ -556,3 +556,13 @@ migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
 | Date     | DateTime  | Time       | Timestamp | Year   |
 | Double   | Decimal   | Float      |           |        |
 | Enum     | Set       |            |           |        |
+
+
+| Numbers   | Strings    | Binaries  | Blobs      | Times     | Floatings | Enums |
+|-----------|------------|-----------|------------|-----------|-----------|-------|
+| TinyInt   | Char       | Binary    | Blob       | Date      | Double    | Enum  |
+| SmallInt  | Varchar    | VarBinary | MediumBlob | DateTime  | Decimal   | Set   |
+| MediumInt | TinyText   | Bit       | LongBlob   | Time      | Float     |       |
+| Int       | Text       |           |            | Timestamp |           |       |
+| BigInt    | MediumText |           |            | Year      |           |       |
+|           | LongText   |           |            |           |           |       |
