@@ -6,6 +6,13 @@ A Golang database ORM with the 1990's style. Flexible, and no struct tags needed
 
 A MySQL ORM written in Golang which lets you controll everything, just like writing a query but simpler, join tables are now easier than before.
 
+* Almost full-featured ORM
+* Easy to remember, understand
+* SQL Builder
+* Table Migrations
+* Sub queries
+* Transactions
+
 # Why?
 
 [Gorm](https://github.com/jinzhu/gorm) is great as fuck, but it's not really fits with a complex SQL query usage, and Reiner solved the problem. Reiner also decoupling the function usage with the struct (Loose coupling).
@@ -486,7 +493,7 @@ fmt.Println("Last executed query was %s", db.LastQuery())
 ## Transactions
 
 ```go
-err := db.StartTransaction().Insert("myTable", data)
+err := db.Begin().Insert("myTable", data)
 if err != nil {
 	db.Rollback()
 } else {
