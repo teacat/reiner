@@ -511,7 +511,7 @@ db.SetLockMethod("WRITE").Lock("users")
 db.Unlock()
 
 // Lock the multiple tables at the same time is easy.
-db.SetLockMethod("READ")->Lock("users", "log")
+db.SetLockMethod("READ").Lock("users", "log")
 ```
 
 
