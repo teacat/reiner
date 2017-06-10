@@ -305,7 +305,7 @@ db.Bind(&users).Get("users")
 ### Raw With Params
 
 ```go
-db.Where("(id = ? or id = ?)", reiner.Fields{6, 2})
+db.Where("(id = ? or id = ?)", reiner.Values{6, 2})
 db.Where("login", "mike")
 
 db.Bind(&users).Get("users")
@@ -320,10 +320,7 @@ db.Bind(&users).Get("users")
 
 ```go
 err := db.Where("id", 1).Delete("users")
-if err != nil {
-    panic(err)
-}
-if db.Count != 0 {
+if err == nil && db.Count != 0 {
     fmt.Println("Deleted successfully!")
 }
 ```
@@ -401,34 +398,113 @@ sq := db.SubQuery("sq")
 sq.Get("users")
 ```
 
+### Select
+
 ```go
 ids := db.SubQuery()
+ids.Where("qty", 2, ">").Get("products", "userId")
 
+db.Where("id", ids, "IN").Get("users")
+// Equals: SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
-$ids = $db->subQuery ();
-$ids->where ("qty", 2, ">");
-$ids->get ("products", null, "userId");
+### Insert
 
-$db->where ("id", $ids, 'in');
-$res = $db->get ("users");
-// Gives SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
+```go
+userIDQ := db.subQuery()
+userIDQ.Where("id", 6).GetOne("users", "name")
+
+err := db.insert("products", reiner.Fields{
+	"productName": "test product",
+	"userID":      userIDQ,
+	"lastUpdated": db.Now(),
+})
+// Equals: INSERT INTO PRODUCTS (productName, userId, lastUpdated) values ("test product", (SELECT name FROM users WHERE id = 6), NOW());
+```
+
+### Join
+
+```go
+usersQ := db.SubQuery("u")
+userQ.Where("active", 1).Get("users")
+
+db.Join(usersQ, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
+// Equals: SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
+```
+
+### Exist / Not Exist
+
+```go
+sub := db.SubQuery()
+sub.Where("company", "testCompany")
+sub.Get("users", "userId")
+
+db.Where("", sub, "EXISTS").Get("products")
+// Equals: SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
+```
 
 &nbsp;
 
 ## Has
 
+```go
+db.Where("username", "yamiodymel").Where("password", "123456")
+
+if db.Has("users") {
+	fmt.Println("Logged in successfully!")
+} else {
+	fmt.Println("Incorrect username or the password.")
+}
+```
+
 &nbsp;
 
 ## Helpers
+
+```go
+db.Disconnect()
+```
+
+```go
+if !db.Ping() {
+	db.Connect()
+}
+```
+
+```go
+db.Get("users")
+
+fmt.Println("Last executed query was %s", db.LastQuery())
+```
 
 &nbsp;
 
 ## Transactions
 
+```go
+db.StartTransaction()
+
+err := db.Insert("myTable", data)
+if err != nil {
+	db.Rollback()
+} else {
+	db.Commit()
+}
+```
+
 &nbsp;
 
 ## Lock
+
+```go
+db.SetLockMethod("WRITE").Lock("users")
+
+// Calling another `Lock()` will unlock the first lock. You could also use `Unlock()`
+db.Unlock()
+
+// Lock the multiple tables at the same time is easy.
+db.SetLockMethod("READ")->Lock("users", "log")
+```
 
 &nbsp;
 
