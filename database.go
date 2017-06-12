@@ -1,7 +1,10 @@
 package main
 
-import "database/sql"
-import _ "github.com/go-sql-driver/mysql"
+import (
+	"database/sql"
+
+	_ "github.com/go-sql-driver/mysql"
+)
 
 type DB struct {
 	connection *sql.DB
@@ -9,8 +12,15 @@ type DB struct {
 	LastQuery  string
 }
 
-func New(dsn string) (*DB, error) {
-	db, err := sql.Open("mysql", "user:password@/dbname")
+func New(dataSourceName string) (*DB, error) {
+	db, err := sql.Open("mysql", dataSourceName)
+	if err != nil {
+		return &DB{}, err
+	}
+	if err = db.Ping(); err != nil {
+		return &DB{}, err
+	}
+
 	return &DB{connection: db}, err
 }
 
@@ -200,6 +210,6 @@ func (d *DB) SetQueryOption(options ...string) {
 }
 
 //
-func (d *DB) Migration() {
-
+func (d *DB) Migration() *Migration {
+	return &Migration{connection: d.connection}
 }

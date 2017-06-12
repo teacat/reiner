@@ -1,167 +1,264 @@
 package main
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 type Migration struct {
 	connection *sql.DB
+	table      table
+	columns    []column
+	LastQuery  string
 }
 
-func (m *Migration) TinyInt() {
-
+type table struct {
+	name        string
+	comment     string
+	primaryKeys []keys
+	indexKeys   []keys
+	uniqueKeys  []keys
+	foreignKeys []keys
+	engineType  string
 }
 
-func (m *Migration) SmallInt() {
-
+type column struct {
+	name          string
+	dataType      string
+	length        interface{}
+	comment       string
+	unsigned      bool
+	primary       bool
+	unique        bool
+	index         bool
+	foreign       string
+	autoIncrement bool
+	defaultValue  string
+	nullable      bool
+	extras        bool
 }
 
-func (m *Migration) MediumInt() {
-
+type keys struct {
+	name    string
+	columns []string
 }
 
-func (m *Migration) Int() {
+// FKEY
 
+func (m *Migration) setColumnType(dataType string, arg ...interface{}) *Migration {
+	m.columns[len(m.columns)-1].dataType = dataType
+	if len(arg) == 1 {
+		m.columns[len(m.columns)-1].length = arg[0]
+	}
+
+	return m
 }
 
-func (m *Migration) BigInt() {
-
+func (m *Migration) TinyInt(length int) *Migration {
+	return m.setColumnType("tinyint", length)
 }
 
-func (m *Migration) Char() {
-
+func (m *Migration) SmallInt(length int) *Migration {
+	return m.setColumnType("smallint", length)
 }
 
-func (m *Migration) Varchar() {
-
+func (m *Migration) MediumInt(length int) *Migration {
+	return m.setColumnType("mediumint", length)
 }
 
-func (m *Migration) TinyText() {
-
+func (m *Migration) Int(length int) *Migration {
+	return m.setColumnType("int", length)
 }
 
-func (m *Migration) Text() {
-
+func (m *Migration) BigInt(length int) *Migration {
+	return m.setColumnType("bigint", length)
 }
 
-func (m *Migration) MediumText() {
-
+func (m *Migration) Char(length int) *Migration {
+	return m.setColumnType("char", length)
 }
 
-func (m *Migration) LongText() {
-
+func (m *Migration) Varchar(length int) *Migration {
+	return m.setColumnType("varchar", length)
 }
 
-func (m *Migration) Binary() {
-
+func (m *Migration) TinyText() *Migration {
+	return m.setColumnType("tinytext")
 }
 
-func (m *Migration) VarBinary() {
-
+func (m *Migration) Text() *Migration {
+	return m.setColumnType("text")
 }
 
-func (m *Migration) Bit() {
-
+func (m *Migration) MediumText() *Migration {
+	return m.setColumnType("mediumtext")
 }
 
-func (m *Migration) Blob() {
-
+func (m *Migration) LongText() *Migration {
+	return m.setColumnType("longtext")
 }
 
-func (m *Migration) MediumBlob() {
-
+func (m *Migration) Binary() *Migration {
+	return m.setColumnType("binary")
 }
 
-func (m *Migration) LongBlob() {
-
+func (m *Migration) VarBinary() *Migration {
+	return m.setColumnType("varbinary")
 }
 
-func (m *Migration) Date() {
-
+func (m *Migration) Bit() *Migration {
+	return m.setColumnType("bit")
 }
 
-func (m *Migration) DateTime() {
-
+func (m *Migration) Blob() *Migration {
+	return m.setColumnType("blob")
 }
 
-func (m *Migration) Time() {
-
+func (m *Migration) MediumBlob() *Migration {
+	return m.setColumnType("mediumblob")
 }
 
-func (m *Migration) Timestamp() {
-
+func (m *Migration) LongBlob() *Migration {
+	return m.setColumnType("longblob")
 }
 
-func (m *Migration) Year() {
-
+func (m *Migration) Date() *Migration {
+	return m.setColumnType("date")
 }
 
-func (m *Migration) Double() {
-
+func (m *Migration) DateTime() *Migration {
+	return m.setColumnType("dateTime")
 }
 
-func (m *Migration) Decimal() {
-
+func (m *Migration) Time() *Migration {
+	return m.setColumnType("time")
 }
 
-func (m *Migration) Float() {
-
+func (m *Migration) Timestamp() *Migration {
+	return m.setColumnType("timestamp")
 }
 
-func (m *Migration) Enum() {
-
+func (m *Migration) Year() *Migration {
+	return m.setColumnType("year")
 }
 
-func (m *Migration) Set() {
-
+func (m *Migration) Double(length []int) *Migration {
+	return m.setColumnType("double", length)
 }
 
-func (m *Migration) InnoDB() {
-
+func (m *Migration) Decimal(length []int) *Migration {
+	return m.setColumnType("decimal", length)
 }
 
-func (m *Migration) MyISAM() {
-
+func (m *Migration) Float(length []int) *Migration {
+	return m.setColumnType("float", length)
 }
 
-func (m *Migration) Primary() {
-
+func (m *Migration) Enum(types []string) *Migration {
+	return m.setColumnType("enum", types)
 }
 
-func (m *Migration) Unique() {
-
+func (m *Migration) Set(types []string) *Migration {
+	return m.setColumnType("set", types)
 }
 
-func (m *Migration) Index() {
-
+func (m *Migration) Column(name string) *Migration {
+	m.columns = append(m.columns, column{name: name})
+	return m
 }
 
-func (m *Migration) Nullable() {
-
+func (m *Migration) InnoDB() *Migration {
+	m.table.engineType = "innodb"
+	return m
 }
 
-func (m *Migration) Unsigned() {
-
+func (m *Migration) MyISAM() *Migration {
+	m.table.engineType = "myisam"
+	return m
 }
 
-func (m *Migration) Comment() {
-
+//
+//    Primary()
+//    Primary([]string{"column1", "column2"})
+//    Primary("primary_keys", []string{"column1", "column2"})
+//
+func (m *Migration) Primary(args ...interface{}) *Migration {
+	switch len(args) {
+	// Primary()
+	case 0:
+		m.columns[len(m.columns)-1].primary = true
+	// Primary([]string{"column1", "column2"})
+	case 1:
+	// Primary("primary_keys", []string{"column1", "column2"})
+	case 2:
+		m.table.primaryKeys = append(m.table.primaryKeys, keys{
+			name:    args[0].(string),
+			columns: args[1].([]string),
+		})
+	}
+	return m
 }
 
-func (m *Migration) Default() {
-
+func (m *Migration) Unique(args ...interface{}) *Migration {
+	switch len(args) {
+	// Unique()
+	case 0:
+		m.columns[len(m.columns)-1].primary = true
+	// Unique("primary_keys", []string{"column1", "column2"})
+	case 2:
+		m.table.primaryKeys = append(m.table.primaryKeys, keys{
+			name:    args[0].(string),
+			columns: args[1].([]string),
+		})
+	}
+	return m
 }
 
-func (m *Migration) AutoIncrement() {
-
+func (m *Migration) Index(args ...interface{}) *Migration {
+	return m
 }
 
-func (m *Migration) Column() {
-
+func (m *Migration) Foreign(args ...interface{}) *Migration {
+	return m
 }
 
-func (m *Migration) Create() {
-
+func (m *Migration) Nullable() *Migration {
+	m.columns[len(m.columns)-1].defaultValue = ""
+	m.columns[len(m.columns)-1].nullable = true
+	return m
 }
 
-func (m *Migration) Drop() {
+func (m *Migration) Unsigned() *Migration {
+	m.columns[len(m.columns)-1].unsigned = true
+	return m
+}
 
+func (m *Migration) Comment(text string) *Migration {
+	m.columns[len(m.columns)-1].comment = text
+	return m
+}
+
+func (m *Migration) Default(value string) *Migration {
+	m.columns[len(m.columns)-1].defaultValue = value
+	return m
+}
+
+func (m *Migration) AutoIncrement() *Migration {
+	m.columns[len(m.columns)-1].autoIncrement = true
+	return m
+}
+
+func (m *Migration) Create(tableName string, comment string) {
+	m.table.name = tableName
+	m.table.comment = comment
+}
+
+func (m *Migration) Drop(tableNames ...string) *Migration {
+	for _, name := range tableNames {
+		query := fmt.Sprintf("DROP TABLE `%s`", name)
+		m.connection.Exec(query)
+
+		m.LastQuery = query
+	}
+	return m
 }
