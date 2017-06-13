@@ -138,27 +138,70 @@ func TestMigrationNamingPrimaryKey(t *testing.T) {
 }
 
 func TestMigrationMultiPrimaryKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Primary([]string{"test", "test2"}).
+		Create("test_table4")
+	assert.Equal("CREATE TABLE `test_table4` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, PRIMARY KEY (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationUniqueKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).Unique().
+		Column("test2").Varchar(32).
+		Create("test_table5")
+	assert.Equal("CREATE TABLE `test_table5` (`test` VARCHAR(32) NOT NULL UNIQUE , `test2` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNamingUniqueKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Unique("uk_test", []string{"test", "test2"}).
+		Unique("uk_test2", []string{"test3", "test4"}).
+		Create("test_table6")
+	assert.Equal("CREATE TABLE `test_table6` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, UNIQUE KEY `uk_test` (`test`,`test2`), UNIQUE KEY `uk_test2` (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationMultiUniqueKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Unique([]string{"test", "test2"}).
+		Unique([]string{"test3", "test4"}).
+		Create("test_table7")
+	assert.Equal("CREATE TABLE `test_table7` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, UNIQUE KEY (`test`,`test2`), UNIQUE KEY (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationAnonymousIndexKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).Index().
+		Column("test2").Varchar(32).Index().
+		Create("test_table14")
+	assert.Equal("CREATE TABLE `test_table14` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, INDEX `test` (`test`), INDEX `test2` (`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNamingIndexKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Index("ik_test", []string{"test", "test2"}).
+		Index("ik_test2", []string{"test3", "test4"}).
+		Create("test_table9")
+	assert.Equal("CREATE TABLE `test_table9` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, INDEX `ik_test` (`test`,`test2`), INDEX `ik_test2` (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationMixedKeys(t *testing.T) {

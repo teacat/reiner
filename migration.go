@@ -31,7 +31,6 @@ type column struct {
 	unsigned      bool
 	primary       bool
 	unique        bool
-	index         bool
 	foreign       string
 	autoIncrement bool
 	defaultValue  interface{}
@@ -227,12 +226,18 @@ func (m *Migration) Index(args ...interface{}) *Migration {
 	switch len(args) {
 	// Index()
 	case 0:
-		m.columns[len(m.columns)-1].index = true
+		m.table.indexKeys = append(m.table.indexKeys, keys{
+			name:    m.columns[len(m.columns)-1].name,
+			columns: []string{m.columns[len(m.columns)-1].name},
+		})
 	// Index([]string{"column1", "column2"})
 	case 1:
-		m.table.indexKeys = append(m.table.indexKeys, keys{
-			columns: args[0].([]string),
-		})
+		for _, v := range args[0].([]string) {
+			m.table.indexKeys = append(m.table.indexKeys, keys{
+				name:    v,
+				columns: []string{v},
+			})
+		}
 	// Index("index_keys", []string{"column1", "column2"})
 	case 2:
 		m.table.indexKeys = append(m.table.indexKeys, keys{
@@ -497,9 +502,9 @@ func (m *Migration) columnBuilder() (query string) {
 		if v.unique {
 			query += "UNIQUE "
 		}
-		if v.index {
-			query += "INDEX "
-		}
+		//if v.index {
+		//	query += "INDEX "
+		//}
 
 		// Comment.
 		if v.comment != "" {
