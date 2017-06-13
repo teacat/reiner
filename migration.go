@@ -165,7 +165,7 @@ func (m *Migration) Set(types ...interface{}) *Migration {
 }
 
 func (m *Migration) Column(name string) *Migration {
-	m.columns = append(m.columns, column{name: name})
+	m.columns = append(m.columns, column{name: name, defaultValue: false})
 	return m
 }
 
@@ -290,25 +290,131 @@ func (m *Migration) AutoIncrement() *Migration {
 	return m
 }
 
-func (m *Migration) Create(tableName string, comment string) {
+func (m *Migration) Create(tableName string, comment ...string) {
 	m.table.name = tableName
-	m.table.comment = comment
+	if len(comment) != 0 {
+		m.table.comment = comment[0]
+	}
 
-	m.tableBuilder()
+	query := m.tableBuilder()
+
+	m.LastQuery = query
 }
 
-func (m *Migration) tableBuilder() {
-	query := fmt.Sprintf("CREATE TABLE `%s` ", m.table.name)
+func (m *Migration) tableBuilder() (query string) {
+	var contentQuery string
+
 	columnQuery := m.columnBuilder()
+	foreignQuery := m.indexBuilder("FOREIGN KEY")
+	primaryQuery := m.indexBuilder("PRIMARY KEY")
+	uniqueQuery := m.indexBuilder("UNIQUE KEY")
+	indexQuery := m.indexBuilder("INDEX")
+
+	query = fmt.Sprintf("CREATE TABLE `%s` ", m.table.name)
+
+	// Columns, keys.
+	if columnQuery != "" {
+		contentQuery += fmt.Sprintf("%s, ", columnQuery)
+	}
+	if foreignQuery != "" {
+		contentQuery += fmt.Sprintf("%s, ", foreignQuery)
+	}
+	if primaryQuery != "" {
+		contentQuery += fmt.Sprintf("%s, ", primaryQuery)
+	}
+	if uniqueQuery != "" {
+		contentQuery += fmt.Sprintf("%s, ", uniqueQuery)
+	}
+	if indexQuery != "" {
+		contentQuery += fmt.Sprintf("%s, ", indexQuery)
+	}
+	if contentQuery != "" {
+		query += fmt.Sprintf("(%s) ", trim(contentQuery))
+	}
+
+	// Engine type.
+	engineType := m.table.engineType
+	if engineType == "" {
+		engineType = "INNODB"
+	}
+	query += fmt.Sprintf("ENGINE=%s, ", engineType)
+
+	// Comment.
+	if m.table.comment != "" {
+		query += fmt.Sprintf("COMMENT='%s', ", m.table.comment)
+	}
+
+	// Remove the unnecessary comma and the space.
+	query = trim(query)
+	return
+}
+
+func (m *Migration) indexBuilder(indexName string) (query string) {
+	var keys []keys
+	var targetTable, targetColumns string
+
+	// Get the key groups by the index name.
+	switch indexName {
+	case "PRIMARY KEY":
+		keys = m.table.primaryKeys
+	case "UNIQUE KEY":
+		keys = m.table.uniqueKeys
+	case "INDEX":
+		keys = m.table.indexKeys
+	case "FOREIGN KEY":
+		keys = m.table.foreignKeys
+	}
+
+	// Each index group.
+	for _, v := range keys {
+		// Build the column query. (`column_1`, `column_2`)
+		columns := fmt.Sprintf("`%s`", strings.Join(v.columns, "`,`"))
+
+		// Build the query for the target columns of the foreign keys.
+		if len(v.targetColumns) != 0 {
+			for _, c := range v.targetColumns {
+				// Get the target table name from the target columns. (targetTable.targetColumn)
+				targetTable = strings.Split(c, ".")[0]
+				// Removed the table name in the column name and build the query.
+				targetColumns += fmt.Sprintf("`%s`, ", strings.Split(c, ".")[0])
+			}
+			// Remove the unnecessary comma and the space.
+			targetColumns = trim(targetColumns)
+		}
+
+		// Indexs without group name.
+		if v.name == "" && len(v.targetColumns) == 0 {
+			query += fmt.Sprintf("%s (%s), ", indexName, columns)
+			// Naming indexes.
+		} else if v.name != "" && len(v.targetColumns) == 0 {
+			query += fmt.Sprintf("%s `%s` (%s), ", indexName, v.name, columns)
+			// Foreign keys without group name.
+		} else if v.name == "" && len(v.targetColumns) != 0 {
+			query += fmt.Sprintf("%s (%s) REFERENCES %s (%s), ", indexName, columns, targetTable, targetColumns)
+			// Foreign keys.
+		} else if v.name != "" && len(v.targetColumns) != 0 {
+			query += fmt.Sprintf("CONSTRAINT %s %s (%s) REFERENCES %s (%s), ", v.name, indexName, columns, targetTable, targetColumns)
+		}
+	}
+	// Remove the unnecessary comma and the space.
+	query = trim(query)
+	return
+}
+
+func trim(input string) (result string) {
+	if len(input) == 0 {
+		result = strings.TrimSpace(input)
+	} else {
+		result = strings.TrimSpace(input[0 : len(input)-2])
+	}
+	return
 }
 
 // columnBuilder builds the query from the columns.
 func (m *Migration) columnBuilder() (query string) {
-	query = ""
-
 	for _, v := range m.columns {
 		// Column name.
-		query += fmt.Sprintf("`%s`", v.name)
+		query += fmt.Sprintf("`%s` ", v.name)
 
 		// Data types.
 		dataType := strings.ToUpper(v.dataType)
@@ -329,7 +435,7 @@ func (m *Migration) columnBuilder() (query string) {
 				}
 			}
 			// Trim the comma and the space.
-			query += fmt.Sprintf("%s(%s)", dataType, options[0:len(options)-2])
+			query += fmt.Sprintf("%s(%s)", dataType, trim(options))
 		// DATETIME
 		case nil:
 			query += fmt.Sprintf("%s ", dataType)
@@ -340,7 +446,7 @@ func (m *Migration) columnBuilder() (query string) {
 			query += "UNSIGNED "
 		}
 		// Nullable.
-		if v.nullable {
+		if !v.nullable {
 			query += "NOT NULL "
 		}
 		// Auto increment.
@@ -377,13 +483,9 @@ func (m *Migration) columnBuilder() (query string) {
 		// End.
 		query += ", "
 	}
-
 	// Remove the last unnecessary comma
-	query = query[0 : len(query)-2]
-}
-
-func (m *Migration) indexBuilder() {
-
+	query = trim(query)
+	return
 }
 
 func (m *Migration) Drop(tableNames ...string) *Migration {
