@@ -57,10 +57,10 @@ func TestMigrationDataTypes(t *testing.T) {
 		Column("test21").Time().
 		Column("test22").Timestamp().
 		Column("test23").Year().
-		Column("test24").Double([]int{2, 1}).
-		Column("test25").Decimal([]int{2, 1}).
-		Column("test26").Float([]int{2, 1}).
-		Column("test27").Float([]int{1}).
+		Column("test24").Double(2, 1).
+		Column("test25").Decimal(2, 1).
+		Column("test26").Float(2, 1).
+		Column("test27").Float(1).
 		Column("test28").Enum("1", "2", "3", "A", "B", "C").
 		Column("test29").Set("1", "2", "3", "A", "B", "C").
 		Create("test_table1")

@@ -148,15 +148,15 @@ func (m *Migration) Year() *Migration {
 	return m.setColumnType("year")
 }
 
-func (m *Migration) Double(length []int) *Migration {
+func (m *Migration) Double(length ...int) *Migration {
 	return m.setColumnType("double", length)
 }
 
-func (m *Migration) Decimal(length []int) *Migration {
+func (m *Migration) Decimal(length ...int) *Migration {
 	return m.setColumnType("decimal", length)
 }
 
-func (m *Migration) Float(length []int) *Migration {
+func (m *Migration) Float(length ...int) *Migration {
 	return m.setColumnType("float", length)
 }
 
