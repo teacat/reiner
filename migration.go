@@ -100,16 +100,20 @@ func (m *Migration) LongText() *Migration {
 	return m.setColumnType("longtext")
 }
 
-func (m *Migration) Binary() *Migration {
+func (m *Migration) Binary(length int) *Migration {
 	return m.setColumnType("binary")
 }
 
-func (m *Migration) VarBinary() *Migration {
+func (m *Migration) VarBinary(length int) *Migration {
 	return m.setColumnType("varbinary")
 }
 
-func (m *Migration) Bit() *Migration {
+func (m *Migration) Bit(length int) *Migration {
 	return m.setColumnType("bit")
+}
+
+func (m *Migration) TinyBlob() *Migration {
+	return m.setColumnType("tinyblob")
 }
 
 func (m *Migration) Blob() *Migration {
@@ -299,6 +303,7 @@ func (m *Migration) Create(tableName string, comment ...string) {
 	query := m.tableBuilder()
 
 	m.LastQuery = query
+	m.clean()
 }
 
 func (m *Migration) tableBuilder() (query string) {
@@ -347,6 +352,17 @@ func (m *Migration) tableBuilder() (query string) {
 	// Remove the unnecessary comma and the space.
 	query = trim(query)
 	return
+}
+
+func (m *Migration) clean() {
+	m.table.comment = ""
+	m.table.engineType = ""
+	m.table.foreignKeys = []keys{}
+	m.table.indexKeys = []keys{}
+	m.table.primaryKeys = []keys{}
+	m.table.uniqueKeys = []keys{}
+	m.table.name = ""
+	m.columns = []column{}
 }
 
 func (m *Migration) indexBuilder(indexName string) (query string) {
@@ -494,6 +510,7 @@ func (m *Migration) Drop(tableNames ...string) *Migration {
 		m.connection.Exec(query)
 
 		m.LastQuery = query
+		m.clean()
 	}
 	return m
 }
