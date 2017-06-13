@@ -42,6 +42,8 @@ type keys struct {
 	name          string
 	columns       []string
 	targetColumns []string
+	onUpdate      string
+	onDelete      string
 }
 
 // FKEY
@@ -247,6 +249,16 @@ func (m *Migration) Index(args ...interface{}) *Migration {
 	return m
 }
 
+func (m *Migration) OnUpdate(action string) *Migration {
+	m.table.foreignKeys[len(m.table.foreignKeys)-1].onUpdate = action
+	return m
+}
+
+func (m *Migration) OnDelete(action string) *Migration {
+	m.table.foreignKeys[len(m.table.foreignKeys)-1].onDelete = action
+	return m
+}
+
 // .Varchar(32).Foreign("users.id")
 // .Foreign("foreign_keys", []string{"id", "password"}, []string{"users.id", "users.password"})
 
@@ -426,6 +438,15 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 			targetColumns = trim(targetColumns)
 		}
 
+		//
+		var onUpdate, onDelete string
+		if v.onUpdate != "" {
+			onUpdate = fmt.Sprintf(" ON UPDATE %s ", v.onUpdate)
+		}
+		if v.onDelete != "" {
+			onDelete = fmt.Sprintf(" ON DELETE %s", v.onDelete)
+		}
+
 		// Indexs without group name.
 		if v.name == "" && len(v.targetColumns) == 0 {
 			query += fmt.Sprintf("%s (%s), ", indexName, columns)
@@ -434,10 +455,10 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 			query += fmt.Sprintf("%s `%s` (%s), ", indexName, v.name, columns)
 			// Foreign keys without group name.
 		} else if v.name == "" && len(v.targetColumns) != 0 {
-			query += fmt.Sprintf("%s (%s) REFERENCES `%s` (%s), ", indexName, columns, targetTable, targetColumns)
+			query += fmt.Sprintf("%s (%s) REFERENCES `%s` (%s)%s%s, ", indexName, columns, targetTable, targetColumns, onUpdate, onDelete)
 			// Foreign keys.
 		} else if v.name != "" && len(v.targetColumns) != 0 {
-			query += fmt.Sprintf("%s %s (%s) REFERENCES `%s` (%s), ", indexName, v.name, columns, targetTable, targetColumns)
+			query += fmt.Sprintf("%s %s (%s) REFERENCES `%s` (%s)%s%s, ", indexName, v.name, columns, targetTable, targetColumns, onUpdate, onDelete)
 		}
 	}
 	// Remove the unnecessary comma and the space.

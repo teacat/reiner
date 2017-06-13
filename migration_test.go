@@ -299,6 +299,7 @@ func TestMigrationMultipleForeignKey(t *testing.T) {
 
 func TestMigrationNamingForeignKey(t *testing.T) {
 	assert := assert.New(t)
+
 	err := migration.
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
