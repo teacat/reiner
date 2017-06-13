@@ -438,6 +438,13 @@ func (m *Migration) columnBuilder() (query string) {
 		// VARCHAR(30)
 		case int:
 			query += fmt.Sprintf("%s(%d) ", dataType, t)
+		//
+		case []int:
+			// Converts []int to a string and split by the comma.
+			query += fmt.Sprintf("%s(%s) ", dataType, strings.Trim(strings.Join(strings.Split(fmt.Sprint(t), " "), ", "), "[]"))
+		case []string:
+			panic("fff")
+			query += fmt.Sprintf("%s(%s) ", dataType, strings.Join(t, ", "))
 		// FLOAT(1, 2) or ENUM(1, 2, "A", "B")
 		case []interface{}:
 			// Extracting the options from the length.
@@ -451,7 +458,7 @@ func (m *Migration) columnBuilder() (query string) {
 				}
 			}
 			// Trim the comma and the space.
-			query += fmt.Sprintf("%s(%s)", dataType, trim(options))
+			query += fmt.Sprintf("%s(%s) ", dataType, trim(options))
 		// DATETIME
 		case nil:
 			query += fmt.Sprintf("%s ", dataType)

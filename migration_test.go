@@ -61,8 +61,8 @@ func TestMigrationDataTypes(t *testing.T) {
 		Column("test25").Decimal([]int{2, 1}).
 		Column("test26").Float([]int{2, 1}).
 		Column("test27").Float([]int{1}).
-		Column("test28").Enum([]string{"1", "2", "3", "A", "B", "C"}).
-		Column("test29").Set([]string{"1", "2", "3", "A", "B", "C"}).
+		Column("test28").Enum("1", "2", "3", "A", "B", "C").
+		Column("test29").Set("1", "2", "3", "A", "B", "C").
 		Create("test_table1")
 	assert.Equal("CREATE TABLE `test_table1` (`test` TINYINT(1) NOT NULL , `test2` SMALLINT(1) NOT NULL , `test3` MEDIUMINT(1) NOT NULL , `test4` INT(1) NOT NULL , `test5` BIGINT(1) NOT NULL , `test6` CHAR(1) NOT NULL , `test7` VARCHAR(1) NOT NULL , `test8` BINARY(1) NOT NULL , `test9` VARBINARY(1) NOT NULL , `test10` BIT(1) NOT NULL , `test11` TINYTEXT NOT NULL , `test12` TEXT NOT NULL , `test13` MEDIUMTEXT NOT NULL , `test14` LONGTEXT NOT NULL , `test15` TINYBLOB NOT NULL , `test16` BLOB NOT NULL , `test17` MEDIUMBLOB NOT NULL , `test18` LONGBLOB NOT NULL , `test19` DATE NOT NULL , `test20` DATETIME NOT NULL , `test21` TIME NOT NULL , `test22` TIMESTAMP NOT NULL , `test23` YEAR NOT NULL , `test24` DOUBLE(2, 1) NOT NULL , `test25` DECIMAL(2, 1) NOT NULL , `test26` FLOAT(2, 1) NOT NULL , `test27` FLOAT(1) NOT NULL , `test28` ENUM('1', '2', '3', 'A', 'B', 'C') NOT NULL , `test29` SET('1', '2', '3', 'A', 'B', 'C') NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
