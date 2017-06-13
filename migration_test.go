@@ -309,3 +309,15 @@ func TestMigrationNamingForeignKey(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table17` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY fk_test (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`), FOREIGN KEY fk_test2 (`test`,`test2`) REFERENCES `test_table12` (`test3`, `test4`)) ENGINE=INNODB", migration.LastQuery)
 }
+
+func TestMigrationForeignKeysOnActions(t *testing.T) {
+	assert := assert.New(t)
+	err := migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Foreign([]string{"test"}, []string{"test_table13.test5"}).OnUpdate("NO ACTION").OnDelete("NO ACTION").
+		Foreign([]string{"test2"}, []string{"test_table12.test3"}).OnUpdate("CASCADE").OnDelete("RESTRICT").
+		Create("test_table18")
+	assert.NoError(err)
+	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table18` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`) REFERENCES `test_table13` (`test5`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`test2`) REFERENCES `test_table12` (`test3`) ON UPDATE CASCADE ON DELETE RESTRICT) ENGINE=INNODB", migration.LastQuery)
+}

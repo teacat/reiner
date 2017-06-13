@@ -441,7 +441,7 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 		//
 		var onUpdate, onDelete string
 		if v.onUpdate != "" {
-			onUpdate = fmt.Sprintf(" ON UPDATE %s ", v.onUpdate)
+			onUpdate = fmt.Sprintf(" ON UPDATE %s", v.onUpdate)
 		}
 		if v.onDelete != "" {
 			onDelete = fmt.Sprintf(" ON DELETE %s", v.onDelete)
