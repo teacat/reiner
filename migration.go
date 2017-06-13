@@ -340,9 +340,9 @@ func (m *Migration) tableBuilder() (query string) {
 	// Engine type.
 	engineType := m.table.engineType
 	if engineType == "" {
-		engineType = "INNODB"
+		engineType = "innodb"
 	}
-	query += fmt.Sprintf("ENGINE=%s, ", engineType)
+	query += fmt.Sprintf("ENGINE=%s, ", strings.ToUpper(engineType))
 
 	// Comment.
 	if m.table.comment != "" {

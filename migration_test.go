@@ -68,7 +68,11 @@ func TestMigrationDataTypes(t *testing.T) {
 }
 
 func TestMigrationTableType(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Varchar(32).MyISAM().Create("test_myisam_table")
+	assert.Equal("CREATE TABLE `test_myisam_table` (`test` VARCHAR(32) NOT NULL) ENGINE=MYISAM", migration.LastQuery)
+	migration.Column("test").Varchar(32).InnoDB().Create("test_innodb_table")
+	assert.Equal("CREATE TABLE `test_innodb_table` (`test` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationDefault(t *testing.T) {
