@@ -14,16 +14,13 @@ func TestMigrationMain(t *testing.T) {
 
 func TestMigrationBasic(t *testing.T) {
 	assert := assert.New(t)
-	migration.
-		Column("test").Varchar(32).Primary().
-		Create("test_table")
+	migration.Column("test").Varchar(32).Primary().Create("test_table")
 	assert.Equal("CREATE TABLE `test_table` (`test` VARCHAR(32) NOT NULL PRIMARY KEY) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationDrop(t *testing.T) {
 	assert := assert.New(t)
-	migration.
-		Drop("test_table")
+	migration.Drop("test_table")
 	assert.Equal("DROP TABLE `test_table`", migration.LastQuery)
 }
 
@@ -76,7 +73,19 @@ func TestMigrationTableType(t *testing.T) {
 }
 
 func TestMigrationDefault(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Varchar(32).Nullable().Default(nil).Create("test_default_null_table")
+	assert.Equal("CREATE TABLE `test_default_null_table` (`test` VARCHAR(32) DEFAULT NULL) ENGINE=INNODB", migration.LastQuery)
+	migration.Column("test").Varchar(32).Default("string").Create("test_default_string_table")
+	assert.Equal("CREATE TABLE `test_default_string_table` (`test` VARCHAR(32) NOT NULL DEFAULT 'string') ENGINE=INNODB", migration.LastQuery)
+	migration.Column("test").Int(32).Default(12).Create("test_default_int_table")
+	assert.Equal("CREATE TABLE `test_default_int_table` (`test` INT(32) NOT NULL DEFAULT 12) ENGINE=INNODB", migration.LastQuery)
+	migration.Column("test").Timestamp().Default("CURRENT_TIMESTAMP").Create("test_default_timestamp_table")
+	assert.Equal("CREATE TABLE `test_default_timestamp_table` (`test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=INNODB", migration.LastQuery)
+	migration.Column("test").Timestamp().Default("CURRENT_TIMESTAMP").Create("test_default_timestamp_table")
+	assert.Equal("CREATE TABLE `test_default_timestamp_table` (`test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=INNODB", migration.LastQuery)
+	migration.Column("test").DateTime().Default("NOW()").Create("test_default_datetime_table")
+	assert.Equal("CREATE TABLE `test_default_datetime_table` (`test` DATETIME NOT NULL DEFAULT NOW()) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNullable(t *testing.T) {

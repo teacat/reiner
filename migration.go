@@ -484,7 +484,11 @@ func (m *Migration) columnBuilder() (query string) {
 		case nil:
 			query += fmt.Sprintf("DEFAULT NULL ")
 		case string:
-			query += fmt.Sprintf("DEFAULT '%s' ", t)
+			if t == "CURRENT_TIMESTAMP" || t == "NOW()" {
+				query += fmt.Sprintf("DEFAULT %s ", t)
+			} else {
+				query += fmt.Sprintf("DEFAULT '%s' ", t)
+			}
 		}
 
 		// Keys.
