@@ -211,7 +211,7 @@ func TestMigrationAnonymousIndexKey(t *testing.T) {
 		Column("test2").Varchar(32).Index().
 		Create("test_table14")
 	assert.NoError(err)
-	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table14` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, INDEX `test` (`test`), INDEX `test2` (`test2`)) ENGINE=INNODB", migration.LastQuery)
+	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table14` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, INDEX (`test`), INDEX (`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNamingIndexKey(t *testing.T) {
@@ -282,17 +282,19 @@ func TestMigrationForeignKey(t *testing.T) {
 		Column("test2").Varchar(32).Foreign("test_table13.test6").
 		Create("test_table15")
 	assert.NoError(err)
-	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table15` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, CONSTRAINT fk_test FOREIGN KEY (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`)) ENGINE=INNODB", migration.LastQuery)
+	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table15` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationMultipleForeignKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
 		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
 		Foreign([]string{"test"}, []string{"test_table13.test5"}).
+		Foreign([]string{"test2"}, []string{"test_table12.test3"}).
 		Create("test_table16")
 	assert.NoError(err)
-	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table16` (`test` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`) REFERENCES `test_table13` (`test5`)) ENGINE=INNODB", migration.LastQuery)
+	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table16` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`) REFERENCES `test_table13` (`test5`), FOREIGN KEY (`test2`) REFERENCES `test_table12` (`test3`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNamingForeignKey(t *testing.T) {
@@ -301,7 +303,8 @@ func TestMigrationNamingForeignKey(t *testing.T) {
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Foreign("fk_test", []string{"test", "test2"}, []string{"test_table13.test5", "test_table13.test6"}).
+		Foreign("fk_test2", []string{"test", "test2"}, []string{"test_table12.test3", "test_table12.test4"}).
 		Create("test_table17")
 	assert.NoError(err)
-	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table17` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, CONSTRAINT fk_test FOREIGN KEY (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`)) ENGINE=INNODB", migration.LastQuery)
+	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table17` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY fk_test (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`), FOREIGN KEY fk_test2 (`test`,`test2`) REFERENCES `test_table12` (`test3`, `test4`)) ENGINE=INNODB", migration.LastQuery)
 }

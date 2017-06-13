@@ -227,7 +227,6 @@ func (m *Migration) Index(args ...interface{}) *Migration {
 	// Index()
 	case 0:
 		m.table.indexKeys = append(m.table.indexKeys, keys{
-			name:    m.columns[len(m.columns)-1].name,
 			columns: []string{m.columns[len(m.columns)-1].name},
 		})
 	// Index([]string{"column1", "column2"})
@@ -254,8 +253,28 @@ func (m *Migration) Index(args ...interface{}) *Migration {
 func (m *Migration) Foreign(args ...interface{}) *Migration {
 	switch len(args) {
 	// Foreign("users.id")
-	case 0:
-		m.columns[len(m.columns)-1].foreign = args[0].(string)
+	case 1:
+		targetTable := strings.Split(args[0].(string), ".")[0]
+		var index int
+		index = -1
+		for k, v := range m.table.foreignKeys {
+			tableName := strings.Split(v.targetColumns[0], ".")[0]
+			if tableName == targetTable {
+				index = k
+				break
+			}
+		}
+
+		if index != -1 {
+			m.table.foreignKeys[index].columns = append(m.table.foreignKeys[index].columns, m.columns[len(m.columns)-1].name)
+			m.table.foreignKeys[index].targetColumns = append(m.table.foreignKeys[index].targetColumns, args[0].(string))
+		} else {
+			m.table.foreignKeys = append(m.table.foreignKeys, keys{
+				columns:       []string{m.columns[len(m.columns)-1].name},
+				targetColumns: []string{args[0].(string)},
+			})
+		}
+
 	// Foreign([]string{"id", "password"}, []string{"users.id", "users.password"})
 	case 2:
 		m.table.foreignKeys = append(m.table.foreignKeys, keys{
@@ -396,6 +415,7 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 
 		// Build the query for the target columns of the foreign keys.
 		if len(v.targetColumns) != 0 {
+			targetColumns = ""
 			for _, c := range v.targetColumns {
 				// Get the target table name from the target columns. (targetTable.targetColumn)
 				targetTable = strings.Split(c, ".")[0]
@@ -417,7 +437,7 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 			query += fmt.Sprintf("%s (%s) REFERENCES `%s` (%s), ", indexName, columns, targetTable, targetColumns)
 			// Foreign keys.
 		} else if v.name != "" && len(v.targetColumns) != 0 {
-			query += fmt.Sprintf("CONSTRAINT %s %s (%s) REFERENCES `%s` (%s), ", v.name, indexName, columns, targetTable, targetColumns)
+			query += fmt.Sprintf("%s %s (%s) REFERENCES `%s` (%s), ", indexName, v.name, columns, targetTable, targetColumns)
 		}
 	}
 	// Remove the unnecessary comma and the space.
@@ -504,6 +524,12 @@ func (m *Migration) columnBuilder() (query string) {
 		}
 		if v.unique {
 			query += "UNIQUE "
+		}
+		if v.foreign != "" {
+			m.table.foreignKeys = append(m.table.foreignKeys, keys{
+				columns:       []string{v.name},
+				targetColumns: []string{v.foreign},
+			})
 		}
 		//if v.index {
 		//	query += "INDEX "
