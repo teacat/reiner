@@ -205,7 +205,46 @@ func TestMigrationNamingIndexKey(t *testing.T) {
 }
 
 func TestMigrationMixedKeys(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Primary([]string{"test", "test2"}).
+		Unique([]string{"test3", "test4"}).
+		Create("test_table10")
+	assert.Equal("CREATE TABLE `test_table10` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, PRIMARY KEY (`test`,`test2`), UNIQUE KEY (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Index("ik_test", []string{"test", "test2"}).
+		Unique([]string{"test3", "test4"}).
+		Create("test_table11")
+	assert.Equal("CREATE TABLE `test_table11` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, UNIQUE KEY (`test3`,`test4`), INDEX `ik_test` (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Primary([]string{"test", "test2"}).
+		Index("ik_test", []string{"test3", "test4"}).
+		Create("test_table12")
+	assert.Equal("CREATE TABLE `test_table12` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, PRIMARY KEY (`test`,`test2`), INDEX `ik_test` (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Column("test3").Varchar(32).
+		Column("test4").Varchar(32).
+		Column("test5").Varchar(32).
+		Column("test6").Varchar(32).
+		Index("ik_test", []string{"test", "test2"}).
+		Unique([]string{"test3", "test4"}).
+		Primary([]string{"test5", "test6"}).
+		Create("test_table13")
+	assert.Equal("CREATE TABLE `test_table13` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL , `test5` VARCHAR(32) NOT NULL , `test6` VARCHAR(32) NOT NULL, PRIMARY KEY (`test5`,`test6`), UNIQUE KEY (`test3`,`test4`), INDEX `ik_test` (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationForeignKey(t *testing.T) {
