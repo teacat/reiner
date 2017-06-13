@@ -101,15 +101,15 @@ func (m *Migration) LongText() *Migration {
 }
 
 func (m *Migration) Binary(length int) *Migration {
-	return m.setColumnType("binary")
+	return m.setColumnType("binary", length)
 }
 
 func (m *Migration) VarBinary(length int) *Migration {
-	return m.setColumnType("varbinary")
+	return m.setColumnType("varbinary", length)
 }
 
 func (m *Migration) Bit(length int) *Migration {
-	return m.setColumnType("bit")
+	return m.setColumnType("bit", length)
 }
 
 func (m *Migration) TinyBlob() *Migration {
