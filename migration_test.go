@@ -89,7 +89,9 @@ func TestMigrationDefault(t *testing.T) {
 }
 
 func TestMigrationNullable(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Varchar(32).Nullable().Create("test_nullable_table")
+	assert.Equal("CREATE TABLE `test_nullable_table` (`test` VARCHAR(32) DEFAULT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationUnsigned(t *testing.T) {

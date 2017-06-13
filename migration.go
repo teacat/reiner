@@ -269,7 +269,7 @@ func (m *Migration) Foreign(args ...interface{}) *Migration {
 }
 
 func (m *Migration) Nullable() *Migration {
-	m.columns[len(m.columns)-1].defaultValue = ""
+	m.columns[len(m.columns)-1].defaultValue = nil
 	m.columns[len(m.columns)-1].nullable = true
 	return m
 }
@@ -443,7 +443,6 @@ func (m *Migration) columnBuilder() (query string) {
 			// Converts []int to a string and split by the comma.
 			query += fmt.Sprintf("%s(%s) ", dataType, strings.Trim(strings.Join(strings.Split(fmt.Sprint(t), " "), ", "), "[]"))
 		case []string:
-			panic("fff")
 			query += fmt.Sprintf("%s(%s) ", dataType, strings.Join(t, ", "))
 		// FLOAT(1, 2) or ENUM(1, 2, "A", "B")
 		case []interface{}:
