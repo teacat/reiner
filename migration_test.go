@@ -18,7 +18,6 @@ func TestMigrationBasic(t *testing.T) {
 		Column("test").Varchar(32).Primary().
 		Column("test_2").Int(32).Primary().
 		Create("test_table", "A test table.")
-
 	assert.Equal("CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB", migration.LastQuery)
 }
 

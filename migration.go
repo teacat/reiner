@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 type Migration struct {
@@ -33,14 +34,15 @@ type column struct {
 	index         bool
 	foreign       string
 	autoIncrement bool
-	defaultValue  string
+	defaultValue  interface{}
 	nullable      bool
 	extras        bool
 }
 
 type keys struct {
-	name    string
-	columns []string
+	name          string
+	columns       []string
+	targetColumns []string
 }
 
 // FKEY
@@ -154,11 +156,11 @@ func (m *Migration) Float(length []int) *Migration {
 	return m.setColumnType("float", length)
 }
 
-func (m *Migration) Enum(types []string) *Migration {
+func (m *Migration) Enum(types ...interface{}) *Migration {
 	return m.setColumnType("enum", types)
 }
 
-func (m *Migration) Set(types []string) *Migration {
+func (m *Migration) Set(types ...interface{}) *Migration {
 	return m.setColumnType("set", types)
 }
 
@@ -177,11 +179,6 @@ func (m *Migration) MyISAM() *Migration {
 	return m
 }
 
-//
-//    Primary()
-//    Primary([]string{"column1", "column2"})
-//    Primary("primary_keys", []string{"column1", "column2"})
-//
 func (m *Migration) Primary(args ...interface{}) *Migration {
 	switch len(args) {
 	// Primary()
@@ -189,6 +186,9 @@ func (m *Migration) Primary(args ...interface{}) *Migration {
 		m.columns[len(m.columns)-1].primary = true
 	// Primary([]string{"column1", "column2"})
 	case 1:
+		m.table.primaryKeys = append(m.table.primaryKeys, keys{
+			columns: args[0].([]string),
+		})
 	// Primary("primary_keys", []string{"column1", "column2"})
 	case 2:
 		m.table.primaryKeys = append(m.table.primaryKeys, keys{
@@ -203,10 +203,15 @@ func (m *Migration) Unique(args ...interface{}) *Migration {
 	switch len(args) {
 	// Unique()
 	case 0:
-		m.columns[len(m.columns)-1].primary = true
-	// Unique("primary_keys", []string{"column1", "column2"})
+		m.columns[len(m.columns)-1].unique = true
+	// Unique([]string{"column1", "column2"})
+	case 1:
+		m.table.uniqueKeys = append(m.table.uniqueKeys, keys{
+			columns: args[0].([]string),
+		})
+	// Unique("unique_keys", []string{"column1", "column2"})
 	case 2:
-		m.table.primaryKeys = append(m.table.primaryKeys, keys{
+		m.table.uniqueKeys = append(m.table.uniqueKeys, keys{
 			name:    args[0].(string),
 			columns: args[1].([]string),
 		})
@@ -215,10 +220,47 @@ func (m *Migration) Unique(args ...interface{}) *Migration {
 }
 
 func (m *Migration) Index(args ...interface{}) *Migration {
+	switch len(args) {
+	// Index()
+	case 0:
+		m.columns[len(m.columns)-1].index = true
+	// Index([]string{"column1", "column2"})
+	case 1:
+		m.table.indexKeys = append(m.table.indexKeys, keys{
+			columns: args[0].([]string),
+		})
+	// Index("index_keys", []string{"column1", "column2"})
+	case 2:
+		m.table.indexKeys = append(m.table.indexKeys, keys{
+			name:    args[0].(string),
+			columns: args[1].([]string),
+		})
+	}
 	return m
 }
 
+// .Varchar(32).Foreign("users.id")
+// .Foreign("foreign_keys", []string{"id", "password"}, []string{"users.id", "users.password"})
+
 func (m *Migration) Foreign(args ...interface{}) *Migration {
+	switch len(args) {
+	// Foreign("users.id")
+	case 0:
+		m.columns[len(m.columns)-1].foreign = args[0].(string)
+	// Foreign([]string{"id", "password"}, []string{"users.id", "users.password"})
+	case 2:
+		m.table.foreignKeys = append(m.table.foreignKeys, keys{
+			columns:       args[0].([]string),
+			targetColumns: args[1].([]string),
+		})
+	// Foreign("foreign_keys", []string{"id", "password"}, []string{"users.id", "users.password"})
+	case 3:
+		m.table.foreignKeys = append(m.table.foreignKeys, keys{
+			name:          args[0].(string),
+			columns:       args[1].([]string),
+			targetColumns: args[2].([]string),
+		})
+	}
 	return m
 }
 
@@ -238,7 +280,7 @@ func (m *Migration) Comment(text string) *Migration {
 	return m
 }
 
-func (m *Migration) Default(value string) *Migration {
+func (m *Migration) Default(value interface{}) *Migration {
 	m.columns[len(m.columns)-1].defaultValue = value
 	return m
 }
@@ -251,6 +293,97 @@ func (m *Migration) AutoIncrement() *Migration {
 func (m *Migration) Create(tableName string, comment string) {
 	m.table.name = tableName
 	m.table.comment = comment
+
+	m.tableBuilder()
+}
+
+func (m *Migration) tableBuilder() {
+	query := fmt.Sprintf("CREATE TABLE `%s` ", m.table.name)
+	columnQuery := m.columnBuilder()
+}
+
+// columnBuilder builds the query from the columns.
+func (m *Migration) columnBuilder() (query string) {
+	query = ""
+
+	for _, v := range m.columns {
+		// Column name.
+		query += fmt.Sprintf("`%s`", v.name)
+
+		// Data types.
+		dataType := strings.ToUpper(v.dataType)
+		switch t := v.length.(type) {
+		// VARCHAR(30)
+		case int:
+			query += fmt.Sprintf("%s(%d) ", dataType, t)
+		// FLOAT(1, 2) or ENUM(1, 2, "A", "B")
+		case []interface{}:
+			// Extracting the options from the length.
+			options := ""
+			for _, o := range t {
+				switch tt := o.(type) {
+				case int:
+					options += fmt.Sprintf("%d, ", tt)
+				case string:
+					options += fmt.Sprintf("'%s', ", tt)
+				}
+			}
+			// Trim the comma and the space.
+			query += fmt.Sprintf("%s(%s)", dataType, options[0:len(options)-2])
+		// DATETIME
+		case nil:
+			query += fmt.Sprintf("%s ", dataType)
+		}
+
+		// Unsigned.
+		if v.unsigned {
+			query += "UNSIGNED "
+		}
+		// Nullable.
+		if v.nullable {
+			query += "NOT NULL "
+		}
+		// Auto increment.
+		if v.autoIncrement {
+			query += "AUTO_INCREMENT "
+		}
+
+		// Default value.
+		switch t := v.defaultValue.(type) {
+		case int:
+			query += fmt.Sprintf("DEFAULT %d ", t)
+		case nil:
+			query += fmt.Sprintf("DEFAULT NULL ")
+		case string:
+			query += fmt.Sprintf("DEFAULT '%s' ", t)
+		}
+
+		// Keys.
+		if v.primary {
+			query += "PRIMARY KEY "
+		}
+		if v.unique {
+			query += "UNIQUE "
+		}
+		if v.index {
+			query += "INDEX "
+		}
+
+		// Comment.
+		if v.comment != "" {
+			query += fmt.Sprintf("COMMENT '%s'", v.comment)
+		}
+
+		// End.
+		query += ", "
+	}
+
+	// Remove the last unnecessary comma
+	query = query[0 : len(query)-2]
+}
+
+func (m *Migration) indexBuilder() {
+
 }
 
 func (m *Migration) Drop(tableNames ...string) *Migration {
