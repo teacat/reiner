@@ -299,16 +299,19 @@ func (m *Migration) AutoIncrement() *Migration {
 	return m
 }
 
-func (m *Migration) Create(tableName string, comment ...string) {
+func (m *Migration) Create(tableName string, comment ...string) error {
 	m.table.name = tableName
 	if len(comment) != 0 {
 		m.table.comment = comment[0]
 	}
 
 	query := m.tableBuilder()
+	_, err := m.connection.Exec(query)
 
 	m.LastQuery = query
 	m.clean()
+
+	return err
 }
 
 func (m *Migration) tableBuilder() (query string) {
@@ -320,7 +323,7 @@ func (m *Migration) tableBuilder() (query string) {
 	uniqueQuery := m.indexBuilder("UNIQUE KEY")
 	indexQuery := m.indexBuilder("INDEX")
 
-	query = fmt.Sprintf("CREATE TABLE `%s` ", m.table.name)
+	query = fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%s` ", m.table.name)
 
 	// Columns, keys.
 	if columnQuery != "" {
@@ -397,7 +400,7 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 				// Get the target table name from the target columns. (targetTable.targetColumn)
 				targetTable = strings.Split(c, ".")[0]
 				// Removed the table name in the column name and build the query.
-				targetColumns += fmt.Sprintf("`%s`, ", strings.Split(c, ".")[0])
+				targetColumns += fmt.Sprintf("`%s`, ", strings.Split(c, ".")[1])
 			}
 			// Remove the unnecessary comma and the space.
 			targetColumns = trim(targetColumns)
@@ -411,10 +414,10 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 			query += fmt.Sprintf("%s `%s` (%s), ", indexName, v.name, columns)
 			// Foreign keys without group name.
 		} else if v.name == "" && len(v.targetColumns) != 0 {
-			query += fmt.Sprintf("%s (%s) REFERENCES %s (%s), ", indexName, columns, targetTable, targetColumns)
+			query += fmt.Sprintf("%s (%s) REFERENCES `%s` (%s), ", indexName, columns, targetTable, targetColumns)
 			// Foreign keys.
 		} else if v.name != "" && len(v.targetColumns) != 0 {
-			query += fmt.Sprintf("CONSTRAINT %s %s (%s) REFERENCES %s (%s), ", v.name, indexName, columns, targetTable, targetColumns)
+			query += fmt.Sprintf("CONSTRAINT %s %s (%s) REFERENCES `%s` (%s), ", v.name, indexName, columns, targetTable, targetColumns)
 		}
 	}
 	// Remove the unnecessary comma and the space.
@@ -519,13 +522,17 @@ func (m *Migration) columnBuilder() (query string) {
 	return
 }
 
-func (m *Migration) Drop(tableNames ...string) *Migration {
+func (m *Migration) Drop(tableNames ...string) error {
 	for _, name := range tableNames {
 		query := fmt.Sprintf("DROP TABLE `%s`", name)
-		m.connection.Exec(query)
+		_, err := m.connection.Exec(query)
 
 		m.LastQuery = query
 		m.clean()
+
+		if err != nil {
+			return err
+		}
 	}
-	return m
+	return nil
 }
