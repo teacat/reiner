@@ -95,27 +95,46 @@ func TestMigrationNullable(t *testing.T) {
 }
 
 func TestMigrationUnsigned(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Int(10).Unsigned().Create("test_unsigned_table")
+	assert.Equal("CREATE TABLE `test_unsigned_table` (`test` INT(10) UNSIGNED NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationAutoIncrement(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Int(10).AutoIncrement().Create("test_auto_increment_table")
+	assert.Equal("CREATE TABLE `test_auto_increment_table` (`test` INT(10) NOT NULL AUTO_INCREMENT) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationComment(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Int(10).Comment("月月，搭拉安！").Create("test_column_comment_table")
+	assert.Equal("CREATE TABLE `test_column_comment_table` (`test` INT(10) NOT NULL COMMENT '月月，搭拉安！') ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationTableComment(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.Column("test").Int(10).Create("test_comment_table", "月月，搭拉安！")
+	assert.Equal("CREATE TABLE `test_comment_table` (`test` INT(10) NOT NULL) ENGINE=INNODB, COMMENT='月月，搭拉安！'", migration.LastQuery)
 }
 
 func TestMigrationPrimaryKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).Primary().
+		Column("test2").Varchar(32).
+		Create("test_table2")
+	assert.Equal("CREATE TABLE `test_table2` (`test` VARCHAR(32) NOT NULL PRIMARY KEY , `test2` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNamingPrimaryKey(t *testing.T) {
-
+	assert := assert.New(t)
+	migration.
+		Column("test").Varchar(32).
+		Column("test2").Varchar(32).
+		Primary("pk_test", []string{"test", "test2"}).
+		Create("test_table3")
+	assert.Equal("CREATE TABLE `test_table3` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, PRIMARY KEY `pk_test` (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationMultiPrimaryKey(t *testing.T) {
