@@ -1,12 +1,13 @@
 # Reiner
 
-A Golang database ORM with the 1990's style. Flexible, and no struct tags needed. More actually, it's just [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) but in Golang.
+A Golang MySQL wrapper which is better than some ORMs. Flexible, and no struct tags needed. More actually, it's just [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) but in Golang (also with more functions).
 
 # What is it?
 
-A MySQL ORM written in Golang which lets you controll everything, just like writing a query but simpler, join tables are now easier than before.
+A MySQL wrapper written in Golang which lets you controll everything, just like writing a query but simpler, join tables are now easier than before.
 
-* Almost full-featured ORM
+* Almost full-featured wrapper
+* MySQL replication supported (read/write split)
 * Easy to remember, understand
 * SQL builder
 * Table migrations
@@ -15,7 +16,7 @@ A MySQL ORM written in Golang which lets you controll everything, just like writ
 
 # Why?
 
-[Gorm](https://github.com/jinzhu/gorm) is great as fuck, but it's not really fits with a complex SQL query usage, and Reiner solved the problem. Reiner also decoupling the function usage with the struct (Loose coupling).
+[Gorm](https://github.com/jinzhu/gorm) is great, but it's not really fits with a complex SQL query usage, and Reiner solved the problem. Reiner also decoupling the function usage with the struct (Loose coupling).
 
 # Thread Safe?
 
@@ -25,38 +26,39 @@ A MySQL ORM written in Golang which lets you controll everything, just like writ
 $ go get github.com/TeaMeow/Reiner
 ```
 
-# Helper Types
-
-```go
-// F for fields.
-type F map[string]interface{}
-
-// Fs for field group.
-type Fs []F{}
-
-// V for values.
-type V []interface{}
-
-// O for options.
-type O struct {
-
-}
-```
-
 # Usage
 
 ## Conenction
 
+### Common
+
 ```go
 import "github.com/TeaMeow/Reiner"
 
-db, err := reiner.New("yamiodymel:yamiodymel@/test?charset=utf8")
+db, err := reiner.New("root:root@/test?charset=utf8")
 if err != nil {
     panic(err)
 }
 ```
 
+### Replication (Read / Write Split)
 
+Round Robin
+
+`slave` -> `slave2` -> `slave3` -> `slave` ...
+
+```go
+import "github.com/TeaMeow/Reiner"
+
+db, err := reiner.New("root:root@/master?charset=utf8", []string{
+	"root:root@/slaveReadOnly?charset=utf8",
+	"root:root@/slaveReadOnly2?charset=utf8",
+	"root:root@/slaveReadOnly3?charset=utf8",
+})
+if err != nil {
+    panic(err)
+}
+```
 
 ## Insert
 
