@@ -321,7 +321,7 @@ func (m *Migration) OnDelete(action string) *Migration {
 // Foreign sets the latest column as a foreign key, or creates an anonymous/naming foreign key group.
 // To make the last column as a foreign key, try the following code:
 //     Columns("id").Foreign("users.id")
-// To create an anonymous foreign key group, try the following code:
+// To create an anonymous foreign key group:
 //     .Foreign([]string{"id", "username"}, []string{"users.id", "users.username"})
 // To create a naming foreign key group, here's how you do it:
 //     .Foreign("fk_group", []string{"id", "username"}, []string{"users.id", "users.username"})
