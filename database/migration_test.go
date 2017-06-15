@@ -1,15 +1,19 @@
-package main
+package database
 
 import (
 	"testing"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
 
 var migration *Migration
 
 func TestMigrationMain(t *testing.T) {
+	assert := assert.New(t)
+	db, err := New("root:root@/test?charset=utf8")
 	migration = db.Migration()
+	assert.NoError(err)
 }
 
 func TestMigrationBasic(t *testing.T) {
@@ -24,10 +28,6 @@ func TestMigrationDrop(t *testing.T) {
 	err := migration.Drop("test_table")
 	assert.NoError(err)
 	assert.Equal("DROP TABLE `test_table`", migration.LastQuery)
-}
-
-func TestMigrationInsert(t *testing.T) {
-
 }
 
 func TestMigrationDataTypes(t *testing.T) {
