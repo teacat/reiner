@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -36,6 +37,26 @@ func New(dataSourceName string, slaveDataSourceNames ...[]string) (*DB, error) {
 // Insert inserts the data to the specified table.
 func (d *DB) Insert(tableName string, data interface{}) (lastInsertID int, err error) {
 	//d.buildInsert(tableName, data, "INSERT")
+
+	var columnQuery, valueQuery string
+	var values []interface{}
+
+	convertedData := convertor(data)
+	for k, v := range convertedData {
+		columnQuery += fmt.Sprintf("`%s`, ", k)
+		valueQuery += "?, "
+		values = append(values, v)
+	}
+
+	res, err := d.connection.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, trim(columnQuery), trim(valueQuery)), values...)
+	if err != nil {
+		return
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return
+	}
+	lastInsertID = int(id)
 	return
 }
 
@@ -248,4 +269,10 @@ func (d *DB) SetQueryOption(options ...string) {
 // based on the current database connection for the migration functions.
 func (d *DB) Migration() *Migration {
 	return &Migration{connection: d.connection}
+}
+
+// convertor converts anything to a `map[string]interface{}` type, so we could get the column names and pass the data to the `Exec()` function easily.
+func convertor(model interface{}) (result map[string]interface{}) {
+	result = model.(map[string]interface{})
+	return
 }
