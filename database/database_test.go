@@ -10,28 +10,19 @@ var db *DB
 
 func TestMain(t *testing.T) {
 	assert := assert.New(t)
-
 	var err error
 	db, err = New("root:root@/test?charset=utf8")
-
 	assert.NoError(err)
-
-
-	subQuery := db.SubQuery("KeepRows")
-	subQuery.GroupBy("Col1, Col2, Col3").Get("MyTable", "MIN(RowId) as RowId, Col1, Col2, Col3")
-	db.Join(subQuery, "MyTable.RowId = KeepRows.RowId", "LEFT OUTER").Where("KeepRows.RowId", nil).Delete("MyTable")
 }
 
+func TestInsert(t *testing.T) {
+	assert := assert.New(t)
 
-
-
-
-DELETE FROM MyTable
-LEFT OUTER JOIN (
-   SELECT MIN(RowId) as RowId, Col1, Col2, Col3
-   FROM MyTable 
-   GROUP BY Col1, Col2, Col3
-) as KeepRows ON
-   MyTable.RowId = KeepRows.RowId
-WHERE
-   KeepRows.RowId IS NULL
+	id, err := db.Insert("test", map[string]interface{}{
+		"username": "admin",
+		"password": "test",
+		"age":      19,
+	})
+	assert.NoError(err)
+	assert.Equal(1, id)
+}

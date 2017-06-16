@@ -75,13 +75,12 @@ err := db.Insert("users", map[string]string{
 ### Functions
 
 ```go
-err := db.Insert("users", map[string]interface{}{
+id, err := db.Insert("users", map[string]interface{}{
 	"username":  "YamiOdymel",
 	"password":  db.Func("SHA1(?)", "secretpassword+salt"),
 	"expires":   db.Now("+1Y"),
 	"createdAt": db.Now(),
 })
-// id := db.LastInsertID
 ```
 
 ### On Duplicate
@@ -89,12 +88,11 @@ err := db.Insert("users", map[string]interface{}{
 ```go
 lastInsertID := "id"
 
-err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", map[string]interface{}{
+id, err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", map[string]interface{}{
 	"username":  "YamiOdymel",
 	"password":  "test",
 	"createdAt": db.Now(),
 })
-// id := db.LastInsertID
 ```
 
 ### Multiple
