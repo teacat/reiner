@@ -6,13 +6,19 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// DB represents a database connection.
 type DB struct {
 	connection *sql.DB
+	isSubQuery bool
 	Count      int
 	LastQuery  string
 }
 
-func New(dataSourceName string) (*DB, error) {
+// New creates a new database connection which provides the MySQL wrapper functions.
+// The first data source name is for the master, the rest are for the slaves, which is used for the read/write split.
+//     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
+// Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
+func New(dataSourceName string, slaveDataSourceNames ...[]string) (*DB, error) {
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
 		return &DB{}, err
@@ -24,9 +30,11 @@ func New(dataSourceName string) (*DB, error) {
 	return &DB{connection: db}, err
 }
 
-//
+// Insert inserts the data to the specified table.
 func (d *DB) Insert(tableName string, data interface{}) {
-
+	if d.isSubQuery {
+		return
+	}
 }
 
 //
