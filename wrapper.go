@@ -1,11 +1,8 @@
-package wrapper
+package reiner
 
 import (
 	"fmt"
 
-	"github.com/TeaMeow/Reiner/database"
-	"github.com/TeaMeow/Reiner/migration"
-	"github.com/TeaMeow/Reiner/toolkit"
 	"github.com/russross/meddler"
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
@@ -13,7 +10,7 @@ import (
 
 // Wrapper represents a database connection.
 type Wrapper struct {
-	db         *database.DB
+	db         *DB
 	isSubQuery bool
 	dest       interface{}
 
@@ -27,7 +24,7 @@ type Wrapper struct {
 // The first data source name is for the master, the rest are for the slaves, which is used for the read/write split.
 //     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
 // Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
-func New(db *database.DB) *Wrapper {
+func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{db: db}
 }
 
@@ -45,7 +42,7 @@ func (w *Wrapper) Insert(tableName string, data interface{}) (lastInsertID int, 
 		values = append(values, v)
 	}
 
-	res, err := w.db.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, toolkit.Trim(columnQuery), toolkit.Trim(valueQuery)), values...)
+	res, err := w.db.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, trim(columnQuery), trim(valueQuery)), values...)
 	if err != nil {
 		return
 	}
@@ -268,8 +265,8 @@ func (w *Wrapper) SetQueryOption(options ...string) {
 
 // Migration returns a new table migration struct
 // based on the current database connection for the migration functions.
-func (w *Wrapper) Migration() *migration.Migration {
-	return migration.New(w.db)
+func (w *Wrapper) Migration() *Migration {
+	return newMigration(w.db)
 }
 
 // convertor converts anything to a `map[string]interface{}` type,

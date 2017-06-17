@@ -1,20 +1,15 @@
-package main
-
-import (
-	"github.com/TeaMeow/Reiner/database"
-	"github.com/TeaMeow/Reiner/wrapper"
-)
+package reiner
 
 func main() {
 
 }
 
 //
-func New(dataSourceNames ...interface{}) *wrapper.Wrapper {
+func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 	var masters, slaves []string
 	// One master only
 	if len(dataSourceNames) == 1 {
-		masters = append(masters, v)
+		masters = append(masters, dataSourceNames[0].(string))
 		// Master(s) and the slave(s).
 	} else if len(dataSourceNames) == 2 {
 		switch v := dataSourceNames[0].(type) {
@@ -25,7 +20,7 @@ func New(dataSourceNames ...interface{}) *wrapper.Wrapper {
 		case string:
 			masters = append(masters, v)
 		}
-		switch dataSourceNames[1].(type) {
+		switch v := dataSourceNames[1].(type) {
 		// Multiple slaves.
 		case []string:
 			slaves = v
@@ -34,6 +29,9 @@ func New(dataSourceNames ...interface{}) *wrapper.Wrapper {
 			slaves = append(slaves, v)
 		}
 	}
-	d := database.New(masters, slaves)
-	return wrapper.New(d)
+	d, err := newDatabase(masters, slaves)
+	if err != nil {
+		return &Wrapper{}, err
+	}
+	return newWrapper(d), nil
 }

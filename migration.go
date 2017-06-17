@@ -1,15 +1,13 @@
-package migration
+package reiner
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/TeaMeow/Reiner/database"
 )
 
 // Migration represents a table migration.
 type Migration struct {
-	connection *database.DB
+	connection *DB
 	table      table
 	columns    []column
 
@@ -53,8 +51,8 @@ type key struct {
 	onDelete      string
 }
 
-// New creates a new table migration by the passed database connection.
-func New(db *database.DB) *Migration {
+// newMigration creates a new table migration by the passed database connection.
+func newMigration(db *DB) *Migration {
 	return &Migration{connection: db}
 }
 
@@ -577,16 +575,6 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 	}
 	// Remove the unnecessary comma and the space.
 	query = trim(query)
-	return
-}
-
-// trim trims the input string by removing the last unnecessary comma and the trailing space.
-func trim(input string) (result string) {
-	if len(input) == 0 {
-		result = strings.TrimSpace(input)
-	} else {
-		result = strings.TrimSpace(input[0 : len(input)-2])
-	}
 	return
 }
 

@@ -1,4 +1,4 @@
-package database
+package reiner
 
 import (
 	"database/sql"
@@ -20,7 +20,7 @@ type DB struct {
 	lastWriteIndex   int
 }
 
-func New(masters []string, slaves []string) (*DB, error) {
+func newDatabase(masters []string, slaves []string) (*DB, error) {
 	d := &DB{}
 	// Connect to the master databases.
 	for _, v := range masters {
