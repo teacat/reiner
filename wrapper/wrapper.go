@@ -6,6 +6,7 @@ import (
 	"github.com/TeaMeow/Reiner/database"
 	"github.com/TeaMeow/Reiner/migration"
 	"github.com/TeaMeow/Reiner/toolkit"
+	"github.com/russross/meddler"
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -95,6 +96,7 @@ func (w *Wrapper) Bind(dest interface{}) *Wrapper {
 // Get gets the data from the specified table
 // and mapping it to the specified slice.
 func (w *Wrapper) Get(tableName string, columns ...string) (err error) {
+	err = meddler.QueryAll(w.db, w.dest, fmt.Sprintf("SELECT * FROM `%s`", tableName))
 	//rows, err := d.connection.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
 
 	return
