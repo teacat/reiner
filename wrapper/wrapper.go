@@ -1,17 +1,18 @@
 package wrapper
 
 import (
-	"database/sql"
 	"fmt"
 
+	"github.com/TeaMeow/Reiner/database"
 	"github.com/TeaMeow/Reiner/migration"
+	"github.com/TeaMeow/Reiner/toolkit"
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// DB represents a database connection.
-type DB struct {
-	connection *sql.DB
+// Wrapper represents a database connection.
+type Wrapper struct {
+	db         *database.DB
 	isSubQuery bool
 	dest       interface{}
 
@@ -25,20 +26,12 @@ type DB struct {
 // The first data source name is for the master, the rest are for the slaves, which is used for the read/write split.
 //     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
 // Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
-func New(dataSourceName string, slaveDataSourceNames ...[]string) (*DB, error) {
-	db, err := sql.Open("mysql", dataSourceName)
-	if err != nil {
-		return &DB{}, err
-	}
-	if err = db.Ping(); err != nil {
-		return &DB{}, err
-	}
-
-	return &DB{connection: db}, err
+func New(db *database.DB) *Wrapper {
+	return &Wrapper{db: db}
 }
 
 // Insert inserts the data to the specified table.
-func (d *DB) Insert(tableName string, data interface{}) (lastInsertID int, err error) {
+func (w *Wrapper) Insert(tableName string, data interface{}) (lastInsertID int, err error) {
 	//d.buildInsert(tableName, data, "INSERT")
 
 	var columnQuery, valueQuery string
@@ -51,7 +44,7 @@ func (d *DB) Insert(tableName string, data interface{}) (lastInsertID int, err e
 		values = append(values, v)
 	}
 
-	res, err := d.connection.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, trim(columnQuery), trim(valueQuery)), values...)
+	res, err := w.db.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, toolkit.Trim(columnQuery), toolkit.Trim(valueQuery)), values...)
 	if err != nil {
 		return
 	}
@@ -64,58 +57,58 @@ func (d *DB) Insert(tableName string, data interface{}) (lastInsertID int, err e
 }
 
 // OnDuplicate specifies the `ON DUPLICATE KEY UPDATE` statement for the SQL queries.
-func (d *DB) OnDuplicate(columns []string, lastInsertID string) *DB {
-	return d
+func (w *Wrapper) OnDuplicate(columns []string, lastInsertID string) *Wrapper {
+	return w
 }
 
 // InsertMulti inserts the multiple data into the same table at the same time.
-func (d *DB) InsertMulti(tableName string, data interface{}) (lastInsertIDs []int, err error) {
+func (w *Wrapper) InsertMulti(tableName string, data interface{}) (lastInsertIDs []int, err error) {
 	return
 }
 
 // Where specifies the `WHERE (AND)` statement for the SQL queries.
-func (d *DB) Where(property string, value interface{}, operator string) *DB {
-	return d
+func (w *Wrapper) Where(property string, value interface{}, operator string) *Wrapper {
+	return w
 }
 
 // OrWhere specifies the `WHERE (OR)` statement for the SQL queries.
-func (d *DB) OrWhere(property string, value interface{}, operator string) *DB {
-	return d
+func (w *Wrapper) OrWhere(property string, value interface{}, operator string) *Wrapper {
+	return w
 }
 
 // Update updates the specified table with the data.
-func (d *DB) Update(tableName string, data interface{}) (err error) {
+func (w *Wrapper) Update(tableName string, data interface{}) (err error) {
 	return
 }
 
 // Limit limits the how much rows of the result we can get.
-func (d *DB) Limit(count int) *DB {
-	return d
+func (w *Wrapper) Limit(count int) *Wrapper {
+	return w
 }
 
 // Bind binds the struct, map, slice to the result.
-func (d *DB) Bind(dest interface{}) *DB {
-	d.dest = dest
-	return d
+func (w *Wrapper) Bind(dest interface{}) *Wrapper {
+	w.dest = dest
+	return w
 }
 
 // Get gets the data from the specified table
 // and mapping it to the specified slice.
-func (d *DB) Get(tableName string, columns ...string) (err error) {
-	rows, err := d.connection.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
+func (w *Wrapper) Get(tableName string, columns ...string) (err error) {
+	//rows, err := d.connection.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
 
 	return
 }
 
 // GetOne gets the data from the specified table with only one row,
 // and it'll mapping to a single struct or a map not a slice.
-func (d *DB) GetOne(tableName string, columns string) (err error) {
+func (w *Wrapper) GetOne(tableName string, columns string) (err error) {
 	return
 }
 
 // GetValue gets the value of the single column from the specified table,
 // and mapping it to the specified variable.
-func (d *DB) GetValue(tableName string, column string) (err error) {
+func (w *Wrapper) GetValue(tableName string, column string) (err error) {
 	return
 }
 
@@ -124,157 +117,157 @@ func (d *DB) GetValue(tableName string, column string) (err error) {
 //     currentPage := 2
 //     db.PageLimit = 20
 //     db.Bind(&books).Paginate("books", 2)
-func (d *DB) Paginate(tableName string, paging int) (err error) {
+func (w *Wrapper) Paginate(tableName string, paging int) (err error) {
 	return
 }
 
 // RawQuery executes a raw query and mapping the result to the binded struct, map or a slice.
-func (d *DB) RawQuery(query string, data ...interface{}) (err error) {
+func (w *Wrapper) RawQuery(query string, data ...interface{}) (err error) {
 	return
 }
 
 // RawQueryOne executes a raw query and get the first result then mapping it to the binded struct, or the map.
-func (d *DB) RawQueryOne(query string, data ...interface{}) (err error) {
+func (w *Wrapper) RawQueryOne(query string, data ...interface{}) (err error) {
 	return
 }
 
 // RawQueryValue executes a raw query and get the value of the column from the result,
 // and mapping it to a binded variable.
-func (d *DB) RawQueryValue(query string, data ...interface{}) (err error) {
+func (w *Wrapper) RawQueryValue(query string, data ...interface{}) (err error) {
 	return
 }
 
 // Having specifies the `HAVING (AND)` statement for the SQL queries.
-func (d *DB) Having(property string, value interface{}, operator string) *DB {
-	return d
+func (w *Wrapper) Having(property string, value interface{}, operator string) *Wrapper {
+	return w
 }
 
 // OrHaving specifies the `HAVING (OR)` statement for the SQL queries.
-func (d *DB) OrHaving(property string, value interface{}, operator string) *DB {
-	return d
+func (w *Wrapper) OrHaving(property string, value interface{}, operator string) *Wrapper {
+	return w
 }
 
 // Delete deletes the specified row from the specified table.
-func (d *DB) Delete(tableName string) (affected bool, err error) {
+func (w *Wrapper) Delete(tableName string) (affected bool, err error) {
 	return
 }
 
 // OrderBy specifies the `ORDER BY` statement for the SQL queries.
-func (d *DB) OrderBy(values ...string) *DB {
-	return d
+func (w *Wrapper) OrderBy(values ...string) *Wrapper {
+	return w
 }
 
 // GroupBy specifies the `GROUP BY` statement for the SQL queries.
-func (d *DB) GroupBy(column string) *DB {
-	return d
+func (w *Wrapper) GroupBy(column string) *Wrapper {
+	return w
 }
 
 // Join joins the specified table to the current query, it could be a sub query.
-func (d *DB) Join(tableName string, condition string, direction string) *DB {
-	return d
+func (w *Wrapper) Join(tableName string, condition string, direction string) *Wrapper {
+	return w
 }
 
 // JoinWhere specifies the WHERE (AND) statement for the JOIN condition.
-func (d *DB) JoinWhere() *DB {
-	return d
+func (w *Wrapper) JoinWhere() *Wrapper {
+	return w
 }
 
 // JoinOrWhere specifies the WHERE (OR) statement for the JOIN condition.
-func (d *DB) JoinOrWhere() *DB {
-	return d
+func (w *Wrapper) JoinOrWhere() *Wrapper {
+	return w
 }
 
 // SubQuery creates a new wrapper for the sub query, thr quries in the wrapper won't be executed.
-func (d *DB) SubQuery() *DB {
-	return d
+func (w *Wrapper) SubQuery() *Wrapper {
+	return w
 }
 
 // Has returns true when there's a row was found,
 // it's useful when checking the user does exist or not (or validating the password does match or not).
-func (d *DB) Has() (has bool) {
+func (w *Wrapper) Has() (has bool) {
 	return
 }
 
 // Now returns generated interval function as an insert/update function.
-func (d *DB) Now() {
+func (w *Wrapper) Now() {
 
 }
 
 // Func returns a specified MySQL function as an insert/update function.
-func (d *DB) Func() {
+func (w *Wrapper) Func() {
 
 }
 
 // Interval returns generated interval function as an insert/update function.
-func (d *DB) Interval() {
+func (w *Wrapper) Interval() {
 
 }
 
 // Increment returns generated increment function as an insert/update function.
-func (d *DB) Increment() {
+func (w *Wrapper) Increment() {
 
 }
 
 // Decrement returns generated decrement function as an insert/update function.
-func (d *DB) Decrement() {
+func (w *Wrapper) Decrement() {
 
 }
 
 // Disconnect disconnects the connection to the database.
-func (d *DB) Disconnect() {
+func (w *Wrapper) Disconnect() {
 
 }
 
 // Ping pings to the database.
-func (d *DB) Ping() (err error) {
+func (w *Wrapper) Ping() (err error) {
 	return
 }
 
 // Connect connects to the database, it's useful when the connection lost.
-func (d *DB) Connect() (err error) {
+func (w *Wrapper) Connect() (err error) {
 	return
 }
 
 // Begin starts a transaction.
-func (d *DB) Begin() *DB {
-	return d
+func (w *Wrapper) Begin() *Wrapper {
+	return w
 }
 
 // Rollback rollbacks a uncommited transaction.
-func (d *DB) Rollback() (err error) {
+func (w *Wrapper) Rollback() (err error) {
 	return
 }
 
 // Commit commits a transaction.
-func (d *DB) Commit() (err error) {
+func (w *Wrapper) Commit() (err error) {
 	return
 }
 
 // SetLockMethod sets the lock method
-func (d *DB) SetLockMethod(method ...string) *DB {
-	return d
+func (w *Wrapper) SetLockMethod(method ...string) *Wrapper {
+	return w
 }
 
 // Lock locks the specified tables with the specified lock method.
 // It'll automatically unlocks the previous lock.
-func (d *DB) Lock(tableNames ...string) (err error) {
+func (w *Wrapper) Lock(tableNames ...string) (err error) {
 	return
 }
 
 // Unlock unlocks the table lock.
-func (d *DB) Unlock() (err error) {
+func (w *Wrapper) Unlock() (err error) {
 	return
 }
 
 // SetQueryOption sets the option for the SQL queries.
-func (d *DB) SetQueryOption(options ...string) {
+func (w *Wrapper) SetQueryOption(options ...string) {
 
 }
 
 // Migration returns a new table migration struct
 // based on the current database connection for the migration functions.
-func (d *DB) Migration() *migration.Migration {
-	return migration.New(d.connection)
+func (w *Wrapper) Migration() *migration.Migration {
+	return migration.New(w.db)
 }
 
 // convertor converts anything to a `map[string]interface{}` type,

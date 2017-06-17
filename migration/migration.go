@@ -1,14 +1,15 @@
 package migration
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
+
+	"github.com/TeaMeow/Reiner/database"
 )
 
 // Migration represents a table migration.
 type Migration struct {
-	connection *sql.DB
+	connection *database.DB
 	table      table
 	columns    []column
 
@@ -53,7 +54,7 @@ type key struct {
 }
 
 // New creates a new table migration by the passed database connection.
-func New(db *sql.DB) *Migration {
+func New(db *database.DB) *Migration {
 	return &Migration{connection: db}
 }
 
