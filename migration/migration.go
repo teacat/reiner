@@ -1,4 +1,4 @@
-package database
+package migration
 
 import (
 	"database/sql"
@@ -50,6 +50,11 @@ type key struct {
 	targetColumns []string
 	onUpdate      string
 	onDelete      string
+}
+
+// New creates a new table migration by the passed database connection.
+func New(db *sql.DB) *Migration {
+	return &Migration{connection: db}
 }
 
 // TinyInt sets the data type of the latest column as `tinyint`.

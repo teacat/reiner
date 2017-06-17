@@ -1,33 +1,73 @@
 package database
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"database/sql"
+	"strings"
 )
 
-var db *DB
-
-func TestMain(t *testing.T) {
-	assert := assert.New(t)
-	var err error
-	db, err = New("root:root@/test?charset=utf8")
-	assert.NoError(err)
-	migration := db.Migration()
-	err = migration.
-		Column("username").Varchar(32).Primary().
-		Column("password").Varchar(64).Create("user")
-	assert.NoError(err)
+type connection struct {
+	db             *sql.DB
+	lastCheck      int
+	isHealth       bool
+	dataSourceName string
 }
 
-func TestInsert(t *testing.T) {
-	assert := assert.New(t)
+type core struct {
+	readConnections  []*connection
+	writeConnections []*connection
+	checkInterval    int
+	hasSlaves        bool
+	hasMasters       bool
+	lastReadIndex    int
+	lastWriteIndex   int
+}
 
-	id, err := db.Insert("user", map[string]interface{}{
-		"username": "axdmin",
-		"password": 123123123,
-		//"age":      19,
-	})
-	assert.NoError(err)
-	assert.Equal(1, id)
+func (c *core) roundRobin(pool []*connection, currentIndex int) (index int) {
+	length := len(pool)
+	index = currentIndex + 1
+	if index > length {
+		index = 0
+	}
+	return
+}
+
+func (c *core) getReadConnetion() (db *sql.DB) {
+	index := c.roundRobin(c.readConnections, c.lastReadIndex)
+	db = c.readConnections[index].db
+	// Set the last index.
+	c.lastReadIndex = index
+	return
+}
+
+func (c *core) getWriteConnetion() (db *sql.DB) {
+	index := c.roundRobin(c.writeConnections, c.lastWriteIndex)
+	db = c.writeConnections[index].db
+	// Set the last index.
+	c.lastWriteIndex = index
+	return
+}
+
+func (c *core) getDB(query string) (db *sql.DB) {
+	isInsert := strings.Split(query, " ")[0] == "INSERT"
+	if isInsert {
+		db = c.getWriteConnetion()
+	} else {
+		db = c.getReadConnetion()
+	}
+	return
+}
+
+func (c *core) Exec(query string, args ...interface{}) (sql.Result, error) {
+	db := c.getDB(query)
+	return db.Exec(query, args)
+}
+
+func (c *core) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	db := c.getDB(query)
+	return db.Query(query, args)
+}
+
+func (c *core) QueryRow(query string, args ...interface{}) *sql.Row {
+	db := c.getDB(query)
+	return db.QueryRow(query, args)
 }
