@@ -22,6 +22,10 @@ A MySQL wrapper written in Golang which lets you controll everything, just like 
 
 # Field Naming
 
+[kisielk/sqlstruct](http://godoc.org/github.com/kisielk/sqlstruct)
+[jmoiron/sqlx](https://github.com/jmoiron/sqlx)
+[russross/meddler](https://github.com/russross/meddler)
+[jinzhu/gorm](https://github.com/jinzhu/gorm)
 
 # Installtion
 
