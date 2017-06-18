@@ -20,6 +20,13 @@ A MySQL wrapper written in Golang which lets you controll everything, just like 
 
 # Thread Safe?
 
+# Field Naming
+
+`user_id` <-> `UserID`
+`id` <-> `ID`
+`dateTime` <-> `DateTime`
+`time` <-> `Time`
+
 # Installtion
 
 ```bash

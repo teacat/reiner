@@ -3,7 +3,7 @@ package reiner
 import (
 	"fmt"
 
-	"github.com/russross/meddler"
+	"github.com/TeaMeow/Meddler"
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -93,15 +93,16 @@ func (w *Wrapper) Bind(dest interface{}) *Wrapper {
 // Get gets the data from the specified table
 // and mapping it to the specified slice.
 func (w *Wrapper) Get(tableName string, columns ...string) (err error) {
-	err = meddler.QueryAll(w.db, w.dest, fmt.Sprintf("SELECT * FROM `%s`", tableName))
-	//rows, err := d.connection.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
-
+	rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
+	meddler.ScanAll(rows, w.dest)
 	return
 }
 
 // GetOne gets the data from the specified table with only one row,
 // and it'll mapping to a single struct or a map not a slice.
-func (w *Wrapper) GetOne(tableName string, columns string) (err error) {
+func (w *Wrapper) GetOne(tableName string, columns ...string) (err error) {
+	rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
+	meddler.Scan(rows, w.dest)
 	return
 }
 
