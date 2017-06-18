@@ -1,6 +1,7 @@
 package reiner
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/TeaMeow/Meddler"
@@ -90,10 +91,15 @@ func (w *Wrapper) Bind(dest interface{}) *Wrapper {
 	return w
 }
 
+func scanToSlice(rows *sql.Rows, dest interface{}) {
+
+}
+
 // Get gets the data from the specified table
 // and mapping it to the specified slice.
 func (w *Wrapper) Get(tableName string, columns ...string) (err error) {
 	rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
+	// Count
 	meddler.ScanAll(rows, w.dest)
 	return
 }
@@ -102,13 +108,42 @@ func (w *Wrapper) Get(tableName string, columns ...string) (err error) {
 // and it'll mapping to a single struct or a map not a slice.
 func (w *Wrapper) GetOne(tableName string, columns ...string) (err error) {
 	rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
+	// Count
 	meddler.Scan(rows, w.dest)
+	return
+}
+
+func (w *Wrapper) count(rows *sql.Rows) (count int) {
+	for rows.Next() {
+		count++
+	}
 	return
 }
 
 // GetValue gets the value of the single column from the specified table,
 // and mapping it to the specified variable.
-func (w *Wrapper) GetValue(tableName string, column string) (err error) {
+func (w *Wrapper) GetValue(tableName string, column string, limit ...int) (err error) {
+	if len(limit) == 0 {
+		limit = append(limit, 1)
+	}
+
+	rows, err := w.db.Query(fmt.Sprintf("SELECT %s AS retval FROM `%s` LIMIT %d", column, tableName, limit[0]))
+	var a struct {
+		Retval interface{} `meddler:"retval"`
+	}
+	err = meddler.Scan(rows, &a)
+	if err != nil {
+		panic(err)
+	}
+	w.dest = a.Retval.([]uint8)
+	// Count
+	//count := w.count(rows)
+	//if count > 1 {
+	//	meddler.ScanAll(rows, w.dest)
+	//} else if count == 1 {
+	//	rows.Scan(w.dest)
+	//	//meddler.Scan(rows, w.dest)
+	//}
 	return
 }
 

@@ -22,10 +22,6 @@ A MySQL wrapper written in Golang which lets you controll everything, just like 
 
 # Field Naming
 
-`user_id` <-> `UserID`
-`id` <-> `ID`
-`dateTime` <-> `DateTime`
-`time` <-> `Time`
 
 # Installtion
 
@@ -141,40 +137,45 @@ err := db.Limit(10).Update("users", data)
 ## Select
 
 ```go
-err := db.Bind(&users).Get("users")
 // Equals: SELECT * FROM users
+rows, err := db.Get("users")
+for rows.Next() {
+	// rows.Scan(...)
+}
 ```
 
 ### Limit
 
 ```go
-err := db.Bind(&users).Limit(10).Get("users")
 // Equals: SELECT * FROM users LIMIT 10
+rows, err := db.Limit(10).Get("users")
+// for rows.Next() { ...
 ```
 
 ### Specified Columns
 
 ```go
-err := db.Bind(&users).Get("users", "username, nickname")
 // Equals: SELECT username, nickname FROM users
+rows, err := db.Get("users", "username, nickname")
+// for rows.Next() { ...
 ```
 
 ### Single Row
 
 ```go
-err := db.Bind(&user).Where("id", 1).GetOne("users")
+rows, err := db.Where("id", 1).GetOne("users")
 // or with the custom query.
-err := db.Bind(&stats).GetOne("users", "sum(id), count(*) as cnt")
+rows, err := db.GetOne("users", "sum(id), count(*) as cnt")
 ```
 
 ### Get Value
 
 ```go
-err := db.Bind(&usernames).GetValue("users", "username")
+rows, err := db.GetValue("users", "username")
 // or with the limit.
-err := db.Bind(&usernames).Limit(5).GetValue("users", "username")
+rows, err := db.Limit(5).GetValue("users", "username")
 // or with the function.
-err := db.Bind(&total).GetValue("users", "count(*)")
+rows, err := db.GetValue("users", "count(*)")
 ```
 
 ### Paginate
@@ -183,7 +184,7 @@ err := db.Bind(&total).GetValue("users", "count(*)")
 page := 1
 db.PageLimit = 2
 
-err := db.Bind(&users).Paginate("users", page)
+rows, err := db.Paginate("users", page)
 // fmt.Println("Showing %d out of %d", page, db.TotalPages)
 ```
 
@@ -194,31 +195,31 @@ err := db.Bind(&users).Paginate("users", page)
 ### Common
 
 ```go
-err := db.Bind(&users).RawQuery("SELECT * from users WHERE id >= ?", 10)
+rows, err := db.RawQuery("SELECT * from users WHERE id >= ?", 10)
 ```
 
 ### Single Row
 
 ```go
-err := db.Bind(&user).RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
+row, err := db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
 ```
 
 ### Single Value
 
 ```go
-err := db.Bind(&password).RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
+rows, err := db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
 ```
 
 ### Single Value From Multiple Rows
 
 ```go
-err := db.Bind(&usernames).RawQueryValue("SELECT username FROM users LIMIT 10")
+rows, err := db.RawQueryValue("SELECT username FROM users LIMIT 10")
 ```
 
 ### Advanced
 
 ```go
-err := db.Bind(&users).RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
+rows, err := db.RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
 
 // will handle any SQL query.
 params := []int{10, 1, 10, 11, 2, 10}
@@ -231,7 +232,7 @@ query := `(
         WHERE a = ? AND B = ?
         ORDER BY a LIMIT ?
 )`
-err := db.Bind(&results).RawQuery(query, params...)
+rows, err := db.RawQuery(query, params...)
 ```
 
 
@@ -244,7 +245,7 @@ err := db.Bind(&results).RawQuery(query, params...)
 db.Where("id", 1)
 db.Where("username", "admin")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
@@ -254,7 +255,7 @@ db.Bind(&users).Get("users")
 db.Where("id", 1)
 db.Having("username", "admin")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
@@ -266,28 +267,28 @@ db.Where("lastLogin", "createdAt")
 // CORRECT
 db.Where("lastLogin = createdAt")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users WHERE lastLogin = createdAt;
 ```
 
 ### Custom
 
 ```go
-db.Bind(&users).Where("id", 50, ">=").Get("users")
+rows, err := db.Where("id", 50, ">=").Get("users")
 // Equals: SELECT * FROM users WHERE id >= 50;
 ```
 
 ### Between / Not Between
 
 ```go
-db.Bind(&users).Where("id", []int{0, 20}, "BETWEEN").Get("users")
+rows, err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
 // Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
 ### In / Not In
 
 ```go
-db.Bind(&users).Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
+rows, err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
@@ -297,7 +298,7 @@ db.Bind(&users).Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 db.Where("firstName", "John")
 db.OrWhere("firstName", "Peter")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users WHERE firstName='John' OR firstName='peter'
 ```
 
@@ -306,7 +307,7 @@ db.Bind(&users).Get("users")
 ```go
 db.Where("lastName", reiner.NULL, "IS NOT")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users where lastName IS NOT NULL
 ```
 
@@ -316,7 +317,7 @@ db.Bind(&users).Get("users")
 db.Where("id != companyId")
 db.Where("DATE(createdAt) = DATE(lastLogin)")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
 ```
 
@@ -326,7 +327,7 @@ db.Bind(&users).Get("users")
 db.Where("(id = ? or id = ?)", []int{6, 2})
 db.Where("login", "mike")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
@@ -352,7 +353,7 @@ db.OrderBy("id", "ASC")
 db.OrderBy("login", "DESC")
 db.OrderBy("RAND ()")
 
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
 ```
 
@@ -360,7 +361,7 @@ db.Bind(&users).Get("users")
 
 ```go
 db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"})
-db.Bind(&users).Get("users")
+rows, err := db.Get("users")
 // Equals: SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
 ```
 
@@ -369,7 +370,7 @@ db.Bind(&users).Get("users")
 ## Group
 
 ```go
-db.GroupBy("name").Bind(&users).Get("users")
+rows, err := db.GroupBy("name").Get("users")
 // Equals: SELECT * FROM users GROUP BY name;
 ```
 
@@ -381,7 +382,7 @@ db.GroupBy("name").Bind(&users).Get("users")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.Where("u.id", 6)
 
-db.Bind(&products).Get("products p", "u.name, p.productName")
+rows, err := db.Get("products p", "u.name, p.productName")
 ```
 
 ### Conditions
@@ -390,7 +391,7 @@ db.Bind(&products).Get("products p", "u.name, p.productName")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinWhere("users u", "u.tenantID", 5)
 
-db.Bind(&products).Get("products p", "u.name, p.productName")
+rows, err := db.Get("products p", "u.name, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
 ```
 
@@ -398,7 +399,7 @@ db.Bind(&products).Get("products p", "u.name, p.productName")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinOrWhere("users u", "u.tenantID", 5)
 
-db.Bind(&products).Get("products p", "u.name, p.productName")
+rows, err := db.Get("products p", "u.name, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
 ```
 
@@ -422,7 +423,7 @@ subQuery.Get("users")
 idSubQuery := db.SubQuery()
 idSubQuery.Where("qty", 2, ">").Get("products", "userId")
 
-db.Where("id", idSubQuery, "IN").Get("users")
+rows, err := db.Where("id", idSubQuery, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
@@ -446,7 +447,7 @@ err := db.Insert("products", map[string]interface{}{
 userSubQuery := db.SubQuery("u")
 userSubQuery.Where("active", 1).Get("users")
 
-db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
+rows, err := db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
 ```
 
@@ -457,7 +458,7 @@ subQuery := db.SubQuery()
 subQuery.Where("company", "testCompany")
 subQuery.Get("users", "userId")
 
-db.Where("", subQuery, "EXISTS").Get("products")
+rows, err := db.Where("", subQuery, "EXISTS").Get("products")
 // Equals: SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
@@ -491,7 +492,7 @@ if !db.Ping() {
 ### Last Query
 
 ```go
-err := db.Get("users")
+rows, err := db.Get("users")
 // And ... Get the last executed query like this.
 fmt.Println("Last executed query was %s", db.LastQuery)
 ```

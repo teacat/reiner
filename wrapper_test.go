@@ -64,3 +64,11 @@ func TestGetOne(t *testing.T) {
 	assert.Equal("test", user.Password)
 	assert.Equal(19, user.Age)
 }
+
+func TestGetValue(t *testing.T) {
+	assert := assert.New(t)
+	var count int
+	err := wrapper.Bind(&count).GetValue("Users", "COUNT(*)")
+	assert.NoError(err)
+	assert.Equal(1, count)
+}
