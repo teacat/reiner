@@ -7,13 +7,14 @@ import (
 )
 
 var db *DB
+var wrapper *Wrapper
 
 func TestMain(t *testing.T) {
 	assert := assert.New(t)
 	var err error
-	db, err = New("root:root@/test?charset=utf8")
+	wrapper, err = New("root:root@/test?charset=utf8")
 	assert.NoError(err)
-	migration := db.Migration()
+	migration := wrapper.Migration()
 	err = migration.
 		Column("username").Varchar(32).Primary().
 		Column("password").Varchar(64).
@@ -23,7 +24,7 @@ func TestMain(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	assert := assert.New(t)
-	id, err := db.Insert("users", map[string]interface{}{
+	id, err := wrapper.Insert("users", map[string]interface{}{
 		"username": "admin",
 		"password": "test",
 		"age":      19,
@@ -38,7 +39,7 @@ func TestGet(t *testing.T) {
 		username, password string
 		age                int
 	}
-	err := db.Bind(&users).Get("users")
+	err := wrapper.Bind(&users).Get("users")
 	assert.NoError(err)
 	assert.Len(users, 1)
 	assert.Equal("admin", users[0].username)

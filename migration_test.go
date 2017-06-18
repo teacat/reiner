@@ -11,8 +11,8 @@ var migration *Migration
 
 func TestMigrationMain(t *testing.T) {
 	assert := assert.New(t)
-	db, err := New("root:root@/test?charset=utf8")
-	migration = db.Migration()
+	wrapper, err := New("root:root@/test?charset=utf8")
+	migration = wrapper.Migration()
 	assert.NoError(err)
 }
 

@@ -13,22 +13,46 @@ type connection struct {
 }
 
 type DB struct {
-	readConnections  []*connection
-	writeConnections []*connection
-	checkInterval    int
-	lastReadIndex    int
-	lastWriteIndex   int
+	readConnections    []*connection
+	writeConnections   []*connection
+	mainConnection     *connection
+	isSingleConnection bool
+	checkInterval      int
+	lastReadIndex      int
+	lastWriteIndex     int
+}
+
+func openDatabase(dataSourceName string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dataSourceName)
+	if err != nil {
+		return db, err
+	}
+	if err = db.Ping(); err != nil {
+		return db, err
+	}
+	return db, nil
 }
 
 func newDatabase(masters []string, slaves []string) (*DB, error) {
 	d := &DB{}
-	// Connect to the master databases.
-	for _, v := range masters {
-		db, err := sql.Open("mysql", v)
+	// Create the main connection if there's only one master an no slaves.
+	if len(masters) == 1 && len(slaves) == 0 {
+		db, err := openDatabase(masters[0])
 		if err != nil {
 			return d, err
 		}
-		if err = db.Ping(); err != nil {
+		d.isSingleConnection = true
+		d.mainConnection = &connection{
+			db:             db,
+			dataSourceName: masters[0],
+		}
+		return d, nil
+	}
+
+	// Connect to the master databases.
+	for _, v := range masters {
+		db, err := openDatabase(v)
+		if err != nil {
 			return d, err
 		}
 		d.writeConnections = append(d.writeConnections, &connection{
@@ -38,11 +62,8 @@ func newDatabase(masters []string, slaves []string) (*DB, error) {
 	}
 	// Connect to the slave databases.
 	for _, v := range slaves {
-		db, err := sql.Open("mysql", v)
+		db, err := openDatabase(v)
 		if err != nil {
-			return d, err
-		}
-		if err = db.Ping(); err != nil {
 			return d, err
 		}
 		d.readConnections = append(d.readConnections, &connection{
@@ -54,7 +75,7 @@ func newDatabase(masters []string, slaves []string) (*DB, error) {
 }
 
 func (d *DB) roundRobin(pool []*connection, currentIndex int) (index int) {
-	length := len(pool)
+	length := len(pool) - 1
 	index = currentIndex + 1
 	if index > length {
 		index = 0
@@ -79,8 +100,9 @@ func (d *DB) getWriteConnetion() (db *sql.DB) {
 }
 
 func (d *DB) getDB(query string) (db *sql.DB) {
-	isInsert := strings.Split(query, " ")[0] == "INSERT"
-	if isInsert {
+	firstAction := strings.Split(query, " ")[0]
+	isWrite := firstAction == "INSERT" || firstAction == "CREATE"
+	if isWrite {
 		db = d.getWriteConnetion()
 	} else {
 		db = d.getReadConnetion()
@@ -89,16 +111,31 @@ func (d *DB) getDB(query string) (db *sql.DB) {
 }
 
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
-	db := d.getDB(query)
-	return db.Exec(query, args)
+	var db *sql.DB
+	if d.isSingleConnection {
+		db = d.mainConnection.db
+	} else {
+		db = d.getDB(query)
+	}
+	return db.Exec(query, args...)
 }
 
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	db := d.getDB(query)
-	return db.Query(query, args)
+	var db *sql.DB
+	if d.isSingleConnection {
+		db = d.mainConnection.db
+	} else {
+		db = d.getDB(query)
+	}
+	return db.Query(query, args...)
 }
 
 func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
-	db := d.getDB(query)
-	return db.QueryRow(query, args)
+	var db *sql.DB
+	if d.isSingleConnection {
+		db = d.mainConnection.db
+	} else {
+		db = d.getDB(query)
+	}
+	return db.QueryRow(query, args...)
 }

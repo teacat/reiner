@@ -11,4 +11,3 @@ func trim(input string) (result string) {
 	}
 	return
 }
- 

@@ -10,6 +10,7 @@ func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 	// One master only
 	if len(dataSourceNames) == 1 {
 		masters = append(masters, dataSourceNames[0].(string))
+		//slaves = append(slaves, dataSourceNames[0].(string))
 		// Master(s) and the slave(s).
 	} else if len(dataSourceNames) == 2 {
 		switch v := dataSourceNames[0].(type) {
