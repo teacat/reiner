@@ -1,43 +1,51 @@
 # Reiner
 
-A Golang MySQL wrapper which is better than some ORMs. Flexible, and no struct tags needed. More actually, it's just [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) but in Golang (also with more functions).
+一個由 Golang 撰寫且比起部分 ORM 還要讚的 MySQL 指令包覆函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 Golang 而已（但還是多了些功能）。
 
-# What is it?
+#  這是什麼？
 
-A MySQL wrapper written in Golang which lets you controll everything, just like writing a query but simpler, join tables are now easier than before.
+一個由 Golang 撰寫的 MySQL 的指令包覆函式庫，幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
 
-* Almost full-featured wrapper
-* MySQL replication supported (read/write split)
-* Easy to remember, understand
-* SQL builder
-* Table migrations
-* Sub queries
-* Transactions
+* 幾乎全功能的函式庫。
+* 支援 MySQL 複寫橫向擴展機制（區分讀／寫連線）。
+* 容易理解與記住、且使用方式十分簡單。
+* SQL 指令建構函式。
+* 資料庫表格建構協助函式。
+* 支援子指令（Sub Query）。
+* 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
 
-# Why?
+# 為什麼？
 
-[Gorm](https://github.com/jinzhu/gorm) is great, but it's not really fits with a complex SQL query usage, and Reiner solved the problem. Reiner also decoupling the function usage with the struct (Loose coupling).
+[Gorm](https://github.com/jinzhu/gorm) 已經是 Golang 裡的 ORM 典範，但實際上要操作複雜與關聯性高的 SQL 指令時並不是很合適，而 Reiner 解決了這個問題。Reiner 也試圖不要和建構體扯上關係，不希望使用者需要手動指定任何標籤在建構體中。
 
-# Thread Safe?
+# 執行緒與併發安全性？
 
-# Field Naming
+我們都知道 Golang 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
+
+# 相關連結
+
+這裡是 Reiner 受啟發，或是和資料庫有所關聯的連結。
 
 [kisielk/sqlstruct](http://godoc.org/github.com/kisielk/sqlstruct)
 [jmoiron/sqlx](https://github.com/jmoiron/sqlx)
 [russross/meddler](https://github.com/russross/meddler)
 [jinzhu/gorm](https://github.com/jinzhu/gorm)
 
-# Installtion
+# 安裝方式
+
+打開終端機並且透過 `go get` 安裝此套件即可。
 
 ```bash
 $ go get github.com/TeaMeow/Reiner
 ```
 
-# Usage
+# 使用方式
 
-## Conenction
+## 資料庫連線
 
-### Common
+### 基本
+
+一個最基本的單資料庫連線，讀寫都將透過此連線，連線字串共用於其它套件是基於 DSN（Data Source Name）。
 
 ```go
 import "github.com/TeaMeow/Reiner"
@@ -48,19 +56,17 @@ if err != nil {
 }
 ```
 
-### Replication (Read / Write Split)
+### 水平擴展（讀／寫分離）
 
-Round Robin
-
-`slave` -> `slave2` -> `slave3` -> `slave` ...
+這種方式可以有好幾個主要資料庫、副從資料庫，這意味著寫入時都會流向到主要資料庫，而讀取時都會向副從資料庫請求。這很適合用在大型結構還有水平擴展上。當你有多個資料庫來源時，Reiner 會逐一遞詢每個資料庫來源，英文稱其為 Round Robin，也就是每個資料庫都會輪流呼叫而避免單個資料庫負荷過重，也不會有隨機呼叫的事情發生。
 
 ```go
 import "github.com/TeaMeow/Reiner"
 
 db, err := reiner.New("root:root@/master?charset=utf8", []string{
-	"root:root@/slaveReadOnly?charset=utf8",
-	"root:root@/slaveReadOnly2?charset=utf8",
-	"root:root@/slaveReadOnly3?charset=utf8",
+	"root:root@/slave?charset=utf8",
+	"root:root@/slave2?charset=utf8",
+	"root:root@/slave3?charset=utf8",
 })
 if err != nil {
     panic(err)
