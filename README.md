@@ -13,6 +13,8 @@
 * 資料庫表格建構協助函式。
 * 支援子指令（Sub Query）。
 * 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
+* 透過預置聲明（Prepared Statement），99.9% 避免 SQL 插入攻擊。
+* 自動脫逸表格名稱，避免觸動保留字。
 
 # 為什麼？
 
@@ -26,10 +28,10 @@
 
 這裡是 Reiner 受啟發，或是和資料庫有所關聯的連結。
 
-[kisielk/sqlstruct](http://godoc.org/github.com/kisielk/sqlstruct)
-[jmoiron/sqlx](https://github.com/jmoiron/sqlx)
-[russross/meddler](https://github.com/russross/meddler)
-[jinzhu/gorm](https://github.com/jinzhu/gorm)
+* [kisielk/sqlstruct](http://godoc.org/github.com/kisielk/sqlstruct)
+* [jmoiron/sqlx](https://github.com/jmoiron/sqlx)
+* [russross/meddler](https://github.com/russross/meddler)
+* [jinzhu/gorm](https://github.com/jinzhu/gorm)
 
 # 安裝方式
 
@@ -41,7 +43,11 @@ $ go get github.com/TeaMeow/Reiner
 
 # 使用方式
 
+Reiner 的使用方式十分直覺與簡易，類似基本的 SQL 指令集但是更加地簡化了。
+
 ## 資料庫連線
+
+首先你需要透過函式來將 Reiner 連上資料庫，如此一來才能夠初始化包覆函式庫與相關的資料庫表格建構函式。
 
 ### 基本
 
