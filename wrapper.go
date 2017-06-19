@@ -4,19 +4,64 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/TeaMeow/Meddler"
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type join struct {
+	direction string
+	table     string
+	condition string
+}
+
+type where struct {
+	property  string
+	value     interface{}
+	operator  string
+	condition string
+}
+
+type having struct {
+	property  string
+	value     interface{}
+	operator  string
+	condition string
+}
+
+type whereJoin string
+type orderByField string
+type orderByDirection string
+type groupByField string
+
 // Wrapper represents a database connection.
 type Wrapper struct {
-	db         *DB
-	isSubQuery bool
-	dest       interface{}
+	db              *DB
+	isSubQuery      bool
+	queryOptions    []string
+	join            []join
+	joinAnd         map[whereJoin][]join
+	where           []where
+	having          []having
+	orderBy         map[orderByField]orderByDirection
+	groupBy         []groupByField
+	tableLockMethod string
+	bindParams      []interface{}
+	updateColumns   []string
+	prefix          string
+	limit           int
+
+	destination interface{}
 
 	// Count is the count of the results, or the affected rows.
 	Count int
+	//
+	TotalCount int
+	//
+	LastInsertID int
+	//
+	PageLimit int
+	//
+	TotalPage int
 	// LasyQuery is last executed query.
 	LastQuery string
 }
@@ -27,6 +72,12 @@ type Wrapper struct {
 // Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
 func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{db: db}
+}
+
+// Prefix sets the prefix of the table for the next all queries.
+func (w *Wrapper) Prefix(prefix string) *Wrapper {
+	w.prefix = prefix
+	return w
 }
 
 // Insert inserts the data to the specified table.
@@ -43,15 +94,15 @@ func (w *Wrapper) Insert(tableName string, data interface{}) (lastInsertID int, 
 		values = append(values, v)
 	}
 
-	res, err := w.db.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, trim(columnQuery), trim(valueQuery)), values...)
-	if err != nil {
-		return
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return
-	}
-	lastInsertID = int(id)
+	//res, err := w.db.Exec(fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", tableName, trim(columnQuery), trim(valueQuery)), values...)
+	//if err != nil {
+	//	return
+	//}
+	//id, err := res.LastInsertId()
+	//if err != nil {
+	//	return
+	//}
+	//lastInsertID = int(id)
 	return
 }
 
@@ -86,30 +137,24 @@ func (w *Wrapper) Limit(count int) *Wrapper {
 }
 
 // Bind binds the struct, map, slice to the result.
-func (w *Wrapper) Bind(dest interface{}) *Wrapper {
-	w.dest = dest
+func (w *Wrapper) Bind(destination interface{}) *Wrapper {
+	w.destination = destination
 	return w
-}
-
-func scanToSlice(rows *sql.Rows, dest interface{}) {
-
 }
 
 // Get gets the data from the specified table
 // and mapping it to the specified slice.
 func (w *Wrapper) Get(tableName string, columns ...string) (err error) {
-	rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
+	//rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
 	// Count
-	meddler.ScanAll(rows, w.dest)
 	return
 }
 
 // GetOne gets the data from the specified table with only one row,
 // and it'll mapping to a single struct or a map not a slice.
 func (w *Wrapper) GetOne(tableName string, columns ...string) (err error) {
-	rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
+	//rows, err := w.db.Query(fmt.Sprintf("SELECT * FROM `%s` LIMIT 1", tableName))
 	// Count
-	meddler.Scan(rows, w.dest)
 	return
 }
 
@@ -122,28 +167,9 @@ func (w *Wrapper) count(rows *sql.Rows) (count int) {
 
 // GetValue gets the value of the single column from the specified table,
 // and mapping it to the specified variable.
-func (w *Wrapper) GetValue(tableName string, column string, limit ...int) (err error) {
-	if len(limit) == 0 {
-		limit = append(limit, 1)
-	}
+func (w *Wrapper) GetValue(tableName string, column string) (err error) {
+	//rows, err := w.db.Query(fmt.Sprintf("SELECT %s AS retval FROM `%s` LIMIT %d", column, tableName, limit[0]))
 
-	rows, err := w.db.Query(fmt.Sprintf("SELECT %s AS retval FROM `%s` LIMIT %d", column, tableName, limit[0]))
-	var a struct {
-		Retval interface{} `meddler:"retval"`
-	}
-	err = meddler.Scan(rows, &a)
-	if err != nil {
-		panic(err)
-	}
-	w.dest = a.Retval.([]uint8)
-	// Count
-	//count := w.count(rows)
-	//if count > 1 {
-	//	meddler.ScanAll(rows, w.dest)
-	//} else if count == 1 {
-	//	rows.Scan(w.dest)
-	//	//meddler.Scan(rows, w.dest)
-	//}
 	return
 }
 
@@ -199,6 +225,26 @@ func (w *Wrapper) GroupBy(column string) *Wrapper {
 
 // Join joins the specified table to the current query, it could be a sub query.
 func (w *Wrapper) Join(tableName string, condition string, direction string) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) InnerJoin(tableName string, condition string) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) LeftJoin(tableName string, condition string) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) RightJoin(tableName string, condition string) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) NaturalJoin(tableName string, condition string) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) CrossJoin(tableName string, condition string) *Wrapper {
 	return w
 }
 

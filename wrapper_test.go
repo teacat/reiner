@@ -28,47 +28,35 @@ func TestMain(t *testing.T) {
 }
 
 type user struct {
-	Username string
-	Password string
-	Age      int
+	Username string `db:"Username"`
+	Password string `db:"Password"`
+	Age      int    `db:"Age"`
 }
 
 func TestInsert(t *testing.T) {
 	assert := assert.New(t)
-	id, err := wrapper.Insert("Users", map[string]interface{}{
+	wrapper.Insert("Users", map[string]interface{}{
 		"Username": "admin",
 		"Password": "test",
 		"Age":      19,
 	})
-	assert.NoError(err)
-	assert.Equal(0, id)
+	assert.Equal("INSERT INTO `Users` (`Username`, `Password`, `Age`) VALUES (?, ?, ?)", wrapper.LastQuery)
 }
 
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
-	var users []*user
-	err := wrapper.Bind(&users).Get("Users")
-	assert.NoError(err)
-	assert.Len(users, 1)
-	assert.Equal("admin", users[0].Username)
-	assert.Equal("test", users[0].Password)
-	assert.Equal(19, users[0].Age)
+	wrapper.Get("Users")
+	assert.Equal("SELECT * FROM `Users`", wrapper.LastQuery)
 }
 
 func TestGetOne(t *testing.T) {
 	assert := assert.New(t)
-	var user user
-	err := wrapper.Bind(&user).GetOne("Users")
-	assert.NoError(err)
-	assert.Equal("admin", user.Username)
-	assert.Equal("test", user.Password)
-	assert.Equal(19, user.Age)
+	wrapper.GetOne("Users")
+	assert.Equal("SELECT * FROM `Users` LIMIT 1", wrapper.LastQuery)
 }
 
 func TestGetValue(t *testing.T) {
 	assert := assert.New(t)
-	var count int
-	err := wrapper.Bind(&count).GetValue("Users", "COUNT(*)")
-	assert.NoError(err)
-	assert.Equal(1, count)
+	wrapper.GetValue("Users", "COUNT(*)")
+	assert.Equal("SELECT COUNT(*) as retval FROM `Users`", wrapper.LastQuery)
 }

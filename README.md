@@ -309,7 +309,7 @@ rows, err := db.Get("users")
 ### Null
 
 ```go
-db.Where("lastName", reiner.NULL, "IS NOT")
+db.Where("lastName", nil, "IS NOT")
 
 rows, err := db.Get("users")
 // Equals: SELECT * FROM users where lastName IS NOT NULL
@@ -400,8 +400,13 @@ rows, err := db.Get("products p", "u.name, p.productName")
 ```
 
 ```go
+// db.InnerJoin()
+// db.LeftJoin()
+// db.RightJoin()
+// db.NaturalJoin()
+// db.CrossJoin()
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
-db.JoinOrWhere("users u", "u.tenantID", 5)
+db.JoinOrWhere("users u", "u.tenantID", "=", 5)
 
 rows, err := db.Get("products p", "u.name, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
