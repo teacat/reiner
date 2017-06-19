@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// connection represents a single database connection.
 type connection struct {
 	db             *sql.DB
 	lastCheck      int
@@ -12,6 +13,8 @@ type connection struct {
 	dataSourceName string
 }
 
+// DB represents the main database with the connections,
+// a database can have a lot of the connections.
 type DB struct {
 	readConnections    []*connection
 	writeConnections   []*connection
@@ -22,6 +25,7 @@ type DB struct {
 	lastWriteIndex     int
 }
 
+// openDatabase opens a single connection.
 func openDatabase(dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
@@ -33,6 +37,8 @@ func openDatabase(dataSourceName string) (*sql.DB, error) {
 	return db, nil
 }
 
+// newDatabase creates the new connections if there're multiple masters or the slaves.
+// It opens a single main connection if there's only one master and no slaves.
 func newDatabase(masters []string, slaves []string) (*DB, error) {
 	d := &DB{}
 	// Create the main connection if there's only one master an no slaves.
@@ -74,6 +80,8 @@ func newDatabase(masters []string, slaves []string) (*DB, error) {
 	return d, nil
 }
 
+// roundRobin picks the next connection to prevent keep using the same connection.
+// It works like a simple load balancer.
 func (d *DB) roundRobin(pool []*connection, currentIndex int) (index int) {
 	length := len(pool) - 1
 	index = currentIndex + 1
@@ -83,6 +91,7 @@ func (d *DB) roundRobin(pool []*connection, currentIndex int) (index int) {
 	return
 }
 
+// getReadConnetion gets a available read connection.
 func (d *DB) getReadConnetion() (db *sql.DB) {
 	index := d.roundRobin(d.readConnections, d.lastReadIndex)
 	db = d.readConnections[index].db
@@ -91,6 +100,7 @@ func (d *DB) getReadConnetion() (db *sql.DB) {
 	return
 }
 
+// getWriteConnection gets a available write connection.
 func (d *DB) getWriteConnetion() (db *sql.DB) {
 	index := d.roundRobin(d.writeConnections, d.lastWriteIndex)
 	db = d.writeConnections[index].db
@@ -99,6 +109,7 @@ func (d *DB) getWriteConnetion() (db *sql.DB) {
 	return
 }
 
+// getDB gets the database connection based on the query, used for the read/write splitting.
 func (d *DB) getDB(query string) (db *sql.DB) {
 	firstAction := strings.Split(query, " ")[0]
 	isWrite := firstAction == "INSERT" || firstAction == "CREATE"
@@ -110,6 +121,7 @@ func (d *DB) getDB(query string) (db *sql.DB) {
 	return
 }
 
+// Exec executes the queries and returns the result, not the rows.
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	var db *sql.DB
 	if d.isSingleConnection {
@@ -120,6 +132,7 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return db.Exec(query, args...)
 }
 
+// Query executes the SQL queries.
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	var db *sql.DB
 	if d.isSingleConnection {
@@ -130,6 +143,7 @@ func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
+// QueryRow executes the query which has only one row as the result.
 func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 	var db *sql.DB
 	if d.isSingleConnection {

@@ -9,17 +9,20 @@ import (
 	"unicode"
 )
 
-// Source: https://github.com/eurie-inc/dbr/blob/b5850bff6a3ea03ee6c1a0fa5235fe5f420db9d9/load.go
+var (
+	dummyDest   interface{}
+	typeValuer  = reflect.TypeOf((*driver.Valuer)(nil)).Elem()
+	typeScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+)
 
-// Load loads any value from sql.Rows
+// Load loads any value from sql.Rows, and mapping it to the value.
+// Source: https://github.com/eurie-inc/dbr/blob/b5850bff6a3ea03ee6c1a0fa5235fe5f420db9d9/load.go
 func Load(rows *sql.Rows, value interface{}) (int, error) {
 	defer rows.Close()
-
 	column, err := rows.Columns()
 	if err != nil {
 		return 0, err
 	}
-
 	v := reflect.ValueOf(value)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
 		return 0, errors.New("invalid pointer")
@@ -52,16 +55,10 @@ func Load(rows *sql.Rows, value interface{}) (int, error) {
 	return count, nil
 }
 
-var (
-	dummyDest   interface{}
-	typeScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
-)
-
+// camelCaseToSnakeCase converts the camel case struct field name to the snake case for the database.
 func camelCaseToSnakeCase(name string) string {
 	buf := new(bytes.Buffer)
-
 	runes := []rune(name)
-
 	for i := 0; i < len(runes); i++ {
 		buf.WriteRune(unicode.ToLower(runes[i]))
 		if i != len(runes)-1 && unicode.IsUpper(runes[i+1]) &&
@@ -70,14 +67,10 @@ func camelCaseToSnakeCase(name string) string {
 			buf.WriteRune('_')
 		}
 	}
-
 	return buf.String()
 }
 
-var (
-	typeValuer = reflect.TypeOf((*driver.Valuer)(nil)).Elem()
-)
-
+// structValue gets the pointer of the field and mapping the values of the rows to the fields.
 func structValue(m map[string]reflect.Value, value reflect.Value) {
 	if value.Type().Implements(typeValuer) {
 		return
@@ -115,12 +108,14 @@ func structValue(m map[string]reflect.Value, value reflect.Value) {
 	}
 }
 
+// structMap creates a map for the fields.
 func structMap(value reflect.Value) map[string]reflect.Value {
 	m := make(map[string]reflect.Value)
 	structValue(m, value)
 	return m
 }
 
+// findPtr finds the pointer of the value.
 func findPtr(column []string, value reflect.Value) ([]interface{}, error) {
 	if value.Addr().Type().Implements(typeScanner) {
 		return []interface{}{value.Addr().Interface()}, nil

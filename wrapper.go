@@ -57,13 +57,17 @@ type Wrapper struct {
 	//
 	TotalCount int
 	//
-	LastInsertID int
-	//
 	PageLimit int
 	//
 	TotalPage int
 	// LasyQuery is last executed query.
 	LastQuery string
+	//
+	LastInsertID int
+	//
+	LastRows *sql.Rows
+	//
+	LastRow *sql.Row
 }
 
 // New creates a new database connection which provides the MySQL wrapper functions.
@@ -104,6 +108,14 @@ func (w *Wrapper) Insert(tableName string, data interface{}) (lastInsertID int, 
 	//}
 	//lastInsertID = int(id)
 	return
+}
+
+func (w *Wrapper) Columns() *Wrapper {
+	return w
+}
+
+func (w *Wrapper) Copy() *Wrapper {
+	return w
 }
 
 // OnDuplicate specifies the `ON DUPLICATE KEY UPDATE` statement for the SQL queries.
