@@ -41,6 +41,10 @@
 $ go get github.com/TeaMeow/Reiner
 ```
 
+# 命名建議
+
+在 Reiner 中為了配合 Golang 程式命名規範，我們建議你將所有事情以 CamelCase 命名，因為這能夠確保兩邊的風格相同。事實上，甚至連資料庫內的表格名稱、欄位名稱都該這麼做。當遇上 `ip`、`id`、`url` 時，請遵循 Golang 的命名方式皆以大寫使用，如 `AddrIP`、`UserID`、`PhotoURL`，而不是 `AddrIp`、`UserId`、`PhotoUrl`。
+
 # 使用方式
 
 Reiner 的使用方式十分直覺與簡易，類似基本的 SQL 指令集但是更加地簡化了。
@@ -81,7 +85,7 @@ Reiner 允許你將結果與結構體切片或結構體綁定在一起。
 
 ```go
 var user []*User
-err := db.Bind(&user).Get("users")
+err := db.Bind(&user).Get("Users")
 ```
 
 ### 逐行掃描
@@ -92,13 +96,13 @@ err := db.Bind(&user).Get("users")
 err := db.Scan(func(rows *sql.Rows) {
 	var username, password string
 	rows.Scan(&username, &password)
-}).Get("users")
+}).Get("Users")
 ```
 
 或者你不想要透過 `Reiner` 的 `Scan` 方式，你可以透過 `.LastRows` 直接取得最後一次的 `*sql.Rows`。
 
 ```go
-err := db.Get("users")
+err := db.Get("Users")
 rows := db.LastRows
 for rows.Next() {
 	var username, password string
@@ -111,11 +115,11 @@ for rows.Next() {
 透過 Reiner 你可以很輕鬆地透過建構體或是 `map` 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
 
 ```go
-err := db.Insert("users", map[string]string{
-	"username": "YamiOdymel",
-	"password": "test",
+err := db.Insert("Users", map[string]string{
+	"Username": "YamiOdymel",
+	"Password": "test",
 })
-// id := db.LastInsertID
+// 等效於：INSERT INTO `Users` (`Username`, `Password`) VALUES (?, ?)
 ```
 
 ### 覆蓋
@@ -128,24 +132,26 @@ err := db.Insert("users", map[string]string{
 插入時你可以透過 Reiner 提供的函式來執行像是 `SHA1()` 或者取得目前時間的 `NOW()`，甚至將目前時間加上一年⋯等。
 
 ```go
-id, err := db.Insert("users", map[string]interface{}{
-	"username":  "YamiOdymel",
-	"password":  db.Func("SHA1(?)", "secretpassword+salt"),
-	"expires":   db.Now("+1Y"),
-	"createdAt": db.Now(),
+err := db.Insert("Users", map[string]interface{}{
+	"Username": "YamiOdymel",
+	"Password": db.Func("SHA1(?)", "secretpassword+salt"),
+	"Expires":  db.Now("+1Y"),
+	"CreatedAt": db.Now(),
 })
+// 等效於：INSERT INTO `Users` (`Username`, `Password`, `Expires`, `CreatedAt`) VALUES (?, SHA1(?), NOW() + INTERVAL 1 YEAR, NOW())
 ```
 
 ### On Duplicate
 
 ```go
-lastInsertID := "id"
-
-id, err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", map[string]interface{}{
-	"username":  "YamiOdymel",
-	"password":  "test",
-	"createdAt": db.Now(),
+lastInsertID := "ID"
+err := db.OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert("Users", map[string]interface{}{
+	"Username":  "YamiOdymel",
+	"Password":  "test",
+	"CreatedAt": db.Now(),
+	"UpdatedAt": db.Now(),
 })
+// 等效於：INSERT INTO `Users` (`Username`, `Password`, `CreatedAt`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `UpdatedAt` = `UpdatedAt`
 ```
 
 ### 多筆資料
@@ -185,11 +191,11 @@ db.InsertMulti("users", values, columns)
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
 
 ```go
-db.Where("username", "YamiOdymel").Update("users", map[string]string{
-	"username": "Karisu",
-	"password": "123456",
+db.Where("Username", "YamiOdymel").Update("Users", map[string]string{
+	"Username": "Karisu",
+	"Password": "123456",
 })
-// count := db.Count
+// 等效於：UPDATE `Users` SET `Username` = ?, `Password` = ? WHERE `Username` = ?
 ```
 
 ### 筆數限制
@@ -596,6 +602,15 @@ db.Delete("users")
 fmt.Println("總共刪除 %s 筆資料", db.Count)
 db.Update("users", data)
 fmt.Println("總共更新 %s 筆資料", db.Count)
+```
+
+### 最後插入的編號
+
+當插入一筆新的資料，而該表格帶有自動遞增的欄位時，就能透過 `LastInsertID` 取得最新一筆資料的編號。
+
+```go
+db.Insert("Users", data)
+id := db.LastInsertID
 ```
 
 ## 交易函式
