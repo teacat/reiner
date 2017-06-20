@@ -181,7 +181,7 @@ err := db.Limit(10).Get("users")
 
 ### 指定欄位
 
-你可以透過 `Columns` 指定要取得的欄位名稱，亦能是個函式。
+你可以透過 `Columns` 指定要取得的欄位名稱，多個欄位由逗點區分，亦能是函式。
 
 ```go
 // 等效於：SELECT username, nickname FROM users
