@@ -162,7 +162,7 @@ err := db.Limit(10).Update("users", data)
 最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。如果你想要取得 `rows.Next` 來掃描每一行的結果，Reiner 提供了 `LastRows` 即為最後一次的 `rows` 資料。
 
 ```go
-// Equals: SELECT * FROM users
+// 等效於：SELECT * FROM users
 err := db.Get("users")
 // rows := db.LastRows
 // for rows.Next() {
@@ -175,7 +175,7 @@ err := db.Get("users")
 `Limit` 能夠限制取得的筆數，如果是 `10`，那就表示只取得最前面 10 筆資料而非全部。
 
 ```go
-// Equals: SELECT * FROM users LIMIT 10
+// 等效於：SELECT * FROM users LIMIT 10
 err := db.Limit(10).Get("users")
 ```
 
@@ -184,9 +184,9 @@ err := db.Limit(10).Get("users")
 你可以透過 `Columns` 指定要取得的欄位名稱，亦能是個函式。
 
 ```go
-// Equals: SELECT username, nickname FROM users
+// 等效於：SELECT username, nickname FROM users
 err := db.Columns("username", "nickname").Get("users")
-// Equals: SELECT COUNT(*) AS count FROM users
+// 等效於：SELECT COUNT(*) AS count FROM users
 err := db.Columns("COUNT(*) AS count").Get("users")
 ```
 
@@ -281,7 +281,7 @@ db.Where("id", 1)
 db.Where("username", "admin")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users WHERE id=1 AND username='admin';
+// 等效於：SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
 #### Having
@@ -291,7 +291,7 @@ db.Where("id", 1)
 db.Having("username", "admin")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users WHERE id=1 HAVING username='admin';
+// 等效於：SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
 #### Columns Comparison
@@ -303,28 +303,28 @@ db.Where("lastLogin", "createdAt")
 db.Where("lastLogin = createdAt")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users WHERE lastLogin = createdAt;
+// 等效於：SELECT * FROM users WHERE lastLogin = createdAt;
 ```
 
 ### Custom
 
 ```go
 err := db.Where("id", 50, ">=").Get("users")
-// Equals: SELECT * FROM users WHERE id >= 50;
+// 等效於：SELECT * FROM users WHERE id >= 50;
 ```
 
 ### Between / Not Between
 
 ```go
 err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
-// Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
+// 等效於：SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
 ### In / Not In
 
 ```go
 err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
-// Equals: SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
+// 等效於：SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
 ### Or / And Or
@@ -334,7 +334,7 @@ db.Where("firstName", "John")
 db.OrWhere("firstName", "Peter")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users WHERE firstName='John' OR firstName='peter'
+// 等效於：SELECT * FROM users WHERE firstName='John' OR firstName='peter'
 ```
 
 ### Null
@@ -343,7 +343,7 @@ err := db.Get("users")
 db.Where("lastName", nil, "IS NOT")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users where lastName IS NOT NULL
+// 等效於：SELECT * FROM users where lastName IS NOT NULL
 ```
 
 ### Raw
@@ -353,7 +353,7 @@ db.Where("id != companyId")
 db.Where("DATE(createdAt) = DATE(lastLogin)")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
+// 等效於：SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
 ```
 
 ### Raw With Params
@@ -363,7 +363,7 @@ db.Where("(id = ? or id = ?)", []int{6, 2})
 db.Where("login", "mike")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
+// 等效於：SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
 
@@ -389,7 +389,7 @@ db.OrderBy("login", "DESC")
 db.OrderBy("RAND ()")
 
 err := db.Get("users")
-// Equals: SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
+// 等效於：SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
 ```
 
 ### By Values
@@ -397,7 +397,7 @@ err := db.Get("users")
 ```go
 db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"})
 err := db.Get("users")
-// Equals: SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
+// 等效於：SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
 ```
 
 
@@ -406,7 +406,7 @@ err := db.Get("users")
 
 ```go
 err := db.GroupBy("name").Get("users")
-// Equals: SELECT * FROM users GROUP BY name;
+// 等效於：SELECT * FROM users GROUP BY name;
 ```
 
 
@@ -427,7 +427,7 @@ db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinWhere("users u", "u.tenantID", 5)
 
 err := db.Get("products p", "u.name, p.productName")
-// Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
+// 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
 ```
 
 ```go
@@ -440,7 +440,7 @@ db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinOrWhere("users u", "u.tenantID", "=", 5)
 
 err := db.Get("products p", "u.name, p.productName")
-// Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
+// 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
 ```
 
 
@@ -464,7 +464,7 @@ idSubQuery := db.SubQuery()
 idSubQuery.Where("qty", 2, ">").Get("products", "userId")
 
 err := db.Where("id", idSubQuery, "IN").Get("users")
-// Equals: SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
+// 等效於：SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
 ### Insert
@@ -478,7 +478,7 @@ err := db.Insert("products", map[string]interface{}{
 	"userID":      idSubQuery,
 	"lastUpdated": db.Now(),
 })
-// Equals: INSERT INTO PRODUCTS (productName, userId, lastUpdated) values ("test product", (SELECT name FROM users WHERE id = 6), NOW());
+// 等效於：INSERT INTO PRODUCTS (productName, userId, lastUpdated) values ("test product", (SELECT name FROM users WHERE id = 6), NOW());
 ```
 
 ### Join
@@ -488,7 +488,7 @@ userSubQuery := db.SubQuery("u")
 userSubQuery.Where("active", 1).Get("users")
 
 err := db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
-// Equals: SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
+// 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
 ```
 
 ### Exist / Not Exist
@@ -499,7 +499,7 @@ subQuery.Where("company", "testCompany")
 subQuery.Get("users", "userId")
 
 err := db.Where("", subQuery, "EXISTS").Get("products")
-// Equals: SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
+// 等效於：SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
 ## Has
@@ -568,13 +568,13 @@ db.SetLockMethod("READ").Lock("users", "log")
 
 ```go
 db.SetQueryOption("LOW_PRIORITY").Insert("users", data)
-// Equals: INSERT LOW_PRIORITY INTO table ...
+// 等效於：INSERT LOW_PRIORITY INTO table ...
 
 db.SetQueryOption("FOR UPDATE").Get("users")
-// Equals: SELECT * FROM users FOR UPDATE;
+// 等效於：SELECT * FROM users FOR UPDATE;
 
 db.SetQueryOption("SQL_NO_CACHE").Get("users")
-// Equals: GIVES: SELECT SQL_NO_CACHE * FROM users;
+// 等效於：GIVES: SELECT SQL_NO_CACHE * FROM users;
 ```
 
 ### Multiple
@@ -590,7 +590,7 @@ db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
 migration := db.Migration()
 
 migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
-// Equals: CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
+// 等效於：CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
 
 
