@@ -494,16 +494,17 @@ err := db.Where("", subQuery, "EXISTS").Get("products")
 // 等效於：SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
-## 擁有資料
+## 是否擁有該筆資料
+
+有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 `Has` 用來確定資料庫是否有這筆資料。
 
 ```go
-db.Where("username", "yamiodymel")
-db.Where("password", "123456")
-
-if db.Has("users") {
-	fmt.Println("Logged in successfully!")
+db.Where("username", "yamiodymel").Where("password", "123456")
+has, err := db.Has("users")
+if has {
+	fmt.Println("登入成功！")
 } else {
-	fmt.Println("Incorrect username or the password.")
+	fmt.Println("帳號或密碼錯誤。")
 }
 ```
 
@@ -522,7 +523,7 @@ db.Disconnect()
 你也能在資料庫發生錯誤、連線遺失時透過 `Connect` 來重新手動連線。
 
 ```go
-if !db.Ping() {
+if err := db.Ping(); err != nil {
 	db.Connect()
 }
 ```
