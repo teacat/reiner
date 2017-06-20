@@ -86,7 +86,7 @@ err := db.Bind(&user).Get("users")
 
 ### 逐行掃描
 
-如果你偏好傳統的 `Row.Next` 來對每筆資料進行逐行掃描，Reiner 亦提供了 `Scan` 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 `*sql.Rows` 的函式。
+如果你偏好傳統的 `rows.Next` 來對每筆資料進行逐行掃描，Reiner 亦提供了 `Scan` 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 `*sql.Rows` 的函式。
 
 ```go
 err := db.Scan(func(rows *sql.Rows) {
@@ -167,6 +167,19 @@ db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
 
+#### 省略重複鍵名
+
+當所有資料都有一樣的插入欄位名稱時，鍵名可以只需要輸入一次。
+
+```go
+values := [][]interface{}{
+	{"YamiOdymel", "test"},
+	{"Karisu", "12345"},
+}
+columns := []string{"username", "password"}
+db.InsertMulti("users", values, columns)
+```
+
 ## 更新
 
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
@@ -194,10 +207,6 @@ db.Limit(10).Update("users", data)
 ```go
 // 等效於：SELECT * FROM users
 err := db.Get("users")
-// rows := db.LastRows
-// for rows.Next() {
-//     rows.Scan(...)
-// }
 ```
 
 ### 筆數限制
