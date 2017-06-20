@@ -235,23 +235,31 @@ db.RawQuery("SELECT * from users WHERE id >= ?", 10)
 
 ### 單行資料
 
+僅選擇單筆資料的生指令函式，這意味著你能夠將取得的資料直接映射到一個建構體上。
+
 ```go
 db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
 ```
 
 ### 取得單值
 
+透過 `RawQueryValue` 可以直接取得單個欄位得值，而不是一個陣列或切片。
+
 ```go
 db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
 ```
 
-### Single Value From Multiple Rows
+### 單值多行
+
+透過 `RawQueryValue` 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
 
 ```go
 db.RawQueryValue("SELECT username FROM users LIMIT 10")
 ```
 
-### Advanced
+### 進階方式
+
+如果你對 SQL 指令夠熟悉，你也可以使用更進階且複雜的用法。
 
 ```go
 err := db.RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
