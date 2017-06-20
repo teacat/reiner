@@ -92,9 +92,18 @@ err := db.Bind(&user).Get("users")
 err := db.Scan(func(rows *sql.Rows) {
 	var username, password string
 	rows.Scan(&username, &password)
-
-	fmt.Println(username, password)
 }).Get("users")
+```
+
+或者你不想要透過 `Reiner` 的 `Scan` 方式，你可以透過 `.LastRows` 直接取得最後一次的 `*sql.Rows`。
+
+```go
+err := db.Get("users")
+rows := db.LastRows
+for rows.Next() {
+	var username, password string
+	rows.Scan(&username, &password)
+}
 ```
 
 ## 插入
