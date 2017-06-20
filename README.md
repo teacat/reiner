@@ -123,11 +123,10 @@ Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料（單指令插�
 
 ```go
 data := []map[string]string{
-	map[string]string{
+	{
 		"username": "YamiOdymel",
 		"password": "test",
-	},
-	map[string]string{
+	}, {
 		"username": "Karisu",
 		"password": "12345",
 	},
