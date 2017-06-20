@@ -270,11 +270,9 @@ query := `(
 err := db.RawQuery(query, params...)
 ```
 
+## 條件宣告
 
-
-## Conditions
-
-### Equals
+透過 Reiner 宣告 `WHERE` 條件也能夠很輕鬆。一個最基本的 `WHERE AND` 像這樣使用。
 
 ```go
 db.Where("id", 1)
@@ -284,7 +282,9 @@ err := db.Get("users")
 // 等效於：SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
-#### Having
+### 擁有
+
+`HAVING` 能夠與 `WHERE` 一同使用。
 
 ```go
 db.Where("id", 1)
@@ -294,52 +294,71 @@ err := db.Get("users")
 // 等效於：SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
-#### Columns Comparison
+### 欄位比較
+
+如果你想要在條件中宣告某個欄位是否等於某個欄位⋯你能夠像這樣。
 
 ```go
-// WRONG
+// 別這樣。
 db.Where("lastLogin", "createdAt")
-// CORRECT
+// 這樣才對。
 db.Where("lastLogin = createdAt")
 
 err := db.Get("users")
 // 等效於：SELECT * FROM users WHERE lastLogin = createdAt;
 ```
 
-### Custom
+### 自訂運算子
+
+在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 `>=`、`<=`、`<>`⋯等。
 
 ```go
 err := db.Where("id", 50, ">=").Get("users")
 // 等效於：SELECT * FROM users WHERE id >= 50;
 ```
 
-### Between / Not Between
+### 介於／不介於
+
+透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
 err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
 // 等效於：SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
-### In / Not In
+### 於清單／不於清單內
+
+透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
 err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 // 等效於：SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
-### Or / And Or
+### 或／還有或
+
+通常來說多個 `Where` 會產生 `AND` 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 `OrWhere`。
 
 ```go
-db.Where("firstName", "John")
-db.OrWhere("firstName", "Peter")
-
-err := db.Get("users")
+db.Where("firstName", "John").OrWhere("firstName", "Peter").Get("users")
 // 等效於：SELECT * FROM users WHERE firstName='John' OR firstName='peter'
 ```
 
-### Null
+如果你的要求比較多，希望達到「A = B 或者 (A = C 或 A = D)」的話，你可以嘗試這樣。
 
 ```go
+db.Where("A = B").OrWhere("(A = C OR A = D)").Get("users")
+// 等效於：SELECT * FROM users WHERE A = B OR (A = C OR A = D)
+```
+
+### 空值
+
+要確定某個欄位是否為空值，傳入一個 `nil` 即可。
+
+```go
+// 別這樣。
+db.Where("lastName", "NULL", "IS NOT")
+// 這樣才對。
 db.Where("lastName", nil, "IS NOT")
 
 err := db.Get("users")
