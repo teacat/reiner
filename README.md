@@ -274,10 +274,7 @@ err := db.RawQuery(query, params...)
 透過 Reiner 宣告 `WHERE` 條件也能夠很輕鬆。一個最基本的 `WHERE AND` 像這樣使用。
 
 ```go
-db.Where("id", 1)
-db.Where("username", "admin")
-
-err := db.Get("users")
+db.Where("id", 1).Where("username", "admin").Get("users")
 // 等效於：SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
@@ -286,10 +283,7 @@ err := db.Get("users")
 `HAVING` 能夠與 `WHERE` 一同使用。
 
 ```go
-db.Where("id", 1)
-db.Having("username", "admin")
-
-err := db.Get("users")
+db.Where("id", 1).Having("username", "admin").Get("users")
 // 等效於：SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
@@ -299,11 +293,9 @@ err := db.Get("users")
 
 ```go
 // 別這樣。
-db.Where("lastLogin", "createdAt")
+db.Where("lastLogin", "createdAt").Get("users")
 // 這樣才對。
-db.Where("lastLogin = createdAt")
-
-err := db.Get("users")
+db.Where("lastLogin = createdAt").Get("users")
 // 等效於：SELECT * FROM users WHERE lastLogin = createdAt;
 ```
 
@@ -312,7 +304,7 @@ err := db.Get("users")
 在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 `>=`、`<=`、`<>`⋯等。
 
 ```go
-err := db.Where("id", 50, ">=").Get("users")
+db.Where("id", 50, ">=").Get("users")
 // 等效於：SELECT * FROM users WHERE id >= 50;
 ```
 
@@ -321,7 +313,7 @@ err := db.Where("id", 50, ">=").Get("users")
 透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
-err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
+db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
 // 等效於：SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
@@ -330,7 +322,7 @@ err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
 透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
-err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
+db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 // 等效於：SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
@@ -356,31 +348,23 @@ db.Where("A = B").OrWhere("(A = C OR A = D)").Get("users")
 
 ```go
 // 別這樣。
-db.Where("lastName", "NULL", "IS NOT")
+db.Where("lastName", "NULL", "IS NOT").Get("users")
 // 這樣才對。
-db.Where("lastName", nil, "IS NOT")
-
-err := db.Get("users")
+db.Where("lastName", nil, "IS NOT").Get("users")
 // 等效於：SELECT * FROM users where lastName IS NOT NULL
 ```
 
 ### Raw
 
 ```go
-db.Where("id != companyId")
-db.Where("DATE(createdAt) = DATE(lastLogin)")
-
-err := db.Get("users")
+db.Where("id != companyId").Where("DATE(createdAt) = DATE(lastLogin)").Get("users")
 // 等效於：SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
 ```
 
 ### Raw With Params
 
 ```go
-db.Where("(id = ? or id = ?)", []int{6, 2})
-db.Where("login", "mike")
-
-err := db.Get("users")
+db.Where("(id = ? or id = ?)", []int{6, 2}).Where("login", "mike").Get("users")
 // 等效於：SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
@@ -402,19 +386,14 @@ if err == nil && db.Count != 0 {
 ## Order
 
 ```go
-db.OrderBy("id", "ASC")
-db.OrderBy("login", "DESC")
-db.OrderBy("RAND ()")
-
-err := db.Get("users")
+db.OrderBy("id", "ASC").OrderBy("login", "DESC").OrderBy("RAND ()").Get("users")
 // 等效於：SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
 ```
 
 ### By Values
 
 ```go
-db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"})
-err := db.Get("users")
+db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"}).Get("users")
 // 等效於：SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
 ```
 
@@ -423,7 +402,7 @@ err := db.Get("users")
 ## Group
 
 ```go
-err := db.GroupBy("name").Get("users")
+db.GroupBy("name").Get("users")
 // 等效於：SELECT * FROM users GROUP BY name;
 ```
 
@@ -432,19 +411,19 @@ err := db.GroupBy("name").Get("users")
 ## Join
 
 ```go
-db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
-db.Where("u.id", 6)
-
-err := db.Get("products p", "u.name, p.productName")
+db.
+	Join("users u", "p.tenantID = u.tenantID", "LEFT").
+	Where("u.id", 6).
+	Get("products p", "u.name, p.productName")
 ```
 
 ### Conditions
 
 ```go
-db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
-db.JoinWhere("users u", "u.tenantID", 5)
-
-err := db.Get("products p", "u.name, p.productName")
+db.
+	Join("users u", "p.tenantID = u.tenantID", "LEFT").
+	JoinWhere("users u", "u.tenantID", 5).
+	Get("products p", "u.name, p.productName")
 // 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
 ```
 
