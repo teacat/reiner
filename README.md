@@ -132,7 +132,7 @@ data := []map[string]string{
 	},
 }
 
-err := db.InsertMulti("users", data)
+db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
 
@@ -141,7 +141,7 @@ err := db.InsertMulti("users", data)
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
 
 ```go
-err := db.Where("username", "YamiOdymel").Update("users", map[string]string{
+db.Where("username", "YamiOdymel").Update("users", map[string]string{
 	"username": "Karisu",
 	"password": "123456",
 })
@@ -153,7 +153,7 @@ err := db.Where("username", "YamiOdymel").Update("users", map[string]string{
 `Limit` 能夠限制更新的筆數，如果是 `10`，那就表示只更新最前面 10 筆資料而非全部。
 
 ```go
-err := db.Limit(10).Update("users", data)
+db.Limit(10).Update("users", data)
 ```
 
 ## 選擇與取得
@@ -175,7 +175,7 @@ err := db.Get("users")
 
 ```go
 // 等效於：SELECT * FROM users LIMIT 10
-err := db.Limit(10).Get("users")
+db.Limit(10).Get("users")
 ```
 
 ### 指定欄位
@@ -184,9 +184,9 @@ err := db.Limit(10).Get("users")
 
 ```go
 // 等效於：SELECT username, nickname FROM users
-err := db.Columns("username", "nickname").Get("users")
+db.Columns("username", "nickname").Get("users")
 // 等效於：SELECT COUNT(*) AS count FROM users
-err := db.Columns("COUNT(*) AS count").Get("users")
+db.Columns("COUNT(*) AS count").Get("users")
 ```
 
 ### 單行資料
@@ -194,9 +194,9 @@ err := db.Columns("COUNT(*) AS count").Get("users")
 預設來說 `Get` 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 `GetOne`。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
 
 ```go
-err := db.Where("id", 1).GetOne("users")
+db.Where("id", 1).GetOne("users")
 // 或者像這樣使用函式。
-err := db.Columns("SUM(id)", "COUNT(*) AS cnt").GetOne("users")
+db.Columns("SUM(id)", "COUNT(*) AS cnt").GetOne("users")
 ```
 
 ### 取得單值
@@ -204,11 +204,11 @@ err := db.Columns("SUM(id)", "COUNT(*) AS cnt").GetOne("users")
 這就像 `GetOne`，但 `GetValue` 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
-err := db.Columns("username").GetValue("users")
+db.Columns("username").GetValue("users")
 // 也能搭配 Limit。
-err := db.Limit(5).Columns("username").GetValue("users")
+db.Limit(5).Columns("username").GetValue("users")
 // 或者是函式。
-err := db.Columns("COUNT(*)").GetValue("users")
+db.Columns("COUNT(*)").GetValue("users")
 ```
 
 ### 分頁功能
@@ -219,7 +219,7 @@ err := db.Columns("COUNT(*)").GetValue("users")
 page := 1
 db.PageLimit = 2
 
-err := db.Paginate("users", page)
+db.Paginate("users", page)
 // fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
 
@@ -230,24 +230,25 @@ Reiner 已經提供了近乎日常中 80% 會用到的方式，但如果好死�
 其中亦能帶有預置聲明（Prepared Statement），也就是指令中的問號符號替代了原本的值。這能避免你的 SQL 指令遭受注入攻擊。
 
 ```go
-err := db.RawQuery("SELECT * from users WHERE id >= ?", 10)
+db.RawQuery("SELECT * from users WHERE id >= ?", 10)
 ```
 
-### Single Row
-
-```goerr := db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
-```
-
-### Single Value
+### 單行資料
 
 ```go
-err := db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
+db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
+```
+
+### 取得單值
+
+```go
+db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
 ```
 
 ### Single Value From Multiple Rows
 
 ```go
-err := db.RawQueryValue("SELECT username FROM users LIMIT 10")
+db.RawQueryValue("SELECT username FROM users LIMIT 10")
 ```
 
 ### Advanced
@@ -411,19 +412,17 @@ db.GroupBy("name").Get("users")
 ## Join
 
 ```go
-db.
-	Join("users u", "p.tenantID = u.tenantID", "LEFT").
-	Where("u.id", 6).
-	Get("products p", "u.name, p.productName")
+db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
+db.Where("u.id", 6)
+db.Get("products p", "u.name, p.productName")
 ```
 
 ### Conditions
 
 ```go
-db.
-	Join("users u", "p.tenantID = u.tenantID", "LEFT").
-	JoinWhere("users u", "u.tenantID", 5).
-	Get("products p", "u.name, p.productName")
+db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
+db.JoinWhere("users u", "u.tenantID", 5)
+db.Get("products p", "u.name, p.productName")
 // 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
 ```
 
