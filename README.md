@@ -13,7 +13,7 @@
 * 資料庫表格建構協助函式。
 * 支援子指令（Sub Query）。
 * 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
-* 透過預置聲明（Prepared Statement），99.9% 避免 SQL 插入攻擊。
+* 透過預置聲明（Prepared Statement），99.9% 避免 SQL 注入攻擊。
 * 自動脫逸表格名稱，避免觸動保留字。
 
 # 為什麼？
@@ -119,7 +119,7 @@ id, err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", m
 
 ### 多筆資料
 
-Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料，這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
+Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料（單指令插入多筆資料），這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
 
 ```go
 data := []map[string]string{
@@ -224,11 +224,11 @@ err := db.Paginate("users", page)
 // fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
 
+## 執行生指令
 
+Reiner 已經提供了近乎日常中 80% 會用到的方式，但如果好死不死你想使用的功能在那 20% 之中，我們還提供了原生的方法能讓你直接輸入 SQL 指令執行自己想要的鳥東西。一個最基本的生指令（Raw Query）就像這樣。
 
-## Raw Queries
-
-### Common
+其中亦能帶有預置聲明（Prepared Statement），也就是指令中的問號符號替代了原本的值。這能避免你的 SQL 指令遭受注入攻擊。
 
 ```go
 err := db.RawQuery("SELECT * from users WHERE id >= ?", 10)
