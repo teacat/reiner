@@ -79,9 +79,9 @@ if err != nil {
 }
 ```
 
-## Insert
+## 插入
 
-### Traditional/Replace
+透過 Reiner 你可以很輕鬆地透過建構體或是 `map` 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
 
 ```go
 err := db.Insert("users", map[string]string{
@@ -91,7 +91,14 @@ err := db.Insert("users", map[string]string{
 // id := db.LastInsertID
 ```
 
-### Functions
+### 覆蓋
+
+```go
+```
+
+### 函式
+
+插入時你可以透過 Reiner 提供的函式來執行像是 `SHA1()` 或者取得目前時間的 `NOW()`，甚至將目前時間加上一年⋯等。
 
 ```go
 id, err := db.Insert("users", map[string]interface{}{
@@ -114,7 +121,9 @@ id, err := db.OnDuplicate([]string{"updatedAt"}, lastInsertID).Insert("users", m
 })
 ```
 
-### Multiple
+### 多筆資料
+
+Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料，這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
 
 ```go
 data := []map[string]string{
@@ -132,7 +141,9 @@ err := db.InsertMulti("users", data)
 // ids := db.LastInsertIDs
 ```
 
-## Update
+## 更新
+
+更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
 
 ```go
 err := db.Where("username", "YamiOdymel").Update("users", map[string]string{
@@ -142,66 +153,79 @@ err := db.Where("username", "YamiOdymel").Update("users", map[string]string{
 // count := db.Count
 ```
 
-### Limit
+### 筆數限制
+
+`Limit` 能夠限制更新的筆數，如果是 `10`，那就表示只更新最前面 10 筆資料而非全部。
 
 ```go
 err := db.Limit(10).Update("users", data)
 ```
 
+## 選擇與取得
 
-
-## Select
+最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。如果你想要取得 `rows.Next` 來掃描每一行的結果，Reiner 提供了 `LastRows` 即為最後一次的 `rows` 資料。
 
 ```go
 // Equals: SELECT * FROM users
-rows, err := db.Get("users")
-for rows.Next() {
-	// rows.Scan(...)
-}
+err := db.Get("users")
+// rows := db.LastRows
+// for rows.Next() {
+//     rows.Scan(...)
+// }
 ```
 
-### Limit
+### 筆數限制
+
+`Limit` 能夠限制取得的筆數，如果是 `10`，那就表示只取得最前面 10 筆資料而非全部。
 
 ```go
 // Equals: SELECT * FROM users LIMIT 10
-rows, err := db.Limit(10).Get("users")
-// for rows.Next() { ...
+err := db.Limit(10).Get("users")
 ```
 
-### Specified Columns
+### 指定欄位
+
+你可以透過 `Columns` 指定要取得的欄位名稱，亦能是個函式。
 
 ```go
 // Equals: SELECT username, nickname FROM users
-rows, err := db.Get("users", "username, nickname")
-// for rows.Next() { ...
+err := db.Columns("username", "nickname").Get("users")
+// Equals: SELECT COUNT(*) AS count FROM users
+err := db.Columns("COUNT(*) AS count").Get("users")
 ```
 
-### Single Row
+### 單行資料
+
+預設來說 `Get` 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 `GetOne`。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
 
 ```go
-rows, err := db.Where("id", 1).GetOne("users")
-// or with the custom query.
-rows, err := db.GetOne("users", "sum(id), count(*) as cnt")
+err := db.Where("id", 1).GetOne("users")
+// 或者像這樣使用函式。
+err := db.Columns("SUM(id)", "COUNT(*) AS cnt").GetOne("users")
 ```
 
-### Get Value
+### 取得單值
+
+這就像 `GetOne`，但 `GetValue` 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
-rows, err := db.GetValue("users", "username")
-// or with the limit.
-rows, err := db.Limit(5).GetValue("users", "username")
-// or with the function.
-rows, err := db.GetValue("users", "count(*)")
+err := db.Columns("username").GetValue("users")
+// 也能搭配 Limit。
+err := db.Limit(5).Columns("username").GetValue("users")
+// 或者是函式。
+err := db.Columns("COUNT(*)").GetValue("users")
 ```
 
-### Paginate
+### 分頁功能
+
+分頁就像是取得資料ㄧ樣，但更擅長用於多筆資料、不會一次顯示完畢的內容。Reiner 能夠幫你自動處理換頁功能，讓你不需要自行計算換頁時的筆數應該從何開始。為此，你需要定義兩個變數，一個是目前的頁數，另一個是單頁能有幾筆資料。
 
 ```go
 page := 1
 db.PageLimit = 2
 
-rows, err := db.Paginate("users", page)
-// fmt.Println("Showing %d out of %d", page, db.TotalPages)
+err := db.Paginate("users", page)
+// fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
 
 
@@ -211,31 +235,30 @@ rows, err := db.Paginate("users", page)
 ### Common
 
 ```go
-rows, err := db.RawQuery("SELECT * from users WHERE id >= ?", 10)
+err := db.RawQuery("SELECT * from users WHERE id >= ?", 10)
 ```
 
 ### Single Row
 
-```go
-row, err := db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
+```goerr := db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
 ```
 
 ### Single Value
 
 ```go
-rows, err := db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
+err := db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
 ```
 
 ### Single Value From Multiple Rows
 
 ```go
-rows, err := db.RawQueryValue("SELECT username FROM users LIMIT 10")
+err := db.RawQueryValue("SELECT username FROM users LIMIT 10")
 ```
 
 ### Advanced
 
 ```go
-rows, err := db.RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
+err := db.RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
 
 // will handle any SQL query.
 params := []int{10, 1, 10, 11, 2, 10}
@@ -248,7 +271,7 @@ query := `(
         WHERE a = ? AND B = ?
         ORDER BY a LIMIT ?
 )`
-rows, err := db.RawQuery(query, params...)
+err := db.RawQuery(query, params...)
 ```
 
 
@@ -261,7 +284,7 @@ rows, err := db.RawQuery(query, params...)
 db.Where("id", 1)
 db.Where("username", "admin")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users WHERE id=1 AND username='admin';
 ```
 
@@ -271,7 +294,7 @@ rows, err := db.Get("users")
 db.Where("id", 1)
 db.Having("username", "admin")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users WHERE id=1 HAVING username='admin';
 ```
 
@@ -283,28 +306,28 @@ db.Where("lastLogin", "createdAt")
 // CORRECT
 db.Where("lastLogin = createdAt")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users WHERE lastLogin = createdAt;
 ```
 
 ### Custom
 
 ```go
-rows, err := db.Where("id", 50, ">=").Get("users")
+err := db.Where("id", 50, ">=").Get("users")
 // Equals: SELECT * FROM users WHERE id >= 50;
 ```
 
 ### Between / Not Between
 
 ```go
-rows, err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
+err := db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
 // Equals: SELECT * FROM users WHERE id BETWEEN 4 AND 20
 ```
 
 ### In / Not In
 
 ```go
-rows, err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
+err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
 ```
 
@@ -314,7 +337,7 @@ rows, err := db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 db.Where("firstName", "John")
 db.OrWhere("firstName", "Peter")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users WHERE firstName='John' OR firstName='peter'
 ```
 
@@ -323,7 +346,7 @@ rows, err := db.Get("users")
 ```go
 db.Where("lastName", nil, "IS NOT")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users where lastName IS NOT NULL
 ```
 
@@ -333,7 +356,7 @@ rows, err := db.Get("users")
 db.Where("id != companyId")
 db.Where("DATE(createdAt) = DATE(lastLogin)")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
 ```
 
@@ -343,7 +366,7 @@ rows, err := db.Get("users")
 db.Where("(id = ? or id = ?)", []int{6, 2})
 db.Where("login", "mike")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
@@ -369,7 +392,7 @@ db.OrderBy("id", "ASC")
 db.OrderBy("login", "DESC")
 db.OrderBy("RAND ()")
 
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
 ```
 
@@ -377,7 +400,7 @@ rows, err := db.Get("users")
 
 ```go
 db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"})
-rows, err := db.Get("users")
+err := db.Get("users")
 // Equals: SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
 ```
 
@@ -386,7 +409,7 @@ rows, err := db.Get("users")
 ## Group
 
 ```go
-rows, err := db.GroupBy("name").Get("users")
+err := db.GroupBy("name").Get("users")
 // Equals: SELECT * FROM users GROUP BY name;
 ```
 
@@ -398,7 +421,7 @@ rows, err := db.GroupBy("name").Get("users")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.Where("u.id", 6)
 
-rows, err := db.Get("products p", "u.name, p.productName")
+err := db.Get("products p", "u.name, p.productName")
 ```
 
 ### Conditions
@@ -407,7 +430,7 @@ rows, err := db.Get("products p", "u.name, p.productName")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinWhere("users u", "u.tenantID", 5)
 
-rows, err := db.Get("products p", "u.name, p.productName")
+err := db.Get("products p", "u.name, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
 ```
 
@@ -420,7 +443,7 @@ rows, err := db.Get("products p", "u.name, p.productName")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinOrWhere("users u", "u.tenantID", "=", 5)
 
-rows, err := db.Get("products p", "u.name, p.productName")
+err := db.Get("products p", "u.name, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
 ```
 
@@ -444,7 +467,7 @@ subQuery.Get("users")
 idSubQuery := db.SubQuery()
 idSubQuery.Where("qty", 2, ">").Get("products", "userId")
 
-rows, err := db.Where("id", idSubQuery, "IN").Get("users")
+err := db.Where("id", idSubQuery, "IN").Get("users")
 // Equals: SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
@@ -468,7 +491,7 @@ err := db.Insert("products", map[string]interface{}{
 userSubQuery := db.SubQuery("u")
 userSubQuery.Where("active", 1).Get("users")
 
-rows, err := db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
+err := db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
 // Equals: SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
 ```
 
@@ -479,7 +502,7 @@ subQuery := db.SubQuery()
 subQuery.Where("company", "testCompany")
 subQuery.Get("users", "userId")
 
-rows, err := db.Where("", subQuery, "EXISTS").Get("products")
+err := db.Where("", subQuery, "EXISTS").Get("products")
 // Equals: SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
@@ -513,7 +536,7 @@ if !db.Ping() {
 ### Last Query
 
 ```go
-rows, err := db.Get("users")
+err := db.Get("users")
 // And ... Get the last executed query like this.
 fmt.Println("Last executed query was %s", db.LastQuery)
 ```
