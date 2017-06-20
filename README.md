@@ -481,7 +481,7 @@ db.Get("products p", "u.name, p.productName")
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
 db.JoinOrWhere("users u", "u.tenantID", "=", 5)
 
-err := db.Get("products p", "u.name, p.productName")
+db.Get("products p", "u.name, p.productName")
 // 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
 ```
 
@@ -503,7 +503,7 @@ subQuery.Get("users")
 idSubQuery := db.SubQuery()
 idSubQuery.Where("qty", 2, ">").Get("products", "userId")
 
-err := db.Where("id", idSubQuery, "IN").Get("users")
+db.Where("id", idSubQuery, "IN").Get("users")
 // 等效於：SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
@@ -513,7 +513,7 @@ err := db.Where("id", idSubQuery, "IN").Get("users")
 idSubQuery := db.SubQuery()
 idSubQuery.Where("id", 6).GetOne("users", "name")
 
-err := db.Insert("products", map[string]interface{}{
+db.Insert("products", map[string]interface{}{
 	"productName": "test product",
 	"userID":      idSubQuery,
 	"lastUpdated": db.Now(),
@@ -527,7 +527,7 @@ err := db.Insert("products", map[string]interface{}{
 userSubQuery := db.SubQuery("u")
 userSubQuery.Where("active", 1).Get("users")
 
-err := db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
+db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
 // 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
 ```
 
@@ -538,7 +538,7 @@ subQuery := db.SubQuery()
 subQuery.Where("company", "testCompany")
 subQuery.Get("users", "userId")
 
-err := db.Where("", subQuery, "EXISTS").Get("products")
+db.Where("", subQuery, "EXISTS").Get("products")
 // 等效於：SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
