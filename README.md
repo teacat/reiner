@@ -369,47 +369,45 @@ db.Where("(id = ? or id = ?)", []int{6, 2}).Where("login", "mike").Get("users")
 // 等效於：SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
 ```
 
+## 刪除
 
-
-## Delete
-
-### Common
+刪除一筆資料再簡單不過了，透過 `Count` 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
 
 ```go
 err := db.Where("id", 1).Delete("users")
 if err == nil && db.Count != 0 {
-    fmt.Println("Deleted successfully!")
+    fmt.Println("成功地刪除了一筆資料！")
 }
 ```
 
+## 排序
 
-
-## Order
+Reiner 亦支援排序功能，如遞增或遞減，亦能擺放函式。
 
 ```go
-db.OrderBy("id", "ASC").OrderBy("login", "DESC").OrderBy("RAND ()").Get("users")
-// 等效於：SELECT * FROM users ORDER BY id ASC,login DESC, RAND ();
+db.OrderBy("id", "ASC").OrderBy("login", "DESC").OrderBy("RAND()").Get("users")
+// 等效於：SELECT * FROM users ORDER BY id ASC, login DESC, RAND();
 ```
 
-### By Values
+### 從值排序
+
+也能夠從值進行排序，只需要傳入一個切片即可。
 
 ```go
 db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"}).Get("users")
 // 等效於：SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
 ```
 
+## 群組
 
-
-## Group
+簡單的透過 `GroupBy` 就能夠將資料由指定欄位群組排序。
 
 ```go
 db.GroupBy("name").Get("users")
 // 等效於：SELECT * FROM users GROUP BY name;
 ```
 
-
-
-## Join
+## 加入
 
 ```go
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
@@ -417,7 +415,7 @@ db.Where("u.id", 6)
 db.Get("products p", "u.name, p.productName")
 ```
 
-### Conditions
+### 條件限制
 
 ```go
 db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
@@ -439,9 +437,7 @@ err := db.Get("products p", "u.name, p.productName")
 // 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
 ```
 
-
-
-## Subqueries
+## 子指令
 
 ```go
 subQuery := db.SubQuery()
@@ -453,7 +449,7 @@ subQuery := db.SubQuery("sq")
 subQuery.Get("users")
 ```
 
-### Select
+### 選擇／取得
 
 ```go
 idSubQuery := db.SubQuery()
@@ -463,7 +459,7 @@ err := db.Where("id", idSubQuery, "IN").Get("users")
 // 等效於：SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
 ```
 
-### Insert
+### 插入
 
 ```go
 idSubQuery := db.SubQuery()
@@ -477,7 +473,7 @@ err := db.Insert("products", map[string]interface{}{
 // 等效於：INSERT INTO PRODUCTS (productName, userId, lastUpdated) values ("test product", (SELECT name FROM users WHERE id = 6), NOW());
 ```
 
-### Join
+### 加入
 
 ```go
 userSubQuery := db.SubQuery("u")
@@ -487,7 +483,7 @@ err := db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.log
 // 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
 ```
 
-### Exist / Not Exist
+### 存在／不存在
 
 ```go
 subQuery := db.SubQuery()
@@ -498,7 +494,7 @@ err := db.Where("", subQuery, "EXISTS").Get("products")
 // 等效於：SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
 ```
 
-## Has
+## 擁有資料
 
 ```go
 db.Where("username", "yamiodymel")
@@ -511,9 +507,9 @@ if db.Has("users") {
 }
 ```
 
-## Helpers
+## 輔助函式
 
-### Connection
+### 資料庫連線
 
 ```go
 db.Disconnect()
@@ -525,15 +521,25 @@ if !db.Ping() {
 }
 ```
 
-### Last Query
+### 最後執行的 SQL 指令
 
 ```go
-err := db.Get("users")
-// And ... Get the last executed query like this.
-fmt.Println("Last executed query was %s", db.LastQuery)
+db.Get("users")
+fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 ```
 
-## Transactions
+### 結果／影響的行數
+
+```go
+db.Get("users")
+fmt.Println("總共獲取 %s 筆資料", db.Count)
+db.Delete("users")
+fmt.Println("總共刪除 %s 筆資料", db.Count)
+db.Update("users", data)
+fmt.Println("總共更新 %s 筆資料", db.Count)
+```
+
+## 交易函式
 
 ```go
 err := db.Begin().Insert("myTable", data)
@@ -544,7 +550,7 @@ if err != nil {
 }
 ```
 
-## Lock
+## 鎖定表格
 
 ```go
 db.SetLockMethod("WRITE").Lock("users")
@@ -556,11 +562,7 @@ db.Unlock()
 db.SetLockMethod("READ").Lock("users", "log")
 ```
 
-
-
-## Query Keywords
-
-### Common
+## 指令關鍵字
 
 ```go
 db.SetQueryOption("LOW_PRIORITY").Insert("users", data)
@@ -573,14 +575,14 @@ db.SetQueryOption("SQL_NO_CACHE").Get("users")
 // 等效於：GIVES: SELECT SQL_NO_CACHE * FROM users;
 ```
 
-### Multiple
+### 多個選項
 
 ```go
 db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
 // Gives: INSERT LOW_PRIORITY IGNORE INTO users ...
 ```
 
-# Table Migrations
+# 表格建構函式
 
 ```go
 migration := db.Migration()
@@ -590,7 +592,7 @@ migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
 ```
 
 
-| Numbers   | Strings    | Binaries  | Blobs      | Times     | Floatings | Enums |
+| 數值       | 字串       | 二進制     | 檔案資料     | 時間      | 浮點數     | 固組   |
 |-----------|------------|-----------|------------|-----------|-----------|-------|
 | TinyInt   | Char       | Binary    | Blob       | Date      | Double    | Enum  |
 | SmallInt  | Varchar    | VarBinary | MediumBlob | DateTime  | Decimal   | Set   |
