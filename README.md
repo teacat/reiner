@@ -161,16 +161,15 @@ Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料（單指令插�
 ```go
 data := []map[string]string{
 	{
-		"username": "YamiOdymel",
-		"password": "test",
+		"Username": "YamiOdymel",
+		"Password": "test",
 	}, {
-		"username": "Karisu",
-		"password": "12345",
+		"Username": "Karisu",
+		"Password": "12345",
 	},
 }
-
-db.InsertMulti("users", data)
-// ids := db.LastInsertIDs
+db.InsertMulti("Users", data)
+// 等效於：INSERT INTO `Users` (`Username`, `Password`) VALUES (?, ?), (?, ?)
 ```
 
 #### 省略重複鍵名
@@ -184,6 +183,7 @@ values := [][]interface{}{
 }
 columns := []string{"username", "password"}
 db.InsertMulti("users", values, columns)
+// 等效於：INSERT INTO `Users` (`Username`, `Password`) VALUES (?, ?), (?, ?)
 ```
 
 ## 更新
@@ -203,7 +203,8 @@ db.Where("Username", "YamiOdymel").Update("Users", map[string]string{
 `Limit` 能夠限制更新的筆數，如果是 `10`，那就表示只更新最前面 10 筆資料而非全部。
 
 ```go
-db.Limit(10).Update("users", data)
+db.Limit(10).Update("Users", data)
+// 等效於：UPDATE `Users` SET ... LIMIT 10
 ```
 
 ## 選擇與取得
@@ -211,8 +212,8 @@ db.Limit(10).Update("users", data)
 最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。如果你想要取得 `rows.Next` 來掃描每一行的結果，Reiner 提供了 `LastRows` 即為最後一次的 `rows` 資料。
 
 ```go
-// 等效於：SELECT * FROM users
-err := db.Get("users")
+err := db.Get("Users")
+// 等效於：SELECT * FROM `Users`
 ```
 
 ### 筆數限制
@@ -220,8 +221,8 @@ err := db.Get("users")
 `Limit` 能夠限制取得的筆數，如果是 `10`，那就表示只取得最前面 10 筆資料而非全部。
 
 ```go
-// 等效於：SELECT * FROM users LIMIT 10
-db.Limit(10).Get("users")
+db.Limit(10).Get("Users")
+// 等效於：SELECT * FROM `Users` LIMIT 10
 ```
 
 ### 指定欄位
@@ -229,10 +230,11 @@ db.Limit(10).Get("users")
 你可以透過 `Columns` 指定要取得的欄位名稱，多個欄位由逗點區分，亦能是函式。
 
 ```go
-// 等效於：SELECT username, nickname FROM users
-db.Columns("username", "nickname").Get("users")
-// 等效於：SELECT COUNT(*) AS count FROM users
-db.Columns("COUNT(*) AS count").Get("users")
+db.Columns("Username", "Nickname").Get("Users")
+// 等效於：SELECT `Username`, `Nickname` FROM `Users`
+
+db.Columns("COUNT(*) AS Count").Get("Users")
+// 等效於：SELECT COUNT(*) AS Count FROM `Users`
 ```
 
 ### 單行資料
@@ -240,9 +242,11 @@ db.Columns("COUNT(*) AS count").Get("users")
 預設來說 `Get` 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 `GetOne`。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
 
 ```go
-db.Where("id", 1).GetOne("users")
-// 或者像這樣使用函式。
-db.Columns("SUM(id)", "COUNT(*) AS cnt").GetOne("users")
+db.Where("ID", 1).GetOne("Users")
+// 等效於：SELECT * FROM `Users` WHERE `ID` = ?
+
+db.Columns("SUM(ID)", "COUNT(*) AS Count").GetOne("Users")
+// 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM `Users`
 ```
 
 ### 取得單值
@@ -250,11 +254,11 @@ db.Columns("SUM(id)", "COUNT(*) AS cnt").GetOne("users")
 這就像 `GetOne`，但 `GetValue` 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
-db.Columns("username").GetValue("users")
+db.Columns("Username").GetValue("Users")
 // 也能搭配 Limit。
-db.Limit(5).Columns("username").GetValue("users")
+db.Limit(5).Columns("Username").GetValue("Users")
 // 或者是函式。
-db.Columns("COUNT(*)").GetValue("users")
+db.Columns("COUNT(*)").GetValue("Users")
 ```
 
 ### 分頁功能
@@ -262,11 +266,12 @@ db.Columns("COUNT(*)").GetValue("users")
 分頁就像是取得資料ㄧ樣，但更擅長用於多筆資料、不會一次顯示完畢的內容。Reiner 能夠幫你自動處理換頁功能，讓你不需要自行計算換頁時的筆數應該從何開始。為此，你需要定義兩個變數，一個是目前的頁數，另一個是單頁能有幾筆資料。
 
 ```go
-page := 1
-db.PageLimit = 2
+page := 2
+db.PageLimit = 20
+db.Paginate("Users", page)
+// 等效於：SELECT * FROM `Users` LIMIT 20, 40
 
-db.Paginate("users", page)
-// fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
+fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
 
 ## 執行生指令
@@ -276,7 +281,7 @@ Reiner 已經提供了近乎日常中 80% 會用到的方式，但如果好死�
 其中亦能帶有預置聲明（Prepared Statement），也就是指令中的問號符號替代了原本的值。這能避免你的 SQL 指令遭受注入攻擊。
 
 ```go
-db.RawQuery("SELECT * from users WHERE id >= ?", 10)
+db.RawQuery("SELECT * FROM `Users` WHERE `ID` >= ?", 10)
 ```
 
 ### 單行資料
@@ -284,7 +289,7 @@ db.RawQuery("SELECT * from users WHERE id >= ?", 10)
 僅選擇單筆資料的生指令函式，這意味著你能夠將取得的資料直接映射到一個建構體上。
 
 ```go
-db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
+db.RawQueryOne("SELECT * FROM `Users` WHERE `ID` = ?", 10)
 ```
 
 ### 取得單值
@@ -292,7 +297,7 @@ db.RawQueryOne("SELECT * FROM users WHERE id = ?", 10)
 透過 `RawQueryValue` 可以直接取得單個欄位得值，而不是一個陣列或切片。
 
 ```go
-db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
+db.RawQueryValue("SELECT `Password` FROM `Users` WHERE `ID` = ? LIMIT 1", 10)
 ```
 
 ### 單值多行
@@ -300,7 +305,7 @@ db.RawQueryValue("SELECT password FROM users WHERE id = ? LIMIT 1", 10)
 透過 `RawQueryValue` 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
 
 ```go
-db.RawQueryValue("SELECT username FROM users LIMIT 10")
+db.RawQueryValue("SELECT `Username` FROM `Users` LIMIT 10")
 ```
 
 ### 進階方式
@@ -308,20 +313,19 @@ db.RawQueryValue("SELECT username FROM users LIMIT 10")
 如果你對 SQL 指令夠熟悉，你也可以使用更進階且複雜的用法。
 
 ```go
-err := db.RawQuery("SELECT id, firstName, lastName FROM users WHERE id = ? AND username = ?", 1, "admin")
+db.RawQuery("SELECT `ID`, `FirstName`, `LastName` FROM `Users` WHERE `ID` = ? AND `Username` = ?", 1, "admin")
 
-// will handle any SQL query.
 params := []int{10, 1, 10, 11, 2, 10}
 query := `(
-    SELECT a FROM t1
-        WHERE a = ? AND B = ?
-        ORDER BY a LIMIT ?
+    SELECT A FROM TestTable
+        WHERE A = ? AND B = ?
+        ORDER BY A LIMIT ?
 ) UNION (
-    SELECT a FROM t2
-        WHERE a = ? AND B = ?
-        ORDER BY a LIMIT ?
+    SELECT A FROM TestTable2
+        WHERE A = ? AND B = ?
+        ORDER BY A LIMIT ?
 )`
-err := db.RawQuery(query, params...)
+db.RawQuery(query, params...)
 ```
 
 ## 條件宣告
@@ -329,8 +333,8 @@ err := db.RawQuery(query, params...)
 透過 Reiner 宣告 `WHERE` 條件也能夠很輕鬆。一個最基本的 `WHERE AND` 像這樣使用。
 
 ```go
-db.Where("id", 1).Where("username", "admin").Get("users")
-// 等效於：SELECT * FROM users WHERE id=1 AND username='admin';
+db.Where("ID", 1).Where("Username", "admin").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE `ID` = ? AND `Username` = ?
 ```
 
 ### 擁有
@@ -338,8 +342,8 @@ db.Where("id", 1).Where("username", "admin").Get("users")
 `HAVING` 能夠與 `WHERE` 一同使用。
 
 ```go
-db.Where("id", 1).Having("username", "admin").Get("users")
-// 等效於：SELECT * FROM users WHERE id=1 HAVING username='admin';
+db.Where("ID", 1).Having("Username", "admin").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE `ID` = ? HAVING `Username` = ?
 ```
 
 ### 欄位比較
@@ -348,10 +352,10 @@ db.Where("id", 1).Having("username", "admin").Get("users")
 
 ```go
 // 別這樣。
-db.Where("lastLogin", "createdAt").Get("users")
+db.Where("LastLogin", "CreatedAt").Get("Users")
 // 這樣才對。
-db.Where("lastLogin = createdAt").Get("users")
-// 等效於：SELECT * FROM users WHERE lastLogin = createdAt;
+db.Where("LastLogin = CreatedAt").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE LastLogin = CreatedAt;
 ```
 
 ### 自訂運算子
@@ -359,8 +363,8 @@ db.Where("lastLogin = createdAt").Get("users")
 在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 `>=`、`<=`、`<>`⋯等。
 
 ```go
-db.Where("id", 50, ">=").Get("users")
-// 等效於：SELECT * FROM users WHERE id >= 50;
+db.Where("ID", 50, ">=").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE `ID` >= 50
 ```
 
 ### 介於／不介於
@@ -368,8 +372,8 @@ db.Where("id", 50, ">=").Get("users")
 透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
-db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
-// 等效於：SELECT * FROM users WHERE id BETWEEN 4 AND 20
+db.Where("ID", []int{0, 20}, "BETWEEN").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE `ID` BETWEEN 4 AND 20
 ```
 
 ### 於清單／不於清單內
@@ -377,8 +381,8 @@ db.Where("id", []int{0, 20}, "BETWEEN").Get("users")
 透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
-db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
-// 等效於：SELECT * FROM users WHERE id IN (1, 5, 27, -1, 'd');
+db.Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE `ID` IN (?, ?, ?, ?, ?);
 ```
 
 ### 或／還有或
@@ -386,15 +390,15 @@ db.Where("id", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("users")
 通常來說多個 `Where` 會產生 `AND` 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 `OrWhere`。
 
 ```go
-db.Where("firstName", "John").OrWhere("firstName", "Peter").Get("users")
-// 等效於：SELECT * FROM users WHERE firstName='John' OR firstName='peter'
+db.Where("FirstNamte", "John").OrWhere("FirstNamte", "Peter").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE FirstName = ? OR FirstName = ?
 ```
 
 如果你的要求比較多，希望達到「A = B 或者 (A = C 或 A = D)」的話，你可以嘗試這樣。
 
 ```go
-db.Where("A = B").OrWhere("(A = C OR A = D)").Get("users")
-// 等效於：SELECT * FROM users WHERE A = B OR (A = C OR A = D)
+db.Where("A = B").OrWhere("(A = C OR A = D)").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE A = B OR (A = C OR A = D)
 ```
 
 ### 空值
@@ -403,24 +407,24 @@ db.Where("A = B").OrWhere("(A = C OR A = D)").Get("users")
 
 ```go
 // 別這樣。
-db.Where("lastName", "NULL", "IS NOT").Get("users")
+db.Where("LastName", "NULL", "IS NOT").Get("Users")
 // 這樣才對。
-db.Where("lastName", nil, "IS NOT").Get("users")
-// 等效於：SELECT * FROM users where lastName IS NOT NULL
+db.Where("LastName", nil, "IS NOT").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE `LastName` IS NOT NULL
 ```
 
 ### Raw
 
 ```go
-db.Where("id != companyId").Where("DATE(createdAt) = DATE(lastLogin)").Get("users")
-// 等效於：SELECT * FROM users WHERE id != companyId AND DATE(createdAt) = DATE(lastLogin)
+db.Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLogin)").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE ID != CompanyID AND DATE(CreatedAt) = DATE(LastLogin)
 ```
 
 ### Raw With Params
 
 ```go
-db.Where("(id = ? or id = ?)", []int{6, 2}).Where("login", "mike").Get("users")
-// 等效於：SELECT * FROM users WHERE (id = 6 or id = 2) and login='mike';
+db.Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get("Users")
+// 等效於：SELECT * FROM `Users` WHERE (ID = 6 OR ID = 2) AND Login = ?
 ```
 
 ## 刪除
@@ -428,10 +432,11 @@ db.Where("(id = ? or id = ?)", []int{6, 2}).Where("login", "mike").Get("users")
 刪除一筆資料再簡單不過了，透過 `Count` 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
 
 ```go
-err := db.Where("id", 1).Delete("users")
+err := db.Where("ID", 1).Delete("Users")
 if err == nil && db.Count != 0 {
     fmt.Println("成功地刪除了一筆資料！")
 }
+// 等效於：DELETE FROM `Users` WHERE `ID` = ?
 ```
 
 ## 排序
@@ -439,8 +444,8 @@ if err == nil && db.Count != 0 {
 Reiner 亦支援排序功能，如遞增或遞減，亦能擺放函式。
 
 ```go
-db.OrderBy("id", "ASC").OrderBy("login", "DESC").OrderBy("RAND()").Get("users")
-// 等效於：SELECT * FROM users ORDER BY id ASC, login DESC, RAND();
+db.OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get("Users")
+// 等效於：SELECT * FROM `Users` ORDER BY `ID` ASC, `Login` DESC, RAND();
 ```
 
 ### 從值排序
@@ -448,8 +453,8 @@ db.OrderBy("id", "ASC").OrderBy("login", "DESC").OrderBy("RAND()").Get("users")
 也能夠從值進行排序，只需要傳入一個切片即可。
 
 ```go
-db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"}).Get("users")
-// 等效於：SELECT * FROM users ORDER BY FIELD (userGroup, 'superuser', 'admin', 'users') ASC;
+db.OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get("Users")
+// 等效於：SELECT * FROM `Users` ORDER BY FIELD (UserGroup, ?, ?, ?) ASC;
 ```
 
 ## 群組
@@ -457,8 +462,8 @@ db.OrderBy("userGroup", "ASC", []string{"superuser", "admin", "users"}).Get("use
 簡單的透過 `GroupBy` 就能夠將資料由指定欄位群組排序。
 
 ```go
-db.GroupBy("name").Get("users")
-// 等效於：SELECT * FROM users GROUP BY name;
+db.GroupBy("Name").Get("Users")
+// 等效於：SELECT * FROM `Users` GROUP BY `Name`;
 ```
 
 ## 加入
@@ -611,6 +616,13 @@ fmt.Println("總共更新 %s 筆資料", db.Count)
 ```go
 db.Insert("Users", data)
 id := db.LastInsertID
+```
+
+如果你是同時間插入多筆資料，你仍可以透過 `LastInsertIDs` 取得剛才插入的所有資料編號。
+
+```go
+db.InsertMulti("Users", data)
+ids := db.LastInsertIDs
 ```
 
 ## 交易函式

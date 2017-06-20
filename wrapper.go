@@ -65,6 +65,8 @@ type Wrapper struct {
 	//
 	LastInsertID int
 	//
+	LastInsertIDs []int
+	//
 	LastRows *sql.Rows
 	//
 	LastRow *sql.Row
