@@ -509,11 +509,17 @@ if db.Has("users") {
 
 ## 輔助函式
 
+Reiner 有提供一些輔助用的函式協助你除錯、紀錄，或者更加地得心應手。
+
 ### 資料庫連線
+
+透過 `Disconnect` 結束一段連線。
 
 ```go
 db.Disconnect()
 ```
+
+你也能在資料庫發生錯誤、連線遺失時透過 `Connect` 來重新手動連線。
 
 ```go
 if !db.Ping() {
@@ -523,12 +529,16 @@ if !db.Ping() {
 
 ### 最後執行的 SQL 指令
 
+取得最後一次所執行的 SQL 指令，這能夠用來記錄你所執行的所有動作。
+
 ```go
 db.Get("users")
 fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 ```
 
 ### 結果／影響的行數
+
+行數很常用於檢查是否有資料、作出變更。資料庫不會因為沒有變更任何資料而回傳一個錯誤（資料庫僅會在真正發生錯誤時回傳錯誤資料），所以這是很好的檢查方法。
 
 ```go
 db.Get("users")
@@ -541,6 +551,8 @@ fmt.Println("總共更新 %s 筆資料", db.Count)
 
 ## 交易函式
 
+交易函式僅限於 InnoDB 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 `Begin` 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 `Rollback` 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 `Commit` 將這次的變更永久地儲存到資料庫中。
+
 ```go
 err := db.Begin().Insert("myTable", data)
 if err != nil {
@@ -552,17 +564,21 @@ if err != nil {
 
 ## 鎖定表格
 
+你能夠手動鎖定資料表格，避免同時間寫入相同資料而發生錯誤。
+
 ```go
 db.SetLockMethod("WRITE").Lock("users")
 
-// Calling another `Lock()` will unlock the first lock. You could also use `Unlock()`.
+// 呼叫其他的 `Lock()` 函式也會自動將前一個上鎖解鎖，當然你也可以手動呼叫 `Unlock()` 解鎖。
 db.Unlock()
 
-// Lock the multiple tables at the same time is easy.
+// 同時間要鎖上兩個表格也很簡單。
 db.SetLockMethod("READ").Lock("users", "log")
 ```
 
 ## 指令關鍵字
+
+Reiner 也支援設置指令關鍵字。
 
 ```go
 db.SetQueryOption("LOW_PRIORITY").Insert("users", data)
@@ -577,12 +593,16 @@ db.SetQueryOption("SQL_NO_CACHE").Get("users")
 
 ### 多個選項
 
+你亦能同時設置多個關鍵字給同個指令。
+
 ```go
 db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
 // Gives: INSERT LOW_PRIORITY IGNORE INTO users ...
 ```
 
 # 表格建構函式
+
+Reiner 除了基本的資料庫函式可供使用外，還能夠建立一個表格並且規劃其索引、外鍵、型態。
 
 ```go
 migration := db.Migration()
