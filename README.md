@@ -546,13 +546,6 @@ db.Columns("Users.Name", "Products.ProductName").Get("Products")
 
 ```go
 db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
-db.JoinWhere("Users", "Users.TenantID", 5)
-db.Columns("Users.Name", "Products.ProductName").Get("Products")
-// 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID AND Users.TenantID = ?)
-```
-
-```go
-db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
 db.JoinOrWhere("Users", "Users.TenantID", 5)
 db.Columns("Users.Name", "Products.ProductName").Get("Products")
 // 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)
