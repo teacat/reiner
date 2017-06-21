@@ -90,6 +90,10 @@ func (w *Wrapper) GetOne(columns ...string) (err error) {
 	return
 }
 
+func (w *Wrapper) GetValue(column string) (err error) {
+	return
+}
+
 func (w *Wrapper) Paginate(pageCount int) (err error) {
 	return
 }
@@ -104,6 +108,14 @@ func (w *Wrapper) RawQueryOne(query string, values ...interface{}) (err error) {
 
 func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error) {
 	return
+}
+
+func (w *Wrapper) Having(args ...interface{}) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
+	return w
 }
 
 func (w *Wrapper) Where(args ...interface{}) *Wrapper {
@@ -142,7 +154,7 @@ func (w *Wrapper) Delete() (err error) {
 	return
 }
 
-func (w *Wrapper) OrderBy(column string, sorting string, fields ...[]string) *Wrapper {
+func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper { //sorting string, fields ...[]string
 	return w
 }
 
@@ -170,7 +182,15 @@ func (w *Wrapper) CrossJoin(table interface{}, condition string) *Wrapper {
 	return w
 }
 
-func (w *Wrapper) SubQuery(alias string) *Wrapper {
+func (w *Wrapper) JoinWhere(table string, args ...interface{}) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) JoinOrWhere(args ...interface{}) *Wrapper {
+	return w
+}
+
+func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
 	return w
 }
 

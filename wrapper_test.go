@@ -57,19 +57,20 @@ func TestInsertFunc(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.Table("Users").Insert(map[string]interface{}{
 		"Username":  "YamiOdymel",
-		"Password":  db.Func("SHA1(?)", "secretpassword+salt"),
-		"Expires":   db.Now("+1Y"),
-		"CreatedAt": db.Now(),
+		"Password":  wrapper.Func("SHA1(?)", "secretpassword+salt"),
+		"Expires":   wrapper.Now("+1Y"),
+		"CreatedAt": wrapper.Now(),
 	})
 	assert.Equal("INSERT INTO Users (Username, Password, Expires, CreatedAt) VALUES (?, SHA1(?), NOW() + INTERVAL 1 YEAR, NOW())", wrapper.LastQuery)
 }
 
 func TestOnDuplicateInsert(t *testing.T) {
 	assert := assert.New(t)
+	lastInsertID := "ID"
 	wrapper.Table("Users").OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert(map[string]interface{}{
 		"Username":  "YamiOdymel",
 		"Password":  "test",
-		"UpdatedAt": db.Now(),
+		"UpdatedAt": wrapper.Now(),
 	})
 	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = VALUE(UpdatedAt)", wrapper.LastQuery)
 }
@@ -236,49 +237,49 @@ func TestWhereNull(t *testing.T) {
 
 func TestTimestampRelative(t *testing.T) {
 	assert := assert.New(t)
-	t := db.Timestamp
-	wrapper.Table("Users").Where("CreatedAt", t.Now("-1Y")).Get()
+	ts := wrapper.Timestamp
+	wrapper.Table("Users").Where("CreatedAt", ts.Now("-1Y")).Get()
 	assert.Equal("SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.Now("-1D")).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.Now("-1D")).Get()
 	assert.Equal("SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 }
 
 func TestTimestampDate(t *testing.T) {
 	assert := assert.New(t)
-	t := db.Timestamp
-	wrapper.Table("Users").Where("CreatedAt", t.IsDate("2017-07-13")).Get()
+	ts := wrapper.Timestamp
+	wrapper.Table("Users").Where("CreatedAt", ts.IsDate("2017-07-13")).Get()
 	assert.Equal("SELECT * FROM Users WHERE DATE(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsYear(2017)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsYear(2017)).Get()
 	assert.Equal("SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsMonth(1)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsMonth(1)).Get()
 	assert.Equal("SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
-	wrapper.Table("Users").Where("CreatedAt", t.IsMonth("January")).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsMonth("January")).Get()
 	assert.Equal("SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsDay(16)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsDay(16)).Get()
 	assert.Equal("SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsWeekday(5)).Get()
-	wrapper.Table("Users").Where("CreatedAt", t.IsWeekday("Friday")).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsWeekday(5)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsWeekday("Friday")).Get()
 	assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 }
 
 func TestTimestampTime(t *testing.T) {
 	assert := assert.New(t)
-	t := db.Timestamp
-	wrapper.Table("Users").Where("CreatedAt", t.IsHour(18)).Get()
+	ts := wrapper.Timestamp
+	wrapper.Table("Users").Where("CreatedAt", ts.IsHour(18)).Get()
 	assert.Equal("SELECT * FROM Users WHERE HOUR(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsMinute(25)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsMinute(25)).Get()
 	assert.Equal("SELECT * FROM Users WHERE MINUTE(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsSecond(16)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsSecond(16)).Get()
 	assert.Equal("SELECT * FROM Users WHERE SECOND(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").Where("CreatedAt", t.IsWeekday(5)).Get()
+	wrapper.Table("Users").Where("CreatedAt", ts.IsWeekday(5)).Get()
 	assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
 }
 
@@ -333,6 +334,7 @@ func TestJoinWhere(t *testing.T) {
 	wrapper.
 		Table("Products").
 		LeftJoin("Users", "Products.TenantID = Users.TenantID").
+		JoinWhere("Users", "Users.Username", "Wow").
 		JoinOrWhere("Users", "Users.TenantID", 5).
 		Get("Users.Name", "Products.ProductName")
 	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)", wrapper.LastQuery)
@@ -353,7 +355,7 @@ func TestSubQueryInsert(t *testing.T) {
 	wrapper.Table("Products").Insert(map[string]interface{}{
 		"ProductName": "測試商品",
 		"UserID":      subQuery,
-		"LastUpdated": db.Now(),
+		"LastUpdated": wrapper.Now(),
 	})
 	assert.Equal("INSERT INTO Products (ProductName, UserID, LastUpdated) VALUES (?, (SELECT Name FROM Users WHERE ID = 6), NOW())", wrapper.LastQuery)
 }
