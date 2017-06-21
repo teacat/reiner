@@ -428,19 +428,19 @@ db.Table("Users").Where("ID", 50, ">=").Get()
 
 ### 介於／不介於
 
-透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
+透過 `WhereBetween` 和 `WhereNotBetween` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
-db.Table("Users").Where("ID", []int{0, 20}, "BETWEEN").Get()
+db.Table("Users").WhereBetween("ID", []int{0, 20}).Get()
 // 等效於：SELECT * FROM Users WHERE ID BETWEEN 4 AND 20
 ```
 
 ### 於清單／不於清單內
 
-透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
+透過 `WhereIn` 和 `WhereNotIn` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
-db.Table("Users").Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").Get()
+db.Table("Users").WhereIn("ID", []interface{}{1, 5, 27, -1, "d"}).Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?);
 ```
 
@@ -462,14 +462,88 @@ db.Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
 
 ### 空值
 
-要確定某個欄位是否為空值，傳入一個 `nil` 即可。
+透過 `WhereNull` 確定某個欄位是否為空值。
 
 ```go
 // 別這樣。
-db.Table("Users").Where("LastName", "NULL", "IS NOT").Get()
+db.Table("Users").Where("LastName", "NULL").Get()
 // 這樣才對。
+db.Table("Users").WhereNull("LastName").Get()
+// 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
+```
+
+### 自訂運算子
+
+如果 Reiner 沒有提供你要的運算子，你能夠自訂。
+
+```go
 db.Table("Users").Where("LastName", nil, "IS NOT").Get()
 // 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
+```
+
+### 時間戳
+
+[Unix Timestamp](https://en.wikipedia.org/wiki/Unix_time) 是一項將日期與時間秒數換算成數字的格式（範例：`1498001308`），這令你能夠輕易地換算其秒數，但當你要判斷時間是否為某一年、月、日，甚至範圍的時候就會有些許困難，而 Reiner 也替你想到了這一點。
+
+需要注意的是 Reiner 中的 Timestamp 無法串聯使用，這意味著當你想要確認時間戳是否為某年某月時，你需要有兩個 `Where` 條件，而不行使用 `IsYear().IsMonth()`。更多的用法可以在原生文件中找到，這裡僅列處不完全的範例供大略參考。
+
+#### 相對
+
+判斷的方式可以是目前的相對時間，如昨天則是 `-1D`，明天即是 `+1D`、以此類推可使用 `Y`（年）、`M`（月）、`D`（天）、`W`（星期）、`h`（小時）、`m`（分）、`s`（秒），請記得注意大小寫。
+
+```go
+t := db.Timestamp
+
+db.Table("Users").Where("CreatedAt", t.Now("-1Y")).Get()
+// 等效於：SELECT * FROM Users WHERE DATE(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.Now("-1D")).Get()
+// 等效於：SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?
+```
+
+#### 日期
+
+或者也能判斷是否為特定年、月、日、星期或完整日期。
+
+```go
+t := db.Timestamp
+
+db.Table("Users").Where("CreatedAt", t.IsDate("2017-07-13")).Get()
+// 等效於：SELECT * FROM Users WHERE DATE(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsYear(2017)).Get()
+// 等效於：SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsMonth(11)).Get()
+db.Table("Users").Where("CreatedAt", t.IsMonth("January")).Get()
+// 等效於：SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsDay(16)).Get()
+// 等效於：SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsWeekday(5)).Get()
+db.Table("Users").Where("CreatedAt", t.IsWeekday("Monday")).Get()
+// 等效於：SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?
+```
+
+#### 時間
+
+也能夠確定是否為特定時間。
+
+```go
+t := db.Timestamp()
+
+db.Table("Users").Where("CreatedAt", t.IsHour(18)).Get()
+// 等效於：SELECT * FROM Users WHERE HOUR(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsMinute(25)).Get()
+// 等效於：SELECT * FROM Users WHERE MINUTE(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsSecond(16)).Get()
+// 等效於：SELECT * FROM Users WHERE SECOND(FROM_UNIXTIME(CreatedAt)) = ?
+
+db.Table("Users").Where("CreatedAt", t.IsWeekday(5)).Get()
+// 等效於：SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?
 ```
 
 ### 生條件
