@@ -18,7 +18,7 @@ func TestMigrationMain(t *testing.T) {
 
 func TestMigrationBasic(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Varchar(32).Primary().Create("test_table")
+	err := migration.Table("test_table").Column("test").Varchar(32).Primary().Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table` (`test` VARCHAR(32) NOT NULL PRIMARY KEY) ENGINE=INNODB", migration.LastQuery)
 }
@@ -33,6 +33,7 @@ func TestMigrationDrop(t *testing.T) {
 func TestMigrationDataTypes(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table1").
 		Column("test").TinyInt(1).
 		Column("test2").SmallInt(1).
 		Column("test3").MediumInt(1).
@@ -62,74 +63,125 @@ func TestMigrationDataTypes(t *testing.T) {
 		Column("test27").Float(1).
 		Column("test28").Enum("1", "2", "3", "A", "B", "C").
 		Column("test29").Set("1", "2", "3", "A", "B", "C").
-		Create("test_table1")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table1` (`test` TINYINT(1) NOT NULL , `test2` SMALLINT(1) NOT NULL , `test3` MEDIUMINT(1) NOT NULL , `test4` INT(1) NOT NULL , `test5` BIGINT(1) NOT NULL , `test6` CHAR(1) NOT NULL , `test7` VARCHAR(1) NOT NULL , `test8` BINARY(1) NOT NULL , `test9` VARBINARY(1) NOT NULL , `test10` BIT(1) NOT NULL , `test11` TINYTEXT NOT NULL , `test12` TEXT NOT NULL , `test13` MEDIUMTEXT NOT NULL , `test14` LONGTEXT NOT NULL , `test15` TINYBLOB NOT NULL , `test16` BLOB NOT NULL , `test17` MEDIUMBLOB NOT NULL , `test18` LONGBLOB NOT NULL , `test19` DATE NOT NULL , `test20` DATETIME NOT NULL , `test21` TIME NOT NULL , `test22` TIMESTAMP NOT NULL , `test23` YEAR NOT NULL , `test24` DOUBLE(2, 1) NOT NULL , `test25` DECIMAL(2, 1) NOT NULL , `test26` FLOAT(2, 1) NOT NULL , `test27` FLOAT(1) NOT NULL , `test28` ENUM('1', '2', '3', 'A', 'B', 'C') NOT NULL , `test29` SET('1', '2', '3', 'A', 'B', 'C') NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationTableType(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Varchar(32).MyISAM().Create("test_myisam_table")
+	err := migration.Table("test_myisam_table").Column("test").Varchar(32).MyISAM().Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_myisam_table` (`test` VARCHAR(32) NOT NULL) ENGINE=MYISAM", migration.LastQuery)
-	err = migration.Column("test").Varchar(32).InnoDB().Create("test_innodb_table")
+	err = migration.Table("test_innodb_table").Column("test").Varchar(32).InnoDB().Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_innodb_table` (`test` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationDefault(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Varchar(32).Nullable().Default(nil).Create("test_default_null_table")
+	err := migration.
+		Table("test_default_null_table").
+		Column("test").
+		Varchar(32).
+		Nullable().
+		Default(nil).
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_null_table` (`test` VARCHAR(32) DEFAULT NULL) ENGINE=INNODB", migration.LastQuery)
-	err = migration.Column("test").Varchar(32).Default("string").Create("test_default_string_table")
+	err = migration.
+		Table("test_default_string_table").
+		Column("test").
+		Varchar(32).
+		Default("string").
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_string_table` (`test` VARCHAR(32) NOT NULL DEFAULT 'string') ENGINE=INNODB", migration.LastQuery)
-	err = migration.Column("test").Int(32).Default(12).Create("test_default_int_table")
+	err = migration.
+		Table("test_default_int_table").
+		Column("test").
+		Int(32).
+		Default(12).
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_int_table` (`test` INT(32) NOT NULL DEFAULT 12) ENGINE=INNODB", migration.LastQuery)
-	err = migration.Column("test").Timestamp().Default("CURRENT_TIMESTAMP").Create("test_default_timestamp_table")
+	err = migration.
+		Table("test_default_timestamp_table").
+		Column("test").
+		Timestamp().
+		Default("CURRENT_TIMESTAMP").
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_timestamp_table` (`test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=INNODB", migration.LastQuery)
-	err = migration.Column("test").Timestamp().Default("CURRENT_TIMESTAMP").Create("test_default_timestamp_table")
+	err = migration.
+		Table("test_default_timestamp_table").
+		Column("test").
+		Timestamp().
+		Default("CURRENT_TIMESTAMP").
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_timestamp_table` (`test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=INNODB", migration.LastQuery)
-	err = migration.Column("test").DateTime().Default("NOW()").Create("test_default_datetime_table")
+	err = migration.
+		Table("test_default_datetime_table").
+		Column("test").
+		DateTime().
+		Default("NOW()").
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_datetime_table` (`test` DATETIME NOT NULL DEFAULT NOW()) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNullable(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Varchar(32).Nullable().Create("test_nullable_table")
+	err := migration.
+		Table("test_nullable_table").
+		Column("test").
+		Varchar(32).
+		Nullable().
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_nullable_table` (`test` VARCHAR(32) DEFAULT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationUnsigned(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Int(10).Unsigned().Create("test_unsigned_table")
+	err := migration.
+		Table("test_unsigned_table").
+		Column("test").
+		Int(10).
+		Unsigned().
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_unsigned_table` (`test` INT(10) UNSIGNED NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationAutoIncrement(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Int(10).AutoIncrement().Primary().Create("test_auto_increment_table")
+	err := migration.
+		Table("test_auto_increment_table").
+		Column("test").
+		Int(10).
+		AutoIncrement().
+		Primary().
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_auto_increment_table` (`test` INT(10) NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationComment(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Int(10).Comment("月月，搭拉安！").Create("test_column_comment_table")
+	err := migration.Table("test_column_comment_table").Column("test").Int(10).Comment("月月，搭拉安！").Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_column_comment_table` (`test` INT(10) NOT NULL COMMENT '月月，搭拉安！') ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationTableComment(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Column("test").Int(10).Create("test_comment_table", "月月，搭拉安！")
+	err := migration.
+		Table("test_comment_table", "月月，搭拉安！").
+		Column("test").
+		Int(10).
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_comment_table` (`test` INT(10) NOT NULL) ENGINE=INNODB, COMMENT='月月，搭拉安！'", migration.LastQuery)
 }
@@ -137,9 +189,10 @@ func TestMigrationTableComment(t *testing.T) {
 func TestMigrationPrimaryKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table2").
 		Column("test").Varchar(32).Primary().
 		Column("test2").Varchar(32).
-		Create("test_table2")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table2` (`test` VARCHAR(32) NOT NULL PRIMARY KEY , `test2` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
@@ -147,10 +200,11 @@ func TestMigrationPrimaryKey(t *testing.T) {
 func TestMigrationNamingPrimaryKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table3").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Primary("pk_test", []string{"test", "test2"}).
-		Create("test_table3")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table3` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, PRIMARY KEY `pk_test` (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -158,10 +212,11 @@ func TestMigrationNamingPrimaryKey(t *testing.T) {
 func TestMigrationMultiPrimaryKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table4").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Primary([]string{"test", "test2"}).
-		Create("test_table4")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table4` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, PRIMARY KEY (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -169,9 +224,10 @@ func TestMigrationMultiPrimaryKey(t *testing.T) {
 func TestMigrationUniqueKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table5").
 		Column("test").Varchar(32).Unique().
 		Column("test2").Varchar(32).
-		Create("test_table5")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table5` (`test` VARCHAR(32) NOT NULL UNIQUE , `test2` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
@@ -179,13 +235,14 @@ func TestMigrationUniqueKey(t *testing.T) {
 func TestMigrationNamingUniqueKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table6").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
 		Column("test4").Varchar(32).
 		Unique("uk_test", []string{"test", "test2"}).
 		Unique("uk_test2", []string{"test3", "test4"}).
-		Create("test_table6")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table6` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, UNIQUE KEY `uk_test` (`test`,`test2`), UNIQUE KEY `uk_test2` (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -193,13 +250,14 @@ func TestMigrationNamingUniqueKey(t *testing.T) {
 func TestMigrationMultiUniqueKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table7").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
 		Column("test4").Varchar(32).
 		Unique([]string{"test", "test2"}).
 		Unique([]string{"test3", "test4"}).
-		Create("test_table7")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table7` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, UNIQUE KEY (`test`,`test2`), UNIQUE KEY (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -207,9 +265,10 @@ func TestMigrationMultiUniqueKey(t *testing.T) {
 func TestMigrationAnonymousIndexKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table14").
 		Column("test").Varchar(32).Index().
 		Column("test2").Varchar(32).Index().
-		Create("test_table14")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table14` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, INDEX (`test`), INDEX (`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -217,13 +276,14 @@ func TestMigrationAnonymousIndexKey(t *testing.T) {
 func TestMigrationNamingIndexKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table9").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
 		Column("test4").Varchar(32).
 		Index("ik_test", []string{"test", "test2"}).
 		Index("ik_test2", []string{"test3", "test4"}).
-		Create("test_table9")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table9` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, INDEX `ik_test` (`test`,`test2`), INDEX `ik_test2` (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -231,36 +291,40 @@ func TestMigrationNamingIndexKey(t *testing.T) {
 func TestMigrationMixedKeys(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table10").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
 		Column("test4").Varchar(32).
 		Primary([]string{"test", "test2"}).
 		Unique([]string{"test3", "test4"}).
-		Create("test_table10")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table10` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, PRIMARY KEY (`test`,`test2`), UNIQUE KEY (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 	err = migration.
+		Table("test_table11").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
 		Column("test4").Varchar(32).
 		Index("ik_test", []string{"test", "test2"}).
 		Unique([]string{"test3", "test4"}).
-		Create("test_table11")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table11` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, UNIQUE KEY (`test3`,`test4`), INDEX `ik_test` (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 	err = migration.
+		Table("test_table12").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
 		Column("test4").Varchar(32).
 		Primary([]string{"test", "test2"}).
 		Index("ik_test", []string{"test3", "test4"}).
-		Create("test_table12")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table12` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL, PRIMARY KEY (`test`,`test2`), INDEX `ik_test` (`test3`,`test4`)) ENGINE=INNODB", migration.LastQuery)
 	err = migration.
+		Table("test_table13").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Column("test3").Varchar(32).
@@ -270,7 +334,7 @@ func TestMigrationMixedKeys(t *testing.T) {
 		Index("ik_test", []string{"test", "test2"}).
 		Unique([]string{"test3", "test4"}).
 		Primary([]string{"test5", "test6"}).
-		Create("test_table13")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table13` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL , `test3` VARCHAR(32) NOT NULL , `test4` VARCHAR(32) NOT NULL , `test5` VARCHAR(32) NOT NULL , `test6` VARCHAR(32) NOT NULL, PRIMARY KEY (`test5`,`test6`), UNIQUE KEY (`test3`,`test4`), INDEX `ik_test` (`test`,`test2`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -278,9 +342,10 @@ func TestMigrationMixedKeys(t *testing.T) {
 func TestMigrationForeignKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table15").
 		Column("test").Varchar(32).Foreign("test_table13.test5").
 		Column("test2").Varchar(32).Foreign("test_table13.test6").
-		Create("test_table15")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table15` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -288,24 +353,25 @@ func TestMigrationForeignKey(t *testing.T) {
 func TestMigrationMultipleForeignKey(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table16").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Foreign([]string{"test"}, []string{"test_table13.test5"}).
 		Foreign([]string{"test2"}, []string{"test_table12.test3"}).
-		Create("test_table16")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table16` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`) REFERENCES `test_table13` (`test5`), FOREIGN KEY (`test2`) REFERENCES `test_table12` (`test3`)) ENGINE=INNODB", migration.LastQuery)
 }
 
 func TestMigrationNamingForeignKey(t *testing.T) {
 	assert := assert.New(t)
-
 	err := migration.
+		Table("test_table17").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Foreign("fk_test", []string{"test", "test2"}, []string{"test_table13.test5", "test_table13.test6"}).
 		Foreign("fk_test2", []string{"test", "test2"}, []string{"test_table12.test3", "test_table12.test4"}).
-		Create("test_table17")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table17` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY fk_test (`test`,`test2`) REFERENCES `test_table13` (`test5`, `test6`), FOREIGN KEY fk_test2 (`test`,`test2`) REFERENCES `test_table12` (`test3`, `test4`)) ENGINE=INNODB", migration.LastQuery)
 }
@@ -313,11 +379,12 @@ func TestMigrationNamingForeignKey(t *testing.T) {
 func TestMigrationForeignKeysOnActions(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.
+		Table("test_table18").
 		Column("test").Varchar(32).
 		Column("test2").Varchar(32).
 		Foreign([]string{"test"}, []string{"test_table13.test5"}).OnUpdate("NO ACTION").OnDelete("NO ACTION").
 		Foreign([]string{"test2"}, []string{"test_table12.test3"}).OnUpdate("CASCADE").OnDelete("RESTRICT").
-		Create("test_table18")
+		Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_table18` (`test` VARCHAR(32) NOT NULL , `test2` VARCHAR(32) NOT NULL, FOREIGN KEY (`test`) REFERENCES `test_table13` (`test5`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`test2`) REFERENCES `test_table12` (`test3`) ON UPDATE CASCADE ON DELETE RESTRICT) ENGINE=INNODB", migration.LastQuery)
 }

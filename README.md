@@ -379,7 +379,7 @@ db.RawQueryValue("SELECT Username FROM Users LIMIT 10")
 db.RawQuery("SELECT ID, FirstName, LastName FROM Users WHERE ID = ? AND Username = ?", 1, "admin")
 
 params := []int{10, 1, 10, 11, 2, 10}
-query := (
+query := (`
     SELECT A FROM TestTable
         WHERE A = ? AND B = ?
         ORDER BY A LIMIT ?
@@ -387,7 +387,7 @@ query := (
     SELECT A FROM TestTable2
         WHERE A = ? AND B = ?
         ORDER BY A LIMIT ?
-)
+`)
 db.RawQuery(query, params...)
 ```
 
@@ -418,7 +418,7 @@ db.Table("Users").Where("ID", 1).Having("Username", "admin").Get()
 db.Table("Users").Where("LastLogin", "CreatedAt").Get()
 // 這樣才對。
 db.Table("Users").Where("LastLogin = CreatedAt").Get()
-// 等效於：SELECT * FROM Users WHERE LastLogin = CreatedAt;
+// 等效於：SELECT * FROM Users WHERE LastLogin = CreatedAt
 ```
 
 ### 自訂運算子
@@ -445,7 +445,7 @@ db.Table("Users").WhereBetween("ID", []int{0, 20}).Get()
 
 ```go
 db.Table("Users").WhereIn("ID", []interface{}{1, 5, 27, -1, "d"}).Get()
-// 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?);
+// 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)
 ```
 
 ### 或／還有或
@@ -577,7 +577,7 @@ Reiner 亦支援排序功能，如遞增或遞減，亦能擺放函式。
 
 ```go
 db.Table("Users").OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get()
-// 等效於：SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND();
+// 等效於：SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND()
 ```
 
 ### 從值排序
@@ -586,7 +586,7 @@ db.Table("Users").OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()"
 
 ```go
 db.Table("Users").OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get()
-// 等效於：SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC;
+// 等效於：SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC
 ```
 
 ## 群組
@@ -595,7 +595,7 @@ db.Table("Users").OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Us
 
 ```go
 db.Table("Users").GroupBy("Name").Get()
-// 等效於：SELECT * FROM Users GROUP BY Name;
+// 等效於：SELECT * FROM Users GROUP BY Name
 ```
 
 ## 加入
@@ -650,7 +650,7 @@ db.Table("Users").Where("ID", subQuery, "IN").Get()
 
 ```go
 subQuery := db.SubQuery()
-subQuery.Table("Users").Where("ID", 6).Columns("Name").GetOne()
+subQuery.Table("Users").Where("ID", 6).GetOne("Name")
 
 db.Table("Products").Insert(map[string]interface{}{
 	"ProductName": "測試商品",
@@ -725,7 +725,7 @@ if err := db.Ping(); err != nil {
 
 ```go
 db.Table("Users").Get()
-fmt.Println("最後一次執行的 SQL 指令是：%s", dbLastQuery)
+fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 ```
 
 ### 結果／影響的行數

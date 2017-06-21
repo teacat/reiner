@@ -408,14 +408,19 @@ func (m *Migration) AutoIncrement() *Migration {
 	return m
 }
 
-// Create builds the query and execute it to create the table with the columns.
-func (m *Migration) Create(tableName string, comment ...string) (err error) {
+// Table prepares the table to create.
+func (m *Migration) Table(tableName string, comment ...string) *Migration {
 	// Set the table name.
 	m.table.name = tableName
 	// And set the table comment if there's one.
 	if len(comment) != 0 {
 		m.table.comment = comment[0]
 	}
+	return m
+}
+
+// Create builds the query and execute it to create the table with the columns.
+func (m *Migration) Create() (err error) {
 	// Build the main query.
 	query := m.tableBuilder()
 	// Execute the main query to create the table and the columns.
