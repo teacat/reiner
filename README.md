@@ -540,7 +540,8 @@ db.Insert("Products", map[string]interface{}{
 subQuery := db.SubQuery("Users")
 subQuery.Where("Active", 1).Get("Users")
 
-db.LeftJoin(subQuery, "Products.UserID = U.ID").Columns("U.Username", "Products.ProductName").Get("Products")
+db.LeftJoin(subQuery, "Products.UserID = U.ID")
+db.Columns("U.Username", "Products.ProductName").Get("Products")
 // 等效於：SELECT Users.Username, Products.ProductName FROM Products AS Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID
 ```
 
