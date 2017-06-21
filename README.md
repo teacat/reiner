@@ -486,7 +486,7 @@ db.Table("Users").Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLog
 生條件中可以透過 `?` 符號，並且在後面傳入自訂變數。
 
 ```go
-db.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
+db.Table("Users").Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get()
 // 等效於：SELECT * FROM Users WHERE (ID = ? OR ID = ?) AND Login = ?
 ```
 
