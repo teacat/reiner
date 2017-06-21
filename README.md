@@ -466,14 +466,14 @@ db.Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
 
 ### 空值
 
-透過 `WhereNull` 確定某個欄位是否為空值。
+透過 `WhereNull` 和 `WhereNotNull` 確定某個欄位是否為空值。
 
 ```go
 // 別這樣。
 db.Table("Users").Where("LastName", "NULL").Get()
 // 這樣才對。
 db.Table("Users").WhereNull("LastName").Get()
-// 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
+// 等效於：SELECT * FROM Users WHERE LastName IS NULL
 ```
 
 ### 自訂運算子
