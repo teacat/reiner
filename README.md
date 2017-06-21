@@ -55,14 +55,14 @@
 		* [擁有](#擁有)
 		* [欄位比較](#欄位比較)
 		* [自訂運算子](#自訂運算子)
-		* [時間戳](#時間戳)
-			* [相對](#相對)
-			* [日期](#日期)
-			* [時間](#時間)
 		* [介於／不介於](#介於不介於)
 		* [於清單／不於清單內](#於清單不於清單內)
 		* [或／還有或](#或還有或)
 		* [空值](#空值)
+		* [時間戳](#時間戳)
+			* [相對](#相對)
+			* [日期](#日期)
+			* [時間](#時間)
 		* [生條件](#生條件)
 			* [條件變數](#條件變數)
 	* [刪除](#刪除)
@@ -426,8 +426,8 @@ db.Table("Users").Where("LastLogin = CreatedAt").Get()
 在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 >=、<=、<>⋯等。
 
 ```go
-db.Table("Users").Where("ID", 50, ">=").Get()
-// 等效於：SELECT * FROM Users WHERE ID >= 50
+db.Table("Users").Where("ID", ">=", 50).Get()
+// 等效於：SELECT * FROM Users WHERE ID >= ?
 ```
 
 ### 介於／不介於
@@ -436,7 +436,7 @@ db.Table("Users").Where("ID", 50, ">=").Get()
 
 ```go
 db.Table("Users").WhereBetween("ID", []int{0, 20}).Get()
-// 等效於：SELECT * FROM Users WHERE ID BETWEEN 4 AND 20
+// 等效於：SELECT * FROM Users WHERE ID BETWEEN ? AND ?
 ```
 
 ### 於清單／不於清單內
@@ -476,15 +476,6 @@ db.Table("Users").WhereNull("LastName").Get()
 // 等效於：SELECT * FROM Users WHERE LastName IS NULL
 ```
 
-### 自訂運算子
-
-如果 Reiner 沒有提供你要的運算子，你能夠自訂。
-
-```go
-db.Table("Users").Where("LastName", nil, "IS NOT").Get()
-// 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
-```
-
 ### 時間戳
 
 [Unix Timestamp](https://en.wikipedia.org/wiki/Unix_time) 是一項將日期與時間秒數換算成數字的格式（範例：`1498001308`），這令你能夠輕易地換算其秒數，但當你要判斷時間是否為某一年、月、日，甚至範圍的時候就會有些許困難，而 Reiner 也替你想到了這一點。
@@ -518,7 +509,7 @@ db.Table("Users").Where("CreatedAt", t.IsDate("2017-07-13")).Get()
 db.Table("Users").Where("CreatedAt", t.IsYear(2017)).Get()
 // 等效於：SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?
 
-db.Table("Users").Where("CreatedAt", t.IsMonth(11)).Get()
+db.Table("Users").Where("CreatedAt", t.IsMonth(1)).Get()
 db.Table("Users").Where("CreatedAt", t.IsMonth("January")).Get()
 // 等效於：SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?
 
@@ -526,7 +517,7 @@ db.Table("Users").Where("CreatedAt", t.IsDay(16)).Get()
 // 等效於：SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?
 
 db.Table("Users").Where("CreatedAt", t.IsWeekday(5)).Get()
-db.Table("Users").Where("CreatedAt", t.IsWeekday("Monday")).Get()
+db.Table("Users").Where("CreatedAt", t.IsWeekday("Friday")).Get()
 // 等效於：SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?
 ```
 
