@@ -55,6 +55,10 @@
 		* [擁有](#擁有)
 		* [欄位比較](#欄位比較)
 		* [自訂運算子](#自訂運算子)
+		* [時間戳](#時間戳)
+			* [相對](#相對)
+			* [日期](#日期)
+			* [時間](#時間)
 		* [介於／不介於](#介於不介於)
 		* [於清單／不於清單內](#於清單不於清單內)
 		* [或／還有或](#或還有或)
@@ -485,7 +489,7 @@ db.Table("Users").Where("LastName", nil, "IS NOT").Get()
 
 [Unix Timestamp](https://en.wikipedia.org/wiki/Unix_time) 是一項將日期與時間秒數換算成數字的格式（範例：`1498001308`），這令你能夠輕易地換算其秒數，但當你要判斷時間是否為某一年、月、日，甚至範圍的時候就會有些許困難，而 Reiner 也替你想到了這一點。
 
-需要注意的是 Reiner 中的 Timestamp 無法串聯使用，這意味著當你想要確認時間戳是否為某年某月時，你需要有兩個 `Where` 條件，而不行使用 `IsYear().IsMonth()`。更多的用法可以在原生文件中找到，這裡僅列處不完全的範例供大略參考。
+需要注意的是 Reiner 中的 `Timestamp` 工具無法串聯使用，這意味著當你想要確認時間戳是否為某年某月時，你需要有兩個 `Where` 條件，而不行使用 `IsYear().IsMonth()`。更多的用法可以在原生文件中找到，這裡僅列出不完全的範例供大略參考。
 
 #### 相對
 
@@ -495,15 +499,15 @@ db.Table("Users").Where("LastName", nil, "IS NOT").Get()
 t := db.Timestamp
 
 db.Table("Users").Where("CreatedAt", t.Now("-1Y")).Get()
-// 等效於：SELECT * FROM Users WHERE DATE(FROM_UNIXTIME(CreatedAt)) = ?
+// 等效於：SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?
 
 db.Table("Users").Where("CreatedAt", t.Now("-1D")).Get()
-// 等效於：SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?
+// 等效於：SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?
 ```
 
 #### 日期
 
-或者也能判斷是否為特定年、月、日、星期或完整日期。
+判斷是否為特定年、月、日、星期或完整日期。
 
 ```go
 t := db.Timestamp
@@ -528,7 +532,7 @@ db.Table("Users").Where("CreatedAt", t.IsWeekday("Monday")).Get()
 
 #### 時間
 
-也能夠確定是否為特定時間。
+確定是否為特定時間。
 
 ```go
 t := db.Timestamp()
@@ -820,7 +824,6 @@ Reiner 除了基本的資料庫函式可供使用外，還能夠建立一個表�
 ```go
 migration := db.Migration()
 
-migration.Column("Username").Varchar(32).Primary().CreateTable("Users")
 migration.Table("Users").Column("Username").Varchar(32).Primary().Create()
 // 等效於：CREATE TABLE Users (Username VARCHAR(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
