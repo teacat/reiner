@@ -250,13 +250,10 @@ db.Table("Users").InsertMulti(values, columns)
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
 
 ```go
-db.
-	Table("Users").
-	Where("Username", "YamiOdymel").
-	Update(map[string]string{
-		"Username": "Karisu",
-		"Password": "123456",
-	})
+db.Table("Users").Where("Username", "YamiOdymel").Update(map[string]string{
+	"Username": "Karisu",
+	"Password": "123456",
+})
 // 等效於：UPDATE Users SET Username = ?, Password = ? WHERE Username = ?
 ```
 
@@ -395,11 +392,7 @@ db.RawQuery(query, params...)
 透過 Reiner 宣告 `WHERE` 條件也能夠很輕鬆。一個最基本的 `WHERE AND` 像這樣使用。
 
 ```go
-db.
-	Table("Users").
-	Where("ID", 1).
-	Where("Username", "admin").
-	Get()
+db.Table("Users").Where("ID", 1).Where("Username", "admin").Get()
 // 等效於：SELECT * FROM Users WHERE ID = ? AND Username = ?
 ```
 
@@ -408,11 +401,7 @@ db.
 `HAVING` 能夠與 `WHERE` 一同使用。
 
 ```go
-db.
-	Table("Users").
-	Where("ID", 1).
-	Having("Username", "admin").
-	Get()
+db.Table("Users").Where("ID", 1).Having("Username", "admin").Get()
 // 等效於：SELECT * FROM Users WHERE ID = ? HAVING Username = ?
 ```
 
@@ -442,10 +431,7 @@ db.Table("Users").Where("ID", 50, ">=").Get()
 透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
-db.
-	Table("Users").
-	Where("ID", []int{0, 20}, "BETWEEN").
-	Get()
+db.Table("Users").Where("ID", []int{0, 20}, "BETWEEN").Get()
 // 等效於：SELECT * FROM Users WHERE ID BETWEEN 4 AND 20
 ```
 
@@ -454,10 +440,7 @@ db.
 透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
-db.
-	Table("Users").
-	Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").
-	Get()
+db.Table("Users").Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?);
 ```
 
@@ -466,22 +449,14 @@ db.
 通常來說多個 `Where` 會產生 `AND` 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 `OrWhere`。
 
 ```go
-db.
-	Table("Users").
-	Where("FirstNamte", "John").
-	OrWhere("FirstNamte", "Peter").
-	Get()
+db.Table("Users").Where("FirstNamte", "John").OrWhere("FirstNamte", "Peter").Get()
 // 等效於：SELECT * FROM Users WHERE FirstName = ? OR FirstName = ?
 ```
 
 如果你的要求比較多，希望達到「A = B 或者 (A = C 或 A = D)」的話，你可以嘗試這樣。
 
 ```go
-db.
-	Table("Users").
-	Where("A = B").
-	OrWhere("(A = C OR A = D)").
-	Get()
+db.Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
 // 等效於：SELECT * FROM Users WHERE A = B OR (A = C OR A = D)
 ```
 
@@ -491,15 +466,9 @@ db.
 
 ```go
 // 別這樣。
-db.
-	Table("Users").
-	Where("LastName", "NULL", "IS NOT").
-	Get()
+db.Table("Users").Where("LastName", "NULL", "IS NOT").Get()
 // 這樣才對。
-db.
-	Table("Users").
-	Where("LastName", nil, "IS NOT").
-	Get()
+db.Table("Users").Where("LastName", nil, "IS NOT").Get()
 // 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
 ```
 
@@ -508,11 +477,7 @@ db.
 你也能夠直接在條件中輸入指令。
 
 ```go
-db.
-	Table("Users").
-	Where("ID != CompanyID").
-	Where("DATE(CreatedAt) = DATE(LastLogin)").
-	Get()
+db.Table("Users").Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLogin)").Get()
 // 等效於：SELECT * FROM Users WHERE ID != CompanyID AND DATE(CreatedAt) = DATE(LastLogin)
 ```
 
@@ -521,11 +486,7 @@ db.
 生條件中可以透過 `?` 符號，並且在後面傳入自訂變數。
 
 ```go
-db.
-	Table("Users").
-	Where("(ID = ? OR ID = ?)", 6, 2).
-	Where("Login", "Mike").
-	Get()
+db.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
 // 等效於：SELECT * FROM Users WHERE (ID = ? OR ID = ?) AND Login = ?
 ```
 
@@ -546,12 +507,7 @@ if err == nil && db.Count != 0 {
 Reiner 亦支援排序功能，如遞增或遞減，亦能擺放函式。
 
 ```go
-db.
-	Table("Users").
-	OrderBy("ID", "ASC").
-	OrderBy("Login", "DESC").
-	OrderBy("RAND()").
-	Get()
+db.Table("Users").OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get()
 // 等效於：SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND();
 ```
 
@@ -560,10 +516,7 @@ db.
 也能夠從值進行排序，只需要傳入一個切片即可。
 
 ```go
-db.
-	Table("Users").
-	OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).
-	Get()
+db.Table("Users").OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get()
 // 等效於：SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC;
 ```
 
@@ -581,11 +534,10 @@ db.Table("Users").GroupBy("Name").Get()
 Reiner 支援多種表格加入方式，如：`InnerJoin`、`LeftJoin`、`RightJoin`、`NaturalJoin`、`CrossJoin`。
 
 ```go
-db.
-	Table("Products").
-	LeftJoin("Users", "Products.TenantID = Users.TenantID").
-	Where("Users.ID", 6).
-	Get("Users.Name", "Products.ProductName")
+db.Table("Products")
+db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
+db.Where("Users.ID", 6)
+db.Get("Users.Name", "Products.ProductName")
 // 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?
 ```
 
@@ -594,11 +546,10 @@ db.
 你亦能透過 `JoinWhere` 或 `JoinOrWhere` 擴展表格加入的限制條件。
 
 ```go
-db.
-	Table("Products").
-	LeftJoin("Users", "Products.TenantID = Users.TenantID").
-	JoinOrWhere("Users", "Users.TenantID", 5).
-	Get("Users.Name", "Products.ProductName")
+db.Table("Products")
+db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
+db.JoinOrWhere("Users", "Users.TenantID", 5)
+db.Get("Users.Name", "Products.ProductName")
 // 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)
 ```
 
@@ -618,14 +569,9 @@ subQuery.Table("Users").Get()
 
 ```go
 subQuery := db.SubQuery()
-subQuery.
-	Table("Products").
-	Where("Quantity", 2, ">").
-	Get("UserID")
-db.
-	Table("Users").
-	Where("ID", subQuery, "IN").
-	Get()
+subQuery.Table("Products").Where("Quantity", 2, ">").Get("UserID")
+
+db.Table("Users").Where("ID", subQuery, "IN").Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)
 ```
 
@@ -635,11 +581,8 @@ db.
 
 ```go
 subQuery := db.SubQuery()
-subQuery.
-	Table("Users").
-	Where("ID", 6).
-	Columns("Name").
-	GetOne()
+subQuery.Table("Users").Where("ID", 6).Columns("Name").GetOne()
+
 db.Table("Products").Insert(map[string]interface{}{
 	"ProductName": "測試商品",
 	"UserID":      subQuery,
@@ -656,10 +599,9 @@ db.Table("Products").Insert(map[string]interface{}{
 subQuery := db.SubQuery("Users")
 subQuery.Table("Users").Where("Active", 1).Get()
 
-db.
-	Table("Products").
-	LeftJoin(subQuery, "Products.UserID = U.ID").
-	Get("U.Username", "Products.ProductName")
+db.Table("Products")
+db.LeftJoin(subQuery, "Products.UserID = U.ID")
+db.Get("U.Username", "Products.ProductName")
 // 等效於：SELECT Users.Username, Products.ProductName FROM Products AS Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID
 ```
 
@@ -680,11 +622,7 @@ db.Table("Products").Where(subQuery, "EXISTS").Get()
 有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 `Has` 用來確定資料庫是否有這筆資料。
 
 ```go
-has, err := db.
-	Table("Users").
-	Where("Username", "yamiodymel").
-	Where("Password", "123456").
-	Has()
+has, err := db.Table("Users").Where("Username", "yamiodymel").Where("Password", "123456").Has()
 if has {
 	fmt.Println("登入成功！")
 } else {
