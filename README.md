@@ -1,10 +1,10 @@
 # Reiner
 
-一個由 Golang 撰寫且比起部分 ORM 還要讚的 MySQL 指令包覆函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 Golang 而已（但還是多了些功能）。
+一個由 [Golang](https://golang.org/) 撰寫且比起部分 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 還要讚的 [MySQL](https://www.mysql.com/) 指令包覆函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 [Golang](https://golang.org/) 而已（但還是多了些功能）。
 
 #  這是什麼？
 
-萊納是一個由 Golang 撰寫的 MySQL 的指令包覆函式庫（不是 ORM，永遠也不會是），幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
+萊納是一個由 [Golang](https://golang.org/) 撰寫的 [MySQL](https://www.mysql.com/) 的指令包覆函式庫（不是 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84)，永遠也不會是），幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
 
 * 幾乎全功能的函式庫。
 * 支援 MySQL 複寫橫向擴展機制（區分讀／寫連線）。
@@ -13,15 +13,15 @@
 * 資料庫表格建構協助函式。
 * 支援子指令（Sub Query）。
 * 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
-* 透過預置聲明（Prepared Statement），99.9% 避免 SQL 注入攻擊。
+* 透過預置聲明（[Prepared Statement](https://en.wikipedia.org/wiki/Prepared_statement)），99.9% 避免 SQL 注入攻擊。
 
 # 為什麼？
 
-[Gorm](https://github.com/jinzhu/gorm) 已經是 Golang 裡的 ORM 典範，但實際上要操作複雜與關聯性高的 SQL 指令時並不是很合適，而 Reiner 解決了這個問題。Reiner 也試圖不要和建構體扯上關係，不希望使用者需要手動指定任何標籤在建構體中。
+[Gorm](https://github.com/jinzhu/gorm) 已經是 [Golang](https://golang.org/) 裡的 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 典範，但實際上要操作複雜與關聯性高的 SQL 指令時並不是很合適，而 Reiner 解決了這個問題。Reiner 也試圖不要和建構體扯上關係，不希望使用者需要手動指定任何標籤在建構體中。
 
 # 執行緒與併發安全性？
 
-我們都知道 Golang 的目標就是併發程式，當共用同個資料庫的時候請透過 Copy() 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
+我們都知道 [Golang](https://golang.org/) 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
 
 # 索引
 
@@ -86,7 +86,7 @@
 
 # 安裝方式
 
-打開終端機並且透過 go get 安裝此套件即可。
+打開終端機並且透過 `go get` 安裝此套件即可。
 
 ```bash
 $ go get github.com/TeaMeow/Reiner
@@ -94,7 +94,7 @@ $ go get github.com/TeaMeow/Reiner
 
 # 命名建議
 
-在 Reiner 中為了配合 Golang 程式命名規範，我們建議你將所有事情以 CamelCase 命名，因為這能夠確保兩邊的風格相同。事實上，甚至連資料庫內的表格名稱、欄位名稱都該這麼做。當遇上 ip、id、url 時，請遵循 Golang 的命名方式皆以大寫使用，如 AddrIP、UserID、PhotoURL，而不是 AddrIp、UserId、PhotoUrl。
+在 Reiner 中為了配合 [Golang](https://golang.org/) 程式命名規範，我們建議你將所有事情以[駝峰式大小寫](https://zh.wikipedia.org/zh-tw/%E9%A7%9D%E5%B3%B0%E5%BC%8F%E5%A4%A7%E5%B0%8F%E5%AF%AB)命名，因為這能夠確保兩邊的風格相同。事實上，甚至連資料庫內的表格名稱、欄位名稱都該這麼做。當遇上 `ip`、`id`、`url` 時，請遵循 Golang 的命名方式皆以大寫使用，如 `AddrIP`、`UserID`、`PhotoURL`，而不是 `AddrIp`、`UserId`、`PhotoUrl`。
 
 # 使用方式
 
@@ -102,7 +102,7 @@ Reiner 的使用方式十分直覺與簡易，類似基本的 SQL 指令集但�
 
 ## 資料庫連線
 
-首先你需要透過函式來將 Reiner 連上資料庫，如此一來才能夠初始化包覆函式庫與相關的資料庫表格建構函式。一個最基本的單資料庫連線，讀寫都將透過此連線，連線字串共用於其它套件是基於 DSN（Data Source Name）。
+首先你需要透過函式來將 Reiner 連上資料庫，如此一來才能夠初始化包覆函式庫與相關的資料庫表格建構函式。一個最基本的單資料庫連線，讀寫都將透過此連線，連線字串共用於其它套件是基於 DSN（[Data Source Name](https://en.wikipedia.org/wiki/Data_source_name)）。
 
 ```go
 import "github.com/TeaMeow/Reiner"
@@ -115,7 +115,7 @@ if err != nil {
 
 ### 水平擴展（讀／寫分離）
 
-這種方式可以有好幾個主要資料庫、副從資料庫，這意味著寫入時都會流向到主要資料庫，而讀取時都會向副從資料庫請求。這很適合用在大型結構還有水平擴展上。當你有多個資料庫來源時，Reiner 會逐一遞詢每個資料庫來源，英文稱其為 Round Robin，也就是每個資料庫都會輪流呼叫而避免單個資料庫負荷過重，也不會有隨機呼叫的事情發生。
+這種方式可以有好幾個主要資料庫、副從資料庫，這意味著寫入時都會流向到主要資料庫，而讀取時都會向副從資料庫請求。這很適合用在大型結構還有水平擴展上。當你有多個資料庫來源時，Reiner 會逐一遞詢每個資料庫來源，英文稱其為 [Round Robin](https://zh.wikipedia.org/zh-tw/%E5%BE%AA%E7%92%B0%E5%88%B6)，也就是每個資料庫都會輪流呼叫而避免單個資料庫負荷過重，也不會有隨機呼叫的事情發生。
 
 ```go
 import "github.com/TeaMeow/Reiner"
@@ -141,7 +141,7 @@ err := db.Bind(&user).Get("Users")
 
 ### 逐行掃描
 
-如果你偏好傳統的 rows.Next 來對每筆資料進行逐行掃描，Reiner 亦提供了 Scan 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 *sql.Rows 的函式。
+如果你偏好傳統的 `rows.Next` 來對每筆資料進行逐行掃描，Reiner 亦提供了 `Scan` 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 `*sql.Rows` 的函式。
 
 ```go
 err := db.Scan(func(rows *sql.Rows) {
@@ -150,7 +150,7 @@ err := db.Scan(func(rows *sql.Rows) {
 }).Get("Users")
 ```
 
-或者你不想要透過 Reiner 的 Scan 方式，你可以透過 .LastRows 直接取得最後一次的 *sql.Rows。
+或者你不想要透過 Reiner 的 `Scan` 方式，你可以透過 `LastRows` 直接取得最後一次的 `*sql.Rows`。
 
 ```go
 err := db.Get("Users")
@@ -163,7 +163,7 @@ for rows.Next() {
 
 ## 插入
 
-透過 Reiner 你可以很輕鬆地透過建構體或是 map 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 LastInsertID 獲得最後一次插入的編號。
+透過 Reiner 你可以很輕鬆地透過建構體或是 map 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
 
 ```go
 err := db.Insert("Users", map[string]string{
@@ -187,7 +187,7 @@ err := db.Replace("Users", map[string]string{
 
 ### 函式
 
-插入時你可以透過 Reiner 提供的函式來執行像是 SHA1() 或者取得目前時間的 NOW()，甚至將目前時間加上一年⋯等。
+插入時你可以透過 Reiner 提供的函式來執行像是 `SHA1()` 或者取得目前時間的 `NOW()`，甚至將目前時間加上一年⋯等。
 
 ```go
 err := db.Insert("Users", map[string]interface{}{
@@ -215,7 +215,7 @@ err := db.OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert("Users", map[s
 
 ### 多筆資料
 
-Reiner 允許你透過 InsertMulti 同時間插入多筆資料（單指令插入多筆資料），這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
+Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料（單指令插入多筆資料），這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
 
 ```go
 data := []map[string]string{
@@ -259,7 +259,7 @@ db.Where("Username", "YamiOdymel").Update("Users", map[string]string{
 
 ### 筆數限制
 
-Limit 能夠限制更新的筆數，如果是 10，那就表示只更新最前面 10 筆資料而非全部。
+`Limit` 能夠限制更新的筆數，如果是 10，那就表示只更新最前面 10 筆資料而非全部。
 
 ```go
 db.Limit(10).Update("Users", data)
@@ -268,7 +268,7 @@ db.Limit(10).Update("Users", data)
 
 ## 選擇與取得
 
-最基本的選擇在 Reiner 中稱之為 Get 而不是 Select。如果你想要取得 rows.Next 來掃描每一行的結果，Reiner 提供了 LastRows 即為最後一次的 rows 資料。
+最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。如果你想要取得 `rows.Next` 來掃描每一行的結果，Reiner 提供了 `LastRows` 即為最後一次的 `*sql.rows` 資料。
 
 ```go
 err := db.Get("Users")
@@ -277,7 +277,7 @@ err := db.Get("Users")
 
 ### 筆數限制
 
-Limit 能夠限制取得的筆數，如果是 10，那就表示只取得最前面 10 筆資料而非全部。
+`Limit` 能夠限制取得的筆數，如果是 10，那就表示只取得最前面 10 筆資料而非全部。
 
 ```go
 db.Limit(10).Get("Users")
@@ -286,7 +286,7 @@ db.Limit(10).Get("Users")
 
 ### 指定欄位
 
-你可以透過 Columns 指定要取得的欄位名稱，多個欄位由逗點區分，亦能是函式。
+你可以透過 `Columns` 指定要取得的欄位名稱，多個欄位由逗點區分，亦能是函式。
 
 ```go
 db.Columns("Username", "Nickname").Get("Users")
@@ -298,7 +298,7 @@ db.Columns("COUNT(*) AS Count").Get("Users")
 
 ### 單行資料
 
-預設來說 Get 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 GetOne。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
+預設來說 `Get` 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 `GetOne`。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
 
 ```go
 db.Where("ID", 1).GetOne("Users")
@@ -310,7 +310,7 @@ db.Columns("SUM(ID)", "COUNT(*) AS Count").GetOne("Users")
 
 ### 取得單值
 
-這就像 GetOne，但 GetValue 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
+這就像 `GetOne`，但 `GetValue` 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
 db.Columns("Username").GetValue("Users")
@@ -353,7 +353,7 @@ db.RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
 
 ### 取得單值
 
-透過 RawQueryValue 可以直接取得單個欄位得值，而不是一個陣列或切片。
+透過 `RawQueryValue` 可以直接取得單個欄位得值，而不是一個陣列或切片。
 
 ```go
 db.RawQueryValue("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
@@ -361,7 +361,7 @@ db.RawQueryValue("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
 
 ### 單值多行
 
-透過 RawQueryValue 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
+透過 `RawQueryValue` 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
 
 ```go
 db.RawQueryValue("SELECT Username FROM Users LIMIT 10")
@@ -389,7 +389,7 @@ db.RawQuery(query, params...)
 
 ## 條件宣告
 
-透過 Reiner 宣告 WHERE 條件也能夠很輕鬆。一個最基本的 WHERE AND 像這樣使用。
+透過 Reiner 宣告 `WHERE` 條件也能夠很輕鬆。一個最基本的 `WHERE AND` 像這樣使用。
 
 ```go
 db.Where("ID", 1).Where("Username", "admin").Get("Users")
@@ -398,7 +398,7 @@ db.Where("ID", 1).Where("Username", "admin").Get("Users")
 
 ### 擁有
 
-HAVING 能夠與 WHERE 一同使用。
+`HAVING` 能夠與 `WHERE` 一同使用。
 
 ```go
 db.Where("ID", 1).Having("Username", "admin").Get("Users")
@@ -419,7 +419,7 @@ db.Where("LastLogin = CreatedAt").Get("Users")
 
 ### 自訂運算子
 
-在 Where 或 Having 的最後一個參數你可以自訂條件的運算子，如 >=、<=、<>⋯等。
+在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 >=、<=、<>⋯等。
 
 ```go
 db.Where("ID", 50, ">=").Get("Users")
@@ -428,7 +428,7 @@ db.Where("ID", 50, ">=").Get("Users")
 
 ### 介於／不介於
 
-透過 BETWEEN 和 NOT BETWEEN 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
+透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
 db.Where("ID", []int{0, 20}, "BETWEEN").Get("Users")
@@ -437,7 +437,7 @@ db.Where("ID", []int{0, 20}, "BETWEEN").Get("Users")
 
 ### 於清單／不於清單內
 
-透過 IN 和 NOT IN 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
+透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
 db.Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("Users")
@@ -446,7 +446,7 @@ db.Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("Users")
 
 ### 或／還有或
 
-通常來說多個 Where 會產生 AND 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 OrWhere。
+通常來說多個 `Where` 會產生 `AND` 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 `OrWhere`。
 
 ```go
 db.Where("FirstNamte", "John").OrWhere("FirstNamte", "Peter").Get("Users")
@@ -462,7 +462,7 @@ db.Where("A = B").OrWhere("(A = C OR A = D)").Get("Users")
 
 ### 空值
 
-要確定某個欄位是否為空值，傳入一個 nil 即可。
+要確定某個欄位是否為空值，傳入一個 `nil` 即可。
 
 ```go
 // 別這樣。
@@ -483,7 +483,7 @@ db.Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLogin)").Get("User
 
 #### 條件變數
 
-生條件中可以透過 ? 符號，並且在後面傳入自訂變數。
+生條件中可以透過 `?` 符號，並且在後面傳入自訂變數。
 
 ```go
 db.Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get("Users")
@@ -492,7 +492,7 @@ db.Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get("Users")
 
 ## 刪除
 
-刪除一筆資料再簡單不過了，透過 Count 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
+刪除一筆資料再簡單不過了，透過 `Count` 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
 
 ```go
 err := db.Where("ID", 1).Delete("Users")
@@ -522,7 +522,7 @@ db.OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get("Use
 
 ## 群組
 
-簡單的透過 GroupBy 就能夠將資料由指定欄位群組排序。
+簡單的透過 `GroupBy` 就能夠將資料由指定欄位群組排序。
 
 ```go
 db.GroupBy("Name").Get("Users")
@@ -623,7 +623,7 @@ db.Where(subQuery, "EXISTS").Get("Products")
 
 ## 是否擁有該筆資料
 
-有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 Has 用來確定資料庫是否有這筆資料。
+有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 `Has` 用來確定資料庫是否有這筆資料。
 
 ```go
 db.Where("Username", "yamiodymel").Where("Password", "123456")
@@ -647,7 +647,7 @@ Reiner 有提供一些輔助用的函式協助你除錯、紀錄，或者更加�
 db.Disconnect()
 ```
 
-你也能在資料庫發生錯誤、連線遺失時透過 Connect 來重新手動連線。
+你也能在資料庫發生錯誤、連線遺失時透過 `Connect` 來重新手動連線。
 
 ```go
 if err := db.Ping(); err != nil {
@@ -679,14 +679,14 @@ fmt.Println("總共更新 %s 筆資料", db.Count)
 
 ### 最後插入的編號
 
-當插入一筆新的資料，而該表格帶有自動遞增的欄位時，就能透過 LastInsertID 取得最新一筆資料的編號。
+當插入一筆新的資料，而該表格帶有自動遞增的欄位時，就能透過 `LastInsertID` 取得最新一筆資料的編號。
 
 ```go
 db.Insert("Users", data)
 id := db.LastInsertID
 ```
 
-如果你是同時間插入多筆資料，你仍可以透過 LastInsertIDs 取得剛才插入的所有資料編號。
+如果你是同時間插入多筆資料，你仍可以透過 `LastInsertIDs` 取得剛才插入的所有資料編號。
 
 ```go
 db.InsertMulti("Users", data)
@@ -695,7 +695,7 @@ ids := db.LastInsertIDs
 
 ## 交易函式
 
-交易函式僅限於 InnoDB 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 Begin 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 Rollback 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 Commit 將這次的變更永久地儲存到資料庫中。
+交易函式僅限於 [InnoDB](https://zh.wikipedia.org/zh-tw/InnoDB) 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 `Begin` 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 `Rollback` 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 `Commit` 將這次的變更永久地儲存到資料庫中。
 
 ```go
 err := db.Begin().Insert("Wallets", data)
