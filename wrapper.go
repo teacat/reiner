@@ -2,18 +2,43 @@ package reiner
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
 
 	// The MySQL driver.
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type tableName string
+
+type condition struct {
+	typ       string
+	operator  string
+	column    string
+	subQuery  string
+	rawQuery  string
+	connector string
+	values    []interface{}
+}
+
+type join struct {
+	tableName  string
+	typ        string
+	condition  string
+	conditions []condition
+}
+
 // Wrapper represents a database connection.
 type Wrapper struct {
-	db         *DB
-	isSubQuery bool
-	tableName  []string
-
-	destination interface{}
+	db           *DB
+	isSubQuery   bool
+	query        string
+	alias        string
+	tableName    []string
+	queryOptions []string
+	destination  interface{}
+	joins        map[tableName]join
+	params       []interface{}
 
 	//
 	Timestamp *Timestamp
@@ -45,12 +70,87 @@ func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{db: db}
 }
 
+func (w *Wrapper) clean() {
+	w.tableName = []string{}
+}
+
+func (w *Wrapper) bindParams(params []interface{}) {
+	for _, v := range params {
+		w.bindParam(v)
+	}
+}
+
+func (w *Wrapper) bindParam(value interface{}) {
+	w.params = append(w.params, value)
+}
+
+func (w *Wrapper) buildPair(operator string, value interface{}) (query string) {
+	switch v := value.(type) {
+	// Is a sub query.
+	case *Wrapper:
+		subQuery := v.query
+		params := v.params
+		alias := ""
+		if v.alias != "" {
+			alias = fmt.Sprintf("%s ", v.alias)
+		}
+		w.bindParams(params)
+		query = fmt.Sprintf("%s (%s) %s", operator, subQuery, alias)
+	// Is values.
+	default:
+		w.bindParam(value)
+		query = fmt.Sprintf(" %s ?", operator)
+	}
+	return
+}
+
+func (w *Wrapper) buildCondition(operator string, value []interface{}) {
+	switch operator {
+	case "NOT IN", "IN":
+	case "NOT BETWEEN", "BETWEEN":
+	case "NOT EXISTS", "EXISTS":
+	default:
+	}
+}
+
+func (w *Wrapper) buildJoin() {
+	if len(w.joins) == 0 {
+		return
+	}
+	for _, v := range w.joins {
+		w.query += fmt.Sprintf("%s JOIN %s AS %s ON %s ", v.typ, v.tableName, v.tableName, v.condition)
+		for _, c := range v.conditions {
+			w.query += fmt.Sprintf("%s %s ", c.connector, c.column)
+			w.buildCondition(c.operator, c.values)
+		}
+	}
+	w.query += "xx"
+	return
+}
+
+func (w *Wrapper) buildQuery(numRows int, data interface{}) {
+	w.buildJoin()
+	return
+}
+
+func (w *Wrapper) buildInsert(operation string, data interface{}) {
+	w.query = fmt.Sprintf("%s %s INTO %s", operation, strings.Join(w.queryOptions, ", "), w.tableName[0])
+	w.buildQuery(0, data)
+	return
+}
+
 func (w *Wrapper) Table(tableName ...string) *Wrapper {
 	w.tableName = tableName
 	return w
 }
 
 func (w *Wrapper) Insert(data interface{}) (err error) {
+	if w.isSubQuery {
+		err = nil
+		return
+	}
+	w.buildInsert("INSERT", data)
+	w.LastQuery = w.query
 	return
 }
 
