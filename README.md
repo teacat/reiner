@@ -23,14 +23,66 @@
 
 我們都知道 Golang 的目標就是併發程式，當共用同個資料庫的時候請透過 Copy() 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
 
-# 相關連結
+# 索引
 
-這裡是 Reiner 受啟發，或是和資料庫有所關聯的連結。
-
-* [kisielk/sqlstruct](http://godoc.org/github.com/kisielk/sqlstruct)
-* [jmoiron/sqlx](https://github.com/jmoiron/sqlx)
-* [russross/meddler](https://github.com/russross/meddler)
-* [jinzhu/gorm](https://github.com/jinzhu/gorm)
+* [安裝方式](#安裝方式)
+* [命名建議](#命名建議)
+* [使用方式](#使用方式)
+    * [資料庫連線](#資料庫連線)
+    * [水平擴展（讀／寫分離）](#水平擴展（讀／寫分離）)
+	* [資料綁定與處理](#資料綁定與處理)
+		* [逐行掃描](#逐行掃描)
+	* [插入](#插入)
+		* [覆蓋](#覆蓋)
+		* [函式](#函式)
+		* [當重複時](#當重複時)
+		* [多筆資料](#多筆資料)
+			* [省略重複鍵名](#省略重複鍵名)
+	* [更新](#更新)
+		* [筆數限制](#筆數限制)
+	* [選擇與取得](#選擇與取得)
+		* [筆數限制](#筆數限制)
+		* [指定欄位](#指定欄位)
+		* [單行資料](#單行資料)
+		* [取得單值](#取得單值)
+		* [分頁功能](#分頁功能)
+	* [執行生指令](#執行生指令)
+		* [單行資料](#單行資料)
+		* [取得單值](#取得單值)
+		* [單值多行](#單值多行)
+		* [進階方式](#進階方式)
+	* [條件宣告](#條件宣告)
+		* [擁有](#擁有)
+		* [欄位比較](#欄位比較)
+		* [自訂運算子](#自訂運算子)
+		* [介於／不介於](#介於／不介於)
+		* [於清單／不於清單內](#於清單／不於清單內)
+		* [或／還有或](#或／還有或)
+		* [空值](#空值)
+		* [生條件](#生條件)
+			* [條件變數](#條件變數)
+	* [刪除](#刪除)
+	* [排序](#排序)
+		* [從值排序](#從值排序)
+	* [群組](#群組)
+	* [加入](#加入)
+		* [條件限制](#條件限制)
+	* [子指令](#子指令)
+		* [選擇／取得](#選擇／取得)
+		* [插入](#插入)
+		* [加入](#加入)
+		* [存在／不存在](#存在／不存在)
+	* [是否擁有該筆資料](#是否擁有該筆資料)
+	* [輔助函式](#輔助函式)
+		* [資料庫連線](#資料庫連線)
+		* [最後執行的 SQL 指令](#最後執行的 SQL 指令)
+		* [結果／影響的行數](#結果／影響的行數)
+		* [最後插入的編號](#最後插入的編號)
+	* [交易函式](#交易函式)
+	* [鎖定表格](#鎖定表格)
+	* [指令關鍵字](#指令關鍵字)
+		* [多個選項](#多個選項)
+* [表格建構函式](#表格建構函式)
 
 # 安裝方式
 
@@ -123,7 +175,14 @@ err := db.Insert("Users", map[string]string{
 
 ### 覆蓋
 
+覆蓋的用法與插入相同，當有同筆資料時會先進行刪除，然後再插入一筆新的，這對有外鍵的表格來說十分危險。
+
 ```go
+err := db.Replace("Users", map[string]string{
+	"Username": "YamiOdymel",
+	"Password": "test",
+})
+// 等效於：REPLACE INTO Users (Username, Password) VALUES (?, ?)
 ```
 
 ### 函式
@@ -140,17 +199,18 @@ err := db.Insert("Users", map[string]interface{}{
 // 等效於：INSERT INTO Users (Username, Password, Expires, CreatedAt) VALUES (?, SHA1(?), NOW() + INTERVAL 1 YEAR, NOW())
 ```
 
-### On Duplicate
+### 當重複時
+
+Reiner 支援了插入資料若重複時可以更新該筆資料的指定欄位，這類似「覆蓋」，但這並不會先刪除原先的資料，這種方式僅會在插入時檢查是否重複，若重複則更新該筆資料。
 
 ```go
 lastInsertID := "ID"
 err := db.OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert("Users", map[string]interface{}{
 	"Username":  "YamiOdymel",
 	"Password":  "test",
-	"CreatedAt": db.Now(),
 	"UpdatedAt": db.Now(),
 })
-// 等效於：INSERT INTO Users (Username, Password, CreatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = UpdatedAt
+// 等效於：INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = VALUE(UpdatedAt)
 ```
 
 ### 多筆資料
@@ -412,14 +472,18 @@ db.Where("LastName", nil, "IS NOT").Get("Users")
 // 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
 ```
 
-### Raw
+### 生條件
+
+你也能夠直接在條件中輸入指令。
 
 ```go
 db.Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLogin)").Get("Users")
 // 等效於：SELECT * FROM Users WHERE ID != CompanyID AND DATE(CreatedAt) = DATE(LastLogin)
 ```
 
-### Raw With Params
+#### 條件變數
+
+生條件中可以透過 ? 符號，並且在後面傳入自訂變數。
 
 ```go
 db.Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get("Users")
@@ -700,3 +764,12 @@ migration.Column("Username").Varchar(32).Primary().CreateTable("Users")
 | Int       | Text       |           |            | Timestamp |           |       |
 | BigInt    | MediumText |           |            | Year      |           |       |
 |           | LongText   |           |            |           |           |       |
+
+# 相關連結
+
+這裡是 Reiner 受啟發，或是和資料庫有所關聯的連結。
+
+* [kisielk/sqlstruct](http://godoc.org/github.com/kisielk/sqlstruct)
+* [jmoiron/sqlx](https://github.com/jmoiron/sqlx)
+* [russross/meddler](https://github.com/russross/meddler)
+* [jinzhu/gorm](https://github.com/jinzhu/gorm)
