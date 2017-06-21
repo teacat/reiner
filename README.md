@@ -14,7 +14,6 @@
 * 支援子指令（Sub Query）。
 * 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
 * 透過預置聲明（Prepared Statement），99.9% 避免 SQL 注入攻擊。
-* 自動脫逸表格名稱，避免觸動保留字。
 
 # 為什麼？
 
@@ -22,7 +21,7 @@
 
 # 執行緒與併發安全性？
 
-我們都知道 Golang 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
+我們都知道 Golang 的目標就是併發程式，當共用同個資料庫的時候請透過 Copy() 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
 
 # 相關連結
 
@@ -35,7 +34,7 @@
 
 # 安裝方式
 
-打開終端機並且透過 `go get` 安裝此套件即可。
+打開終端機並且透過 go get 安裝此套件即可。
 
 ```bash
 $ go get github.com/TeaMeow/Reiner
@@ -43,7 +42,7 @@ $ go get github.com/TeaMeow/Reiner
 
 # 命名建議
 
-在 Reiner 中為了配合 Golang 程式命名規範，我們建議你將所有事情以 CamelCase 命名，因為這能夠確保兩邊的風格相同。事實上，甚至連資料庫內的表格名稱、欄位名稱都該這麼做。當遇上 `ip`、`id`、`url` 時，請遵循 Golang 的命名方式皆以大寫使用，如 `AddrIP`、`UserID`、`PhotoURL`，而不是 `AddrIp`、`UserId`、`PhotoUrl`。
+在 Reiner 中為了配合 Golang 程式命名規範，我們建議你將所有事情以 CamelCase 命名，因為這能夠確保兩邊的風格相同。事實上，甚至連資料庫內的表格名稱、欄位名稱都該這麼做。當遇上 ip、id、url 時，請遵循 Golang 的命名方式皆以大寫使用，如 AddrIP、UserID、PhotoURL，而不是 AddrIp、UserId、PhotoUrl。
 
 # 使用方式
 
@@ -90,7 +89,7 @@ err := db.Bind(&user).Get("Users")
 
 ### 逐行掃描
 
-如果你偏好傳統的 `rows.Next` 來對每筆資料進行逐行掃描，Reiner 亦提供了 `Scan` 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 `*sql.Rows` 的函式。
+如果你偏好傳統的 rows.Next 來對每筆資料進行逐行掃描，Reiner 亦提供了 Scan 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 *sql.Rows 的函式。
 
 ```go
 err := db.Scan(func(rows *sql.Rows) {
@@ -99,7 +98,7 @@ err := db.Scan(func(rows *sql.Rows) {
 }).Get("Users")
 ```
 
-或者你不想要透過 `Reiner` 的 `Scan` 方式，你可以透過 `.LastRows` 直接取得最後一次的 `*sql.Rows`。
+或者你不想要透過 Reiner 的 Scan 方式，你可以透過 .LastRows 直接取得最後一次的 *sql.Rows。
 
 ```go
 err := db.Get("Users")
@@ -112,14 +111,14 @@ for rows.Next() {
 
 ## 插入
 
-透過 Reiner 你可以很輕鬆地透過建構體或是 `map` 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
+透過 Reiner 你可以很輕鬆地透過建構體或是 map 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 LastInsertID 獲得最後一次插入的編號。
 
 ```go
 err := db.Insert("Users", map[string]string{
 	"Username": "YamiOdymel",
 	"Password": "test",
 })
-// 等效於：INSERT INTO `Users` (`Username`, `Password`) VALUES (?, ?)
+// 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?)
 ```
 
 ### 覆蓋
@@ -129,7 +128,7 @@ err := db.Insert("Users", map[string]string{
 
 ### 函式
 
-插入時你可以透過 Reiner 提供的函式來執行像是 `SHA1()` 或者取得目前時間的 `NOW()`，甚至將目前時間加上一年⋯等。
+插入時你可以透過 Reiner 提供的函式來執行像是 SHA1() 或者取得目前時間的 NOW()，甚至將目前時間加上一年⋯等。
 
 ```go
 err := db.Insert("Users", map[string]interface{}{
@@ -138,7 +137,7 @@ err := db.Insert("Users", map[string]interface{}{
 	"Expires":  db.Now("+1Y"),
 	"CreatedAt": db.Now(),
 })
-// 等效於：INSERT INTO `Users` (`Username`, `Password`, `Expires`, `CreatedAt`) VALUES (?, SHA1(?), NOW() + INTERVAL 1 YEAR, NOW())
+// 等效於：INSERT INTO Users (Username, Password, Expires, CreatedAt) VALUES (?, SHA1(?), NOW() + INTERVAL 1 YEAR, NOW())
 ```
 
 ### On Duplicate
@@ -151,12 +150,12 @@ err := db.OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert("Users", map[s
 	"CreatedAt": db.Now(),
 	"UpdatedAt": db.Now(),
 })
-// 等效於：INSERT INTO `Users` (`Username`, `Password`, `CreatedAt`) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE `UpdatedAt` = `UpdatedAt`
+// 等效於：INSERT INTO Users (Username, Password, CreatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = UpdatedAt
 ```
 
 ### 多筆資料
 
-Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料（單指令插入多筆資料），這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
+Reiner 允許你透過 InsertMulti 同時間插入多筆資料（單指令插入多筆資料），這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
 
 ```go
 data := []map[string]string{
@@ -169,7 +168,7 @@ data := []map[string]string{
 	},
 }
 db.InsertMulti("Users", data)
-// 等效於：INSERT INTO `Users` (`Username`, `Password`) VALUES (?, ?), (?, ?)
+// 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)
 ```
 
 #### 省略重複鍵名
@@ -183,7 +182,7 @@ values := [][]interface{}{
 }
 columns := []string{"username", "password"}
 db.InsertMulti("users", values, columns)
-// 等效於：INSERT INTO `Users` (`Username`, `Password`) VALUES (?, ?), (?, ?)
+// 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)
 ```
 
 ## 更新
@@ -195,63 +194,63 @@ db.Where("Username", "YamiOdymel").Update("Users", map[string]string{
 	"Username": "Karisu",
 	"Password": "123456",
 })
-// 等效於：UPDATE `Users` SET `Username` = ?, `Password` = ? WHERE `Username` = ?
+// 等效於：UPDATE Users SET Username = ?, Password = ? WHERE Username = ?
 ```
 
 ### 筆數限制
 
-`Limit` 能夠限制更新的筆數，如果是 `10`，那就表示只更新最前面 10 筆資料而非全部。
+Limit 能夠限制更新的筆數，如果是 10，那就表示只更新最前面 10 筆資料而非全部。
 
 ```go
 db.Limit(10).Update("Users", data)
-// 等效於：UPDATE `Users` SET ... LIMIT 10
+// 等效於：UPDATE Users SET ... LIMIT 10
 ```
 
 ## 選擇與取得
 
-最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。如果你想要取得 `rows.Next` 來掃描每一行的結果，Reiner 提供了 `LastRows` 即為最後一次的 `rows` 資料。
+最基本的選擇在 Reiner 中稱之為 Get 而不是 Select。如果你想要取得 rows.Next 來掃描每一行的結果，Reiner 提供了 LastRows 即為最後一次的 rows 資料。
 
 ```go
 err := db.Get("Users")
-// 等效於：SELECT * FROM `Users`
+// 等效於：SELECT * FROM Users
 ```
 
 ### 筆數限制
 
-`Limit` 能夠限制取得的筆數，如果是 `10`，那就表示只取得最前面 10 筆資料而非全部。
+Limit 能夠限制取得的筆數，如果是 10，那就表示只取得最前面 10 筆資料而非全部。
 
 ```go
 db.Limit(10).Get("Users")
-// 等效於：SELECT * FROM `Users` LIMIT 10
+// 等效於：SELECT * FROM Users LIMIT 10
 ```
 
 ### 指定欄位
 
-你可以透過 `Columns` 指定要取得的欄位名稱，多個欄位由逗點區分，亦能是函式。
+你可以透過 Columns 指定要取得的欄位名稱，多個欄位由逗點區分，亦能是函式。
 
 ```go
 db.Columns("Username", "Nickname").Get("Users")
-// 等效於：SELECT `Username`, `Nickname` FROM `Users`
+// 等效於：SELECT Username, Nickname FROM Users
 
 db.Columns("COUNT(*) AS Count").Get("Users")
-// 等效於：SELECT COUNT(*) AS Count FROM `Users`
+// 等效於：SELECT COUNT(*) AS Count FROM Users
 ```
 
 ### 單行資料
 
-預設來說 `Get` 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 `GetOne`。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
+預設來說 Get 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 GetOne。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
 
 ```go
 db.Where("ID", 1).GetOne("Users")
-// 等效於：SELECT * FROM `Users` WHERE `ID` = ?
+// 等效於：SELECT * FROM Users WHERE ID = ?
 
 db.Columns("SUM(ID)", "COUNT(*) AS Count").GetOne("Users")
-// 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM `Users`
+// 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM Users
 ```
 
 ### 取得單值
 
-這就像 `GetOne`，但 `GetValue` 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
+這就像 GetOne，但 GetValue 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
 db.Columns("Username").GetValue("Users")
@@ -269,7 +268,7 @@ db.Columns("COUNT(*)").GetValue("Users")
 page := 2
 db.PageLimit = 20
 db.Paginate("Users", page)
-// 等效於：SELECT * FROM `Users` LIMIT 20, 40
+// 等效於：SELECT * FROM Users LIMIT 20, 40
 
 fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
@@ -281,7 +280,7 @@ Reiner 已經提供了近乎日常中 80% 會用到的方式，但如果好死�
 其中亦能帶有預置聲明（Prepared Statement），也就是指令中的問號符號替代了原本的值。這能避免你的 SQL 指令遭受注入攻擊。
 
 ```go
-db.RawQuery("SELECT * FROM `Users` WHERE `ID` >= ?", 10)
+db.RawQuery("SELECT * FROM Users WHERE ID >= ?", 10)
 ```
 
 ### 單行資料
@@ -289,23 +288,23 @@ db.RawQuery("SELECT * FROM `Users` WHERE `ID` >= ?", 10)
 僅選擇單筆資料的生指令函式，這意味著你能夠將取得的資料直接映射到一個建構體上。
 
 ```go
-db.RawQueryOne("SELECT * FROM `Users` WHERE `ID` = ?", 10)
+db.RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
 ```
 
 ### 取得單值
 
-透過 `RawQueryValue` 可以直接取得單個欄位得值，而不是一個陣列或切片。
+透過 RawQueryValue 可以直接取得單個欄位得值，而不是一個陣列或切片。
 
 ```go
-db.RawQueryValue("SELECT `Password` FROM `Users` WHERE `ID` = ? LIMIT 1", 10)
+db.RawQueryValue("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
 ```
 
 ### 單值多行
 
-透過 `RawQueryValue` 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
+透過 RawQueryValue 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
 
 ```go
-db.RawQueryValue("SELECT `Username` FROM `Users` LIMIT 10")
+db.RawQueryValue("SELECT Username FROM Users LIMIT 10")
 ```
 
 ### 進階方式
@@ -313,10 +312,10 @@ db.RawQueryValue("SELECT `Username` FROM `Users` LIMIT 10")
 如果你對 SQL 指令夠熟悉，你也可以使用更進階且複雜的用法。
 
 ```go
-db.RawQuery("SELECT `ID`, `FirstName`, `LastName` FROM `Users` WHERE `ID` = ? AND `Username` = ?", 1, "admin")
+db.RawQuery("SELECT ID, FirstName, LastName FROM Users WHERE ID = ? AND Username = ?", 1, "admin")
 
 params := []int{10, 1, 10, 11, 2, 10}
-query := `(
+query := (
     SELECT A FROM TestTable
         WHERE A = ? AND B = ?
         ORDER BY A LIMIT ?
@@ -324,26 +323,26 @@ query := `(
     SELECT A FROM TestTable2
         WHERE A = ? AND B = ?
         ORDER BY A LIMIT ?
-)`
+)
 db.RawQuery(query, params...)
 ```
 
 ## 條件宣告
 
-透過 Reiner 宣告 `WHERE` 條件也能夠很輕鬆。一個最基本的 `WHERE AND` 像這樣使用。
+透過 Reiner 宣告 WHERE 條件也能夠很輕鬆。一個最基本的 WHERE AND 像這樣使用。
 
 ```go
 db.Where("ID", 1).Where("Username", "admin").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE `ID` = ? AND `Username` = ?
+// 等效於：SELECT * FROM Users WHERE ID = ? AND Username = ?
 ```
 
 ### 擁有
 
-`HAVING` 能夠與 `WHERE` 一同使用。
+HAVING 能夠與 WHERE 一同使用。
 
 ```go
 db.Where("ID", 1).Having("Username", "admin").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE `ID` = ? HAVING `Username` = ?
+// 等效於：SELECT * FROM Users WHERE ID = ? HAVING Username = ?
 ```
 
 ### 欄位比較
@@ -355,88 +354,88 @@ db.Where("ID", 1).Having("Username", "admin").Get("Users")
 db.Where("LastLogin", "CreatedAt").Get("Users")
 // 這樣才對。
 db.Where("LastLogin = CreatedAt").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE LastLogin = CreatedAt;
+// 等效於：SELECT * FROM Users WHERE LastLogin = CreatedAt;
 ```
 
 ### 自訂運算子
 
-在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 `>=`、`<=`、`<>`⋯等。
+在 Where 或 Having 的最後一個參數你可以自訂條件的運算子，如 >=、<=、<>⋯等。
 
 ```go
 db.Where("ID", 50, ">=").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE `ID` >= 50
+// 等效於：SELECT * FROM Users WHERE ID >= 50
 ```
 
 ### 介於／不介於
 
-透過 `BETWEEN` 和 `NOT BETWEEN` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
+透過 BETWEEN 和 NOT BETWEEN 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
 db.Where("ID", []int{0, 20}, "BETWEEN").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE `ID` BETWEEN 4 AND 20
+// 等效於：SELECT * FROM Users WHERE ID BETWEEN 4 AND 20
 ```
 
 ### 於清單／不於清單內
 
-透過 `IN` 和 `NOT IN` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
+透過 IN 和 NOT IN 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
 db.Where("ID", []interface{}{1, 5, 27, -1, "d"}, "IN").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE `ID` IN (?, ?, ?, ?, ?);
+// 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?);
 ```
 
 ### 或／還有或
 
-通常來說多個 `Where` 會產生 `AND` 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 `OrWhere`。
+通常來說多個 Where 會產生 AND 條件，這意味著所有條件都必須符合，有些時候你只希望符合部分條件即可，就能夠用上 OrWhere。
 
 ```go
 db.Where("FirstNamte", "John").OrWhere("FirstNamte", "Peter").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE FirstName = ? OR FirstName = ?
+// 等效於：SELECT * FROM Users WHERE FirstName = ? OR FirstName = ?
 ```
 
 如果你的要求比較多，希望達到「A = B 或者 (A = C 或 A = D)」的話，你可以嘗試這樣。
 
 ```go
 db.Where("A = B").OrWhere("(A = C OR A = D)").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE A = B OR (A = C OR A = D)
+// 等效於：SELECT * FROM Users WHERE A = B OR (A = C OR A = D)
 ```
 
 ### 空值
 
-要確定某個欄位是否為空值，傳入一個 `nil` 即可。
+要確定某個欄位是否為空值，傳入一個 nil 即可。
 
 ```go
 // 別這樣。
 db.Where("LastName", "NULL", "IS NOT").Get("Users")
 // 這樣才對。
 db.Where("LastName", nil, "IS NOT").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE `LastName` IS NOT NULL
+// 等效於：SELECT * FROM Users WHERE LastName IS NOT NULL
 ```
 
 ### Raw
 
 ```go
 db.Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLogin)").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE ID != CompanyID AND DATE(CreatedAt) = DATE(LastLogin)
+// 等效於：SELECT * FROM Users WHERE ID != CompanyID AND DATE(CreatedAt) = DATE(LastLogin)
 ```
 
 ### Raw With Params
 
 ```go
 db.Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get("Users")
-// 等效於：SELECT * FROM `Users` WHERE (ID = 6 OR ID = 2) AND Login = ?
+// 等效於：SELECT * FROM Users WHERE (ID = 6 OR ID = 2) AND Login = ?
 ```
 
 ## 刪除
 
-刪除一筆資料再簡單不過了，透過 `Count` 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
+刪除一筆資料再簡單不過了，透過 Count 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
 
 ```go
 err := db.Where("ID", 1).Delete("Users")
 if err == nil && db.Count != 0 {
     fmt.Println("成功地刪除了一筆資料！")
 }
-// 等效於：DELETE FROM `Users` WHERE `ID` = ?
+// 等效於：DELETE FROM Users WHERE ID = ?
 ```
 
 ## 排序
@@ -445,7 +444,7 @@ Reiner 亦支援排序功能，如遞增或遞減，亦能擺放函式。
 
 ```go
 db.OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get("Users")
-// 等效於：SELECT * FROM `Users` ORDER BY `ID` ASC, `Login` DESC, RAND();
+// 等效於：SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND();
 ```
 
 ### 從值排序
@@ -454,92 +453,95 @@ db.OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get("Users")
 
 ```go
 db.OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get("Users")
-// 等效於：SELECT * FROM `Users` ORDER BY FIELD (UserGroup, ?, ?, ?) ASC;
+// 等效於：SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC;
 ```
 
 ## 群組
 
-簡單的透過 `GroupBy` 就能夠將資料由指定欄位群組排序。
+簡單的透過 GroupBy 就能夠將資料由指定欄位群組排序。
 
 ```go
 db.GroupBy("Name").Get("Users")
-// 等效於：SELECT * FROM `Users` GROUP BY `Name`;
+// 等效於：SELECT * FROM Users GROUP BY Name;
 ```
 
 ## 加入
 
+Reiner 支援多種表格加入方式，如：`InnerJoin`、`LeftJoin`、`RightJoin`、`NaturalJoin`、`CrossJoin`。
+
 ```go
-db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
-db.Where("u.id", 6)
-db.Get("products p", "u.name, p.productName")
+db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
+db.Where("Users.ID", 6)
+db.Columns("Users.Name", "Products.ProductName").Get("Products")
+// 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?
 ```
 
 ### 條件限制
 
+你亦能透過 `JoinWhere` 或 `JoinOrWhere` 擴展表格加入的限制條件。
+
 ```go
-db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
-db.JoinWhere("users u", "u.tenantID", 5)
-db.Get("products p", "u.name, p.productName")
-// 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID AND u.tenantID = 5)
+db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
+db.JoinWhere("Users", "Users.TenantID", 5)
+db.Columns("Users.Name", "Products.ProductName").Get("Products")
+// 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID AND Users.TenantID = ?)
 ```
 
 ```go
-// db.InnerJoin()
-// db.LeftJoin()
-// db.RightJoin()
-// db.NaturalJoin()
-// db.CrossJoin()
-db.Join("users u", "p.tenantID = u.tenantID", "LEFT")
-db.JoinOrWhere("users u", "u.tenantID", "=", 5)
-
-db.Get("products p", "u.name, p.productName")
-// 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN users u ON (p.tenantID=u.tenantID OR u.tenantID = 5)
+db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
+db.JoinOrWhere("Users", "Users.TenantID", 5)
+db.Columns("Users.Name", "Products.ProductName").Get("Products")
+// 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)
 ```
 
 ## 子指令
 
-```go
-subQuery := db.SubQuery()
-subQuery.Get("users")
-```
+Reiner 支援複雜的子指令，欲要建立一個子指令請透過 `SubQuery` 函式，這將會建立一個不能被執行的資料庫包覆函式庫，令你可以透過 `Get`、`Update` 等建立相關 SQL 指令，但不會被資料庫執行。將其帶入到一個正常的資料庫函式中即可成為子指令。
 
 ```go
-subQuery := db.SubQuery("sq")
-subQuery.Get("users")
+subQuery := db.SubQuery()
+subQuery.Get("Users")
+// 等效於不會被執行的：SELECT * FROM Users
 ```
 
 ### 選擇／取得
 
-```go
-idSubQuery := db.SubQuery()
-idSubQuery.Where("qty", 2, ">").Get("products", "userId")
+你能夠輕易地將子指令放置在選擇／取得指令中。
 
-db.Where("id", idSubQuery, "IN").Get("users")
-// 等效於：SELECT * FROM users WHERE id IN (SELECT userId FROM products WHERE qty > 2)
+```go
+subQuery := db.SubQuery()
+subQuery.Where("Quantity", 2, ">").Get("Products", "UserID")
+
+db.Where("ID", subQuery, "IN").Get("Users")
+// 等效於：SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)
 ```
 
 ### 插入
 
-```go
-idSubQuery := db.SubQuery()
-idSubQuery.Where("id", 6).GetOne("users", "name")
+插入新資料時也可以使用子指令。
 
-db.Insert("products", map[string]interface{}{
-	"productName": "test product",
-	"userID":      idSubQuery,
-	"lastUpdated": db.Now(),
+```go
+subQuery := db.SubQuery()
+subQuery.Where("ID", 6).Columns("Name").GetOne("Users")
+
+db.Insert("Products", map[string]interface{}{
+	"ProductName": "測試商品",
+	"UserID":      subQuery,
+	"LastUpdated": db.Now(),
 })
-// 等效於：INSERT INTO PRODUCTS (productName, userId, lastUpdated) values ("test product", (SELECT name FROM users WHERE id = 6), NOW());
+// 等效於：INSERT INTO Products (ProductName, UserID, LastUpdated) VALUES (?, (SELECT Name FROM Users WHERE ID = 6), NOW())
 ```
 
 ### 加入
 
-```go
-userSubQuery := db.SubQuery("u")
-userSubQuery.Where("active", 1).Get("users")
+就算是加入表格的時候也可以用上子指令，但你需要為子指令建立別名。
 
-db.Join(userSubQuery, "p.userId = u.id", "LEFT").Get("products p", "u.login, p.productName")
-// 等效於：SELECT u.login, p.productName FROM products p LEFT JOIN (SELECT * FROM t_users WHERE active = 1) u on p.userId=u.id;
+```go
+subQuery := db.SubQuery("Users")
+subQuery.Where("Active", 1).Get("Users")
+
+db.LeftJoin(subQuery, "Products.UserID = U.ID").Columns("U.Username", "Products.ProductName").Get("Products")
+// 等效於：SELECT Users.Username, Products.ProductName FROM Products AS Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID
 ```
 
 ### 存在／不存在
@@ -555,7 +557,7 @@ db.Where("", subQuery, "EXISTS").Get("products")
 
 ## 是否擁有該筆資料
 
-有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 `Has` 用來確定資料庫是否有這筆資料。
+有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 Has 用來確定資料庫是否有這筆資料。
 
 ```go
 db.Where("username", "yamiodymel").Where("password", "123456")
@@ -573,13 +575,13 @@ Reiner 有提供一些輔助用的函式協助你除錯、紀錄，或者更加�
 
 ### 資料庫連線
 
-透過 `Disconnect` 結束一段連線。
+透過 Disconnect 結束一段連線。
 
 ```go
 db.Disconnect()
 ```
 
-你也能在資料庫發生錯誤、連線遺失時透過 `Connect` 來重新手動連線。
+你也能在資料庫發生錯誤、連線遺失時透過 Connect 來重新手動連線。
 
 ```go
 if err := db.Ping(); err != nil {
@@ -611,14 +613,14 @@ fmt.Println("總共更新 %s 筆資料", db.Count)
 
 ### 最後插入的編號
 
-當插入一筆新的資料，而該表格帶有自動遞增的欄位時，就能透過 `LastInsertID` 取得最新一筆資料的編號。
+當插入一筆新的資料，而該表格帶有自動遞增的欄位時，就能透過 LastInsertID 取得最新一筆資料的編號。
 
 ```go
 db.Insert("Users", data)
 id := db.LastInsertID
 ```
 
-如果你是同時間插入多筆資料，你仍可以透過 `LastInsertIDs` 取得剛才插入的所有資料編號。
+如果你是同時間插入多筆資料，你仍可以透過 LastInsertIDs 取得剛才插入的所有資料編號。
 
 ```go
 db.InsertMulti("Users", data)
@@ -627,7 +629,7 @@ ids := db.LastInsertIDs
 
 ## 交易函式
 
-交易函式僅限於 InnoDB 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 `Begin` 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 `Rollback` 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 `Commit` 將這次的變更永久地儲存到資料庫中。
+交易函式僅限於 InnoDB 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 Begin 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 Rollback 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 Commit 將這次的變更永久地儲存到資料庫中。
 
 ```go
 err := db.Begin().Insert("myTable", data)
@@ -645,7 +647,7 @@ if err != nil {
 ```go
 db.SetLockMethod("WRITE").Lock("users")
 
-// 呼叫其他的 `Lock()` 函式也會自動將前一個上鎖解鎖，當然你也可以手動呼叫 `Unlock()` 解鎖。
+// 呼叫其他的 Lock() 函式也會自動將前一個上鎖解鎖，當然你也可以手動呼叫 Unlock() 解鎖。
 db.Unlock()
 
 // 同時間要鎖上兩個表格也很簡單。
@@ -684,7 +686,7 @@ Reiner 除了基本的資料庫函式可供使用外，還能夠建立一個表�
 migration := db.Migration()
 
 migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
-// 等效於：CREATE TABLE `test_table` (`test` varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
+// 等效於：CREATE TABLE test_table (test varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
 
 
