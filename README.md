@@ -510,7 +510,7 @@ subQuery.Get("Users")
 
 ```go
 subQuery := db.SubQuery()
-subQuery.Where("Quantity", 2, ">").Get("Products", "UserID")
+subQuery.Where("Quantity", 2, ">").Columns("UserID").Get("Products")
 
 db.Where("ID", subQuery, "IN").Get("Users")
 // 等效於：SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)
@@ -546,13 +546,14 @@ db.LeftJoin(subQuery, "Products.UserID = U.ID").Columns("U.Username", "Products.
 
 ### 存在／不存在
 
+你同時也能夠透過子指令來確定某筆資料是否存在。
+
 ```go
 subQuery := db.SubQuery()
-subQuery.Where("company", "testCompany")
-subQuery.Get("users", "userId")
+subQuery.Where("Company", "測試公司").Columns("UserID").Get("Users")
 
-db.Where("", subQuery, "EXISTS").Get("products")
-// 等效於：SELECT * FROM products WHERE EXISTS (select userId from users where company='testCompany')
+db.Where(subQuery, "EXISTS").Get("Products")
+// 等效於：SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)
 ```
 
 ## 是否擁有該筆資料
@@ -560,8 +561,8 @@ db.Where("", subQuery, "EXISTS").Get("products")
 有些時候我們只想知道資料庫是否有符合的資料，但並不是要取得其資料，舉例來說就像是登入是僅是要確認帳號密碼是否吻合，此時就可以透過 Has 用來確定資料庫是否有這筆資料。
 
 ```go
-db.Where("username", "yamiodymel").Where("password", "123456")
-has, err := db.Has("users")
+db.Where("Username", "yamiodymel").Where("Password", "123456")
+has, err := db.Has("Users")
 if has {
 	fmt.Println("登入成功！")
 } else {
@@ -594,8 +595,8 @@ if err := db.Ping(); err != nil {
 取得最後一次所執行的 SQL 指令，這能夠用來記錄你所執行的所有動作。
 
 ```go
-db.Get("users")
-fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
+db.Get("Users")
+fmt.Println("最後一次執行的 SQL 指令是：%s", dbLastQuery)
 ```
 
 ### 結果／影響的行數
@@ -603,11 +604,11 @@ fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 行數很常用於檢查是否有資料、作出變更。資料庫不會因為沒有變更任何資料而回傳一個錯誤（資料庫僅會在真正發生錯誤時回傳錯誤資料），所以這是很好的檢查方法。
 
 ```go
-db.Get("users")
+db.Get("Users")
 fmt.Println("總共獲取 %s 筆資料", db.Count)
-db.Delete("users")
+db.Delete("Users")
 fmt.Println("總共刪除 %s 筆資料", db.Count)
-db.Update("users", data)
+db.Update("Users", data)
 fmt.Println("總共更新 %s 筆資料", db.Count)
 ```
 
@@ -632,7 +633,7 @@ ids := db.LastInsertIDs
 交易函式僅限於 InnoDB 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 Begin 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 Rollback 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 Commit 將這次的變更永久地儲存到資料庫中。
 
 ```go
-err := db.Begin().Insert("myTable", data)
+err := db.Begin().Insert("Wallets", data)
 if err != nil {
 	db.Rollback()
 } else {
@@ -645,13 +646,13 @@ if err != nil {
 你能夠手動鎖定資料表格，避免同時間寫入相同資料而發生錯誤。
 
 ```go
-db.SetLockMethod("WRITE").Lock("users")
+db.SetLockMethod("WRITE").Lock("Users")
 
 // 呼叫其他的 Lock() 函式也會自動將前一個上鎖解鎖，當然你也可以手動呼叫 Unlock() 解鎖。
 db.Unlock()
 
 // 同時間要鎖上兩個表格也很簡單。
-db.SetLockMethod("READ").Lock("users", "log")
+db.SetLockMethod("READ").Lock("Users", "Logs")
 ```
 
 ## 指令關鍵字
@@ -659,14 +660,14 @@ db.SetLockMethod("READ").Lock("users", "log")
 Reiner 也支援設置指令關鍵字。
 
 ```go
-db.SetQueryOption("LOW_PRIORITY").Insert("users", data)
-// 等效於：INSERT LOW_PRIORITY INTO table ...
+db.SetQueryOption("LOW_PRIORITY").Insert("Users", data)
+// 等效於：INSERT LOW_PRIORITY INTO Users ...
 
-db.SetQueryOption("FOR UPDATE").Get("users")
-// 等效於：SELECT * FROM users FOR UPDATE;
+db.SetQueryOption("FOR UPDATE").Get("Users")
+// 等效於：SELECT * FROM Users FOR UPDATE
 
-db.SetQueryOption("SQL_NO_CACHE").Get("users")
-// 等效於：GIVES: SELECT SQL_NO_CACHE * FROM users;
+db.SetQueryOption("SQL_NO_CACHE").Get("Users")
+// 等效於：SELECT SQL_NO_CACHE * FROM Users
 ```
 
 ### 多個選項
@@ -674,8 +675,8 @@ db.SetQueryOption("SQL_NO_CACHE").Get("users")
 你亦能同時設置多個關鍵字給同個指令。
 
 ```go
-db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("users", data)
-// Gives: INSERT LOW_PRIORITY IGNORE INTO users ...
+db.SetQueryOption("LOW_PRIORITY", "IGNORE").Insert("Users", data)
+// Gives: INSERT LOW_PRIORITY IGNORE INTO Users ...
 ```
 
 # 表格建構函式
@@ -685,8 +686,8 @@ Reiner 除了基本的資料庫函式可供使用外，還能夠建立一個表�
 ```go
 migration := db.Migration()
 
-migration.Column("test").Varchar(32).Primary().CreateTable("test_table")
-// 等效於：CREATE TABLE test_table (test varchar(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
+migration.Column("Username").Varchar(32).Primary().CreateTable("Users")
+// 等效於：CREATE TABLE Users (Username VARCHAR(32) NOT NULL PRIMARY KEY) ENGINE=INNODB
 ```
 
 
