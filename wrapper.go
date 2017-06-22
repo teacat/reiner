@@ -177,6 +177,7 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.query += w.buildDuplicate()
+	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -185,6 +186,7 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.query += w.buildDuplicate()
+	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -192,6 +194,7 @@ func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
+	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
 	return
