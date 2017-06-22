@@ -31,15 +31,17 @@ type join struct {
 
 // Wrapper represents a database connection.
 type Wrapper struct {
-	db           *DB
-	isSubQuery   bool
-	query        string
-	alias        string
-	tableName    []string
-	queryOptions []string
-	destination  interface{}
-	joins        map[tableName]join
-	params       []interface{}
+	db                 *DB
+	isSubQuery         bool
+	query              string
+	alias              string
+	tableName          []string
+	queryOptions       []string
+	destination        interface{}
+	joins              map[tableName]join
+	params             []interface{}
+	onDuplicateColumns []string
+	lastInsertIDColumn string
 
 	//
 	Timestamp *Timestamp
@@ -119,6 +121,21 @@ func (w *Wrapper) paramToQuery(data interface{}) (param string) {
 	return
 }
 
+func (w *Wrapper) buildDuplicate() (query string) {
+	if len(w.onDuplicateColumns) == 0 {
+		return
+	}
+	query += "ON DUPLICATE KEY UPDATE "
+	if w.lastInsertIDColumn != "" {
+		query += fmt.Sprintf("%s=LAST_INSERT_ID(%s) ", w.lastInsertIDColumn, w.lastInsertIDColumn)
+	}
+	for _, v := range w.onDuplicateColumns {
+		query += fmt.Sprintf("%s = VALUE(%s), ", v, v)
+	}
+	query = trim(query)
+	return
+}
+
 func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) {
 	var columns, values, options string
 	if len(w.queryOptions) > 0 {
@@ -159,6 +176,7 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
+	w.query += w.buildDuplicate()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -166,6 +184,7 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
+	w.query += w.buildDuplicate()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -208,6 +227,10 @@ func (w *Wrapper) Now(formats ...string) function {
 }
 
 func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {
+	w.onDuplicateColumns = columns
+	if len(lastInsertID) != 0 {
+		w.lastInsertIDColumn = lastInsertID[0]
+	}
 	return w
 }
 
