@@ -127,7 +127,7 @@ func (w *Wrapper) buildDuplicate() (query string) {
 	}
 	query += "ON DUPLICATE KEY UPDATE "
 	if w.lastInsertIDColumn != "" {
-		query += fmt.Sprintf("%s=LAST_INSERT_ID(%s) ", w.lastInsertIDColumn, w.lastInsertIDColumn)
+		query += fmt.Sprintf("%s=LAST_INSERT_ID(%s), ", w.lastInsertIDColumn, w.lastInsertIDColumn)
 	}
 	for _, v := range w.onDuplicateColumns {
 		query += fmt.Sprintf("%s = VALUE(%s), ", v, v)
@@ -165,7 +165,7 @@ func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) 
 		values = trim(values)
 	}
 	columns = trim(columns)
-	query = fmt.Sprintf("%s %sINTO %s (%s) VALUES %s", operator, options, w.tableName[0], columns, values)
+	query = fmt.Sprintf("%s %sINTO %s (%s) VALUES %s ", operator, options, w.tableName[0], columns, values)
 	return
 }
 
