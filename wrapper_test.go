@@ -87,12 +87,12 @@ func TestOnDuplicateInsert(t *testing.T) {
 		"Password":  "test",
 		"UpdatedAt": wrapper.Now(),
 	})
-	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID),  UpdatedAt = VALUE(UpdatedAt)", wrapper.LastQuery)
+	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID), UpdatedAt = VALUE(UpdatedAt)", wrapper.LastQuery)
 }
 
 func TestUpdate(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("Username", "YamiOdymel").Update(map[string]string{
+	wrapper.Table("Users").Where("Username", "YamiOdymel").Update(map[string]interface{}{
 		"Username": "Karisu",
 		"Password": "123456",
 	})

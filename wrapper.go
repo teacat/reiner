@@ -237,7 +237,24 @@ func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper
 	return w
 }
 
+func (w *Wrapper) buildUpdate(data interface{}) (query string) {
+	var set string
+	query = fmt.Sprintf("UPDATE %s SET ", w.tableName[0])
+	switch realData := data.(type) {
+	case map[string]interface{}:
+		for column, value := range realData {
+			set += fmt.Sprintf("%s = %s, ", column, w.bindParam(value))
+		}
+	}
+	query += fmt.Sprintf("%s ", trim(set))
+	return
+}
+
 func (w *Wrapper) Update(data interface{}) (err error) {
+	w.query = w.buildUpdate(data)
+	w.query = strings.TrimSpace(w.query)
+	w.LastQuery = w.query
+	w.clean()
 	return
 }
 
