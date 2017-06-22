@@ -682,7 +682,7 @@ db.Get("U.Username", "Products.ProductName")
 subQuery := db.SubQuery()
 subQuery.Table("Users").Where("Company", "測試公司").Get("UserID")
 
-db.Table("Products").Where(subQuery, "EXISTS").Get()
+db.Table("Products").Where(nil, subQuery, "EXISTS").Get()
 // 等效於：SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)
 ```
 

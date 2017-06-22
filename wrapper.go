@@ -11,18 +11,19 @@ import (
 
 type tableName string
 
+type function struct {
+	query  string
+	values []interface{}
+}
 type condition struct {
-	typ       string
+	column    interface{}
 	operator  string
-	column    string
-	subQuery  string
-	rawQuery  string
 	connector string
 	values    []interface{}
 }
 
 type join struct {
-	tableName  string
+	table      string
 	typ        string
 	condition  string
 	conditions []condition
@@ -72,70 +73,82 @@ func newWrapper(db *DB) *Wrapper {
 
 func (w *Wrapper) clean() {
 	w.tableName = []string{}
+	w.params = []interface{}{}
+	w.query = ""
 }
 
-func (w *Wrapper) bindParams(params []interface{}) {
-	for _, v := range params {
+func (w *Wrapper) buildPair(data interface{}) {
+	//switch v := data.(type) {
+	//case *Wrapper:
+	//}
+}
+
+func (w *Wrapper) bindParams(data []interface{}) {
+	for _, v := range data {
 		w.bindParam(v)
 	}
+	return
 }
 
-func (w *Wrapper) bindParam(value interface{}) {
-	w.params = append(w.params, value)
-}
-
-func (w *Wrapper) buildPair(operator string, value interface{}) (query string) {
-	switch v := value.(type) {
-	// Is a sub query.
+func (w *Wrapper) bindParam(data interface{}) (param string) {
+	switch v := data.(type) {
 	case *Wrapper:
-		subQuery := v.query
-		params := v.params
-		alias := ""
-		if v.alias != "" {
-			alias = fmt.Sprintf("%s ", v.alias)
+		if len(v.params) > 0 {
+			w.params = append(w.params, v.params...)
 		}
-		w.bindParams(params)
-		query = fmt.Sprintf("%s (%s) %s", operator, subQuery, alias)
-	// Is values.
-	default:
-		w.bindParam(value)
-		query = fmt.Sprintf(" %s ?", operator)
-	}
-	return
-}
-
-func (w *Wrapper) buildCondition(operator string, value []interface{}) {
-	switch operator {
-	case "NOT IN", "IN":
-	case "NOT BETWEEN", "BETWEEN":
-	case "NOT EXISTS", "EXISTS":
-	default:
-	}
-}
-
-func (w *Wrapper) buildJoin() {
-	if len(w.joins) == 0 {
-		return
-	}
-	for _, v := range w.joins {
-		w.query += fmt.Sprintf("%s JOIN %s AS %s ON %s ", v.typ, v.tableName, v.tableName, v.condition)
-		for _, c := range v.conditions {
-			w.query += fmt.Sprintf("%s %s ", c.connector, c.column)
-			w.buildCondition(c.operator, c.values)
+	case function:
+		if len(v.values) > 0 {
+			w.params = append(w.params, v.values...)
 		}
+	default:
+		w.params = append(w.params, data)
 	}
-	w.query += "xx"
+	param = w.paramToQuery(data)
 	return
 }
 
-func (w *Wrapper) buildQuery(numRows int, data interface{}) {
-	w.buildJoin()
+func (w *Wrapper) paramToQuery(data interface{}) (param string) {
+	switch v := data.(type) {
+	case *Wrapper:
+		param = fmt.Sprintf("(%s)", v.query)
+	case function:
+		param = v.query
+	default:
+		param = "?"
+	}
 	return
 }
 
-func (w *Wrapper) buildInsert(operation string, data interface{}) {
-	w.query = fmt.Sprintf("%s %s INTO %s", operation, strings.Join(w.queryOptions, ", "), w.tableName[0])
-	w.buildQuery(0, data)
+func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) {
+	var columns, values, options string
+	if len(w.queryOptions) > 0 {
+		options = fmt.Sprintf("%s ", strings.Join(w.queryOptions, ", "))
+	}
+
+	switch realData := data.(type) {
+	case map[string]interface{}:
+		for column, value := range realData {
+			columns += fmt.Sprintf("%s, ", column)
+			values += fmt.Sprintf("%s, ", w.bindParam(value))
+		}
+		values = fmt.Sprintf("(%s)", trim(values))
+
+	case []map[string]interface{}:
+		for index, single := range realData {
+			var currentValues string
+			for column, value := range single {
+				// Get the column names from the first data set only.
+				if index == 0 {
+					columns += fmt.Sprintf("%s, ", column)
+				}
+				currentValues += fmt.Sprintf("%s, ", w.bindParam(value))
+			}
+			values += fmt.Sprintf("(%s), ", trim(currentValues))
+		}
+		values = trim(values)
+	}
+	columns = trim(columns)
+	query = fmt.Sprintf("%s %sINTO %s (%s) VALUES %s", operator, options, w.tableName[0], columns, values)
 	return
 }
 
@@ -145,29 +158,53 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 }
 
 func (w *Wrapper) Insert(data interface{}) (err error) {
-	if w.isSubQuery {
-		err = nil
-		return
-	}
-	w.buildInsert("INSERT", data)
+	w.query = w.buildInsert("INSERT", data)
 	w.LastQuery = w.query
+	w.clean()
 	return
 }
 
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
+	w.query = w.buildInsert("INSERT", data)
+	w.LastQuery = w.query
+	w.clean()
 	return
 }
 
 func (w *Wrapper) Replace(data interface{}) (err error) {
+	w.query = w.buildInsert("REPLACE", data)
+	w.LastQuery = w.query
+	w.clean()
 	return
 }
 
-func (w *Wrapper) Func(query string, data ...interface{}) (err error) {
-	return
+func (w *Wrapper) Func(query string, data ...interface{}) function {
+	return function{
+		query:  query,
+		values: data,
+	}
 }
 
-func (w *Wrapper) Now(format ...string) (err error) {
-	return
+func (w *Wrapper) Now(formats ...string) function {
+	query := "NOW() "
+	unitMap := map[string]string{
+		"Y": "YEAR",
+		"M": "MONTH",
+		"D": "DAY",
+		"W": "WEEK",
+		"h": "HOUR",
+		"m": "MINUTE",
+		"s": "SECOND",
+	}
+	for _, v := range formats {
+		operator := string(v[0])
+		interval := v[1 : len(v)-1]
+		unit := string(v[len(v)-1])
+		query += fmt.Sprintf("%s INTERVAL %s %s ", operator, interval, unitMap[unit])
+	}
+	return function{
+		query: strings.TrimSpace(query),
+	}
 }
 
 func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {

@@ -37,16 +37,31 @@ type user struct {
 
 func TestInsert(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Insert(map[string]string{
+	wrapper.Table("Users").Insert(map[string]interface{}{
 		"Username": "YamiOdymel",
 		"Password": "test",
 	})
 	assert.Equal("INSERT INTO Users (Username, Password) VALUES (?, ?)", wrapper.LastQuery)
 }
 
+func TestInsertMulti(t *testing.T) {
+	assert := assert.New(t)
+	data := []map[string]interface{}{
+		{
+			"Username": "YamiOdymel",
+			"Password": "test",
+		}, {
+			"Username": "Karisu",
+			"Password": "12345",
+		},
+	}
+	wrapper.Table("Users").InsertMulti(data)
+	assert.Equal("INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)", wrapper.LastQuery)
+}
+
 func TestReplace(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Replace(map[string]string{
+	wrapper.Table("Users").Replace(map[string]interface{}{
 		"Username": "YamiOdymel",
 		"Password": "test",
 	})
@@ -73,21 +88,6 @@ func TestOnDuplicateInsert(t *testing.T) {
 		"UpdatedAt": wrapper.Now(),
 	})
 	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = VALUE(UpdatedAt)", wrapper.LastQuery)
-}
-
-func TestInsertMulti(t *testing.T) {
-	assert := assert.New(t)
-	data := []map[string]string{
-		{
-			"Username": "YamiOdymel",
-			"Password": "test",
-		}, {
-			"Username": "Karisu",
-			"Password": "12345",
-		},
-	}
-	wrapper.Table("Users").InsertMulti(data)
-	assert.Equal("INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)", wrapper.LastQuery)
 }
 
 func TestUpdate(t *testing.T) {
