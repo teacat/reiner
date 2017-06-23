@@ -40,6 +40,7 @@ type Wrapper struct {
 	alias              string
 	tableName          []string
 	conditions         []condition
+	havingConditions   []condition
 	queryOptions       []string
 	destination        interface{}
 	joins              map[tableName]join
@@ -369,7 +370,7 @@ func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
 	return w
 }
 
-func (w *Wrapper) Where(args ...interface{}) *Wrapper {
+func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
 	//w.conditions = append(w.conditions, )
 	var c condition
 	switch len(args) {
@@ -404,18 +405,29 @@ func (w *Wrapper) Where(args ...interface{}) *Wrapper {
 	// .Where("Column", ">", 123456)
 	// .Where("Column", "IS NOT", nil)
 	// .Where("Column", "BETWEEN", []int{}{12345, 678910})
+	// .Where("Column", "IN", subQuery)
+	// .Where(subQuery, "IN", subQuery)
 	case 3:
 		c.column = args[0].(string)
 		c.operator = args[1].(string)
 		c.value = args[2]
 		c.typ = "CustomOperator"
 	}
-	c.connector = "AND"
-	w.conditions = append(w.conditions, c)
+	c.connector = connector
+	if typ == "HAVING" {
+		w.havingConditions = append(w.havingConditions, c)
+	} else {
+		w.conditions = append(w.conditions, c)
+	}
+}
+
+func (w *Wrapper) Where(args ...interface{}) *Wrapper {
+	w.saveCondition("WHERE", "AND", args...)
 	return w
 }
 
 func (w *Wrapper) OrWhere(args ...interface{}) *Wrapper {
+	w.saveCondition("WHERE", "OR", args...)
 	return w
 }
 
