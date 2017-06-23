@@ -335,18 +335,25 @@ func (w *Wrapper) GetOne(columns ...string) (err error) {
 }
 
 func (w *Wrapper) GetValue(column string) (err error) {
+	err = w.Get(fmt.Sprintf("%s AS Value", column))
 	return
 }
 
-func (w *Wrapper) Paginate(pageCount int) (err error) {
+func (w *Wrapper) Paginate(pageCount int, columns ...string) (err error) {
+	err = w.Limit(w.PageLimit*(pageCount-1), w.PageLimit).Get(columns...)
+	w.TotalPage = w.TotalCount / w.PageLimit
 	return
 }
 
 func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
+	w.query = query
+	w.LastQuery = w.query
+	w.bindParams(values)
 	return
 }
 
 func (w *Wrapper) RawQueryOne(query string, values ...interface{}) (err error) {
+	err = w.RawQuery(query, values...)
 	return
 }
 

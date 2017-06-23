@@ -154,7 +154,7 @@ func TestPaginate(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.PageLimit = 20
 	wrapper.Table("Users").Paginate(2)
-	assert.Equal("SELECT * FROM Users LIMIT 20, 40", wrapper.LastQuery)
+	assert.Equal("SELECT * FROM Users LIMIT 20, 20", wrapper.LastQuery)
 }
 
 func TestRawQuery(t *testing.T) {
