@@ -314,7 +314,7 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 	if len(columns) == 0 {
 		query = fmt.Sprintf("SELECT * FROM %s ", w.tableName[0])
 	} else {
-		query = fmt.Sprintf("SELECT %s FROM %s ", trim(strings.Join(columns, ", ")), w.tableName[0])
+		query = fmt.Sprintf("SELECT %s FROM %s ", strings.Join(columns, ", "), w.tableName[0])
 	}
 	return
 }
