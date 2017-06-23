@@ -310,7 +310,22 @@ func (w *Wrapper) Limit(count int, to ...int) *Wrapper {
 	return w
 }
 
+func (w *Wrapper) buildSelect(columns ...string) (query string) {
+	if len(columns) == 0 {
+		query = fmt.Sprintf("SELECT * FROM %s ", w.tableName[0])
+	} else {
+		query = fmt.Sprintf("SELECT %s FROM %s ", trim(strings.Join(columns, ", ")), w.tableName[0])
+	}
+	return
+}
+
 func (w *Wrapper) Get(columns ...string) (err error) {
+	w.query = w.buildSelect(columns...)
+	w.query += w.buildWhere()
+	w.query += w.buildLimit()
+	w.query = strings.TrimSpace(w.query)
+	w.LastQuery = w.query
+	w.clean()
 	return
 }
 
