@@ -132,10 +132,10 @@ func TestGetColumns(t *testing.T) {
 func TestGetOne(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.Table("Users").Where("ID", 1).GetOne()
-	assert.Equal("SELECT * FROM Users WHERE ID = ?", wrapper.LastQuery)
+	assert.Equal("SELECT * FROM Users WHERE ID = ? LIMIT 1", wrapper.LastQuery)
 
 	wrapper.Table("Users").GetOne("SUM(ID)", "COUNT(*) AS Count")
-	assert.Equal("SELECT SUM(ID), COUNT(*) AS Count FROM Users", wrapper.LastQuery)
+	assert.Equal("SELECT SUM(ID), COUNT(*) AS Count FROM Users LIMIT 1", wrapper.LastQuery)
 }
 
 func TestGetValue(t *testing.T) {
