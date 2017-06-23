@@ -219,7 +219,7 @@ func TestWhereIn(t *testing.T) {
 
 func TestOrWhere(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("FirstNamte", "John").OrWhere("FirstNamte", "Peter").Get()
+	wrapper.Table("Users").Where("FirstName", "John").OrWhere("FirstName", "Peter").Get()
 	assert.Equal("SELECT * FROM Users WHERE FirstName = ? OR FirstName = ?", wrapper.LastQuery)
 
 	wrapper.Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
