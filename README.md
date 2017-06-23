@@ -29,7 +29,8 @@
 * [命名建議](#命名建議)
 * [使用方式](#使用方式)
     * [資料庫連線](#資料庫連線)
-    * [水平擴展（讀／寫分離）](#水平擴展讀寫分離)
+    	* [水平擴展（讀／寫分離）](#水平擴展讀寫分離)
+		* [SQL 建構模式](#sql-建構模式)
 	* [資料綁定與處理](#資料綁定與處理)
 		* [逐行掃描](#逐行掃描)
 	* [插入](#插入)
@@ -132,6 +133,19 @@ db, err := reiner.New("root:root@/master?charset=utf8", []string{
 if err != nil {
     panic(err)
 }
+```
+
+### SQL 建構模式
+
+如果你已經有喜好的 SQL 資料庫處理套件，那麼你就可以在建立 Reiner 時不要傳入任何資料，這會使 Reiner 避免與資料庫互動，透過這個設計你可以將 Reiner 作為你的 SQL 指令建構函式。
+
+```go
+db, _ := reiner.New()
+db.Table("Users").Where("Username", "YamiOdymel").Get()
+
+// 然後像這樣透過原生的 `database/sql` 執行指令。
+sql.Prepare(db.LastQuery)
+sql.Exec("YamiOdymel")
 ```
 
 ## 資料綁定與處理
@@ -682,7 +696,7 @@ db.Get("U.Username", "Products.ProductName")
 subQuery := db.SubQuery()
 subQuery.Table("Users").Where("Company", "測試公司").Get("UserID")
 
-db.Table("Products").Where(nil, subQuery, "EXISTS").Get()
+db.Table("Products").Where(subQuery, "EXISTS").Get()
 // 等效於：SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)
 ```
 

@@ -16,10 +16,13 @@ type function struct {
 	values []interface{}
 }
 type condition struct {
-	column    interface{}
+	column    string
 	operator  string
 	connector string
-	values    []interface{}
+	query     string
+	subQuery  *Wrapper
+	typ       string
+	value     interface{}
 }
 
 type join struct {
@@ -36,12 +39,14 @@ type Wrapper struct {
 	query              string
 	alias              string
 	tableName          []string
+	conditions         []condition
 	queryOptions       []string
 	destination        interface{}
 	joins              map[tableName]join
 	params             []interface{}
 	onDuplicateColumns []string
 	lastInsertIDColumn string
+	limit              []int
 
 	//
 	Timestamp *Timestamp
@@ -76,6 +81,8 @@ func newWrapper(db *DB) *Wrapper {
 func (w *Wrapper) clean() {
 	w.tableName = []string{}
 	w.params = []interface{}{}
+	w.conditions = []condition{}
+	w.limit = []int{}
 	w.query = ""
 }
 
@@ -250,15 +257,56 @@ func (w *Wrapper) buildUpdate(data interface{}) (query string) {
 	return
 }
 
+func (w *Wrapper) buildWhere() (query string) {
+	if len(w.conditions) == 0 {
+		return
+	}
+
+	query = "WHERE "
+	for i, v := range w.conditions {
+		if i != 0 {
+			query += fmt.Sprintf("%s ", v.connector)
+		}
+		switch v.typ {
+		case "Query":
+		case "QueryValue":
+		case "SubQuery":
+		case "Equal":
+			query += fmt.Sprintf("%s %s %s ", v.column, v.operator, w.bindParam(v.value))
+		case "CustomOperator":
+		}
+	}
+	return
+}
+
+func (w *Wrapper) buildLimit() (query string) {
+	switch len(w.limit) {
+	case 0:
+		return
+	case 1:
+		query = fmt.Sprintf("LIMIT %d ", w.limit[0])
+	case 2:
+		query = fmt.Sprintf("LIMIT %d, %d ", w.limit[0], w.limit[1])
+	}
+	return
+}
+
 func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query = w.buildUpdate(data)
+	w.query += w.buildWhere()
+	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
 	return
 }
 
-func (w *Wrapper) Limit(count int) *Wrapper {
+func (w *Wrapper) Limit(count int, to ...int) *Wrapper {
+	if len(to) == 0 {
+		w.limit = []int{count}
+	} else {
+		w.limit = []int{count, to[0]}
+	}
 	return w
 }
 
@@ -299,6 +347,48 @@ func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
 }
 
 func (w *Wrapper) Where(args ...interface{}) *Wrapper {
+	//w.conditions = append(w.conditions, )
+	var c condition
+	switch len(args) {
+	// .Where("Column = Column2")
+	case 1:
+		c.query = args[0].(string)
+		c.typ = "Query"
+	// .Where(subQuery, "EXISTS")
+	// .Where("Column", 12345)
+	// .Where("SHA(?)", 12345)
+	// .Where("(Column > ? OR Column < ?)", []int{}{12345, 678910})
+	// .Where("CreatedAt", t.IsWeekday(5))
+	case 2:
+		switch v := args[0].(type) {
+		case *Wrapper:
+			c.subQuery = v
+			c.operator = args[1].(string)
+			c.typ = "SubQuery"
+		case string:
+			isQuery := strings.Contains(v, "?") || strings.Contains(v, "(")
+			if isQuery {
+				c.query = v
+				c.value = args[1]
+				c.typ = "QueryValue"
+			} else {
+				c.column = v
+				c.operator = "="
+				c.value = args[1]
+				c.typ = "Equal"
+			}
+		}
+	// .Where("Column", ">", 123456)
+	// .Where("Column", "IS NOT", nil)
+	// .Where("Column", "BETWEEN", []int{}{12345, 678910})
+	case 3:
+		c.column = args[0].(string)
+		c.operator = args[1].(string)
+		c.value = args[2]
+		c.typ = "CustomOperator"
+	}
+	c.connector = "AND"
+	w.conditions = append(w.conditions, c)
 	return w
 }
 

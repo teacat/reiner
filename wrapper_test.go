@@ -101,7 +101,7 @@ func TestUpdate(t *testing.T) {
 
 func TestLimitUpdate(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Limit(10).Update(map[string]string{
+	wrapper.Table("Users").Limit(10).Update(map[string]interface{}{
 		"Username": "Karisu",
 		"Password": "123456",
 	})
