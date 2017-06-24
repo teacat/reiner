@@ -78,6 +78,7 @@ func (w *Wrapper) clean() {
 	w.tableName = []string{}
 	w.params = []interface{}{}
 	w.conditions = []condition{}
+	w.havingConditions = []condition{}
 	w.limit = []int{}
 	w.query = ""
 }
@@ -194,6 +195,8 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.query += w.buildDuplicate()
+	w.query += w.buildWhere("WHERE")
+	w.query += w.buildWhere("HAVING")
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -203,6 +206,8 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.query += w.buildDuplicate()
+	w.query += w.buildWhere("WHERE")
+	w.query += w.buildWhere("HAVING")
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -211,6 +216,8 @@ func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
+	w.query += w.buildWhere("WHERE")
+	w.query += w.buildWhere("HAVING")
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -281,7 +288,8 @@ func (w *Wrapper) buildLimit() (query string) {
 
 func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query = w.buildUpdate(data)
-	w.query += w.buildWhere()
+	w.query += w.buildWhere("WHERE")
+	w.query += w.buildWhere("HAVING")
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -309,7 +317,8 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
-	w.query += w.buildWhere()
+	w.query += w.buildWhere("WHERE")
+	w.query += w.buildWhere("HAVING")
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -349,12 +358,27 @@ func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error)
 	return
 }
 
-func (w *Wrapper) buildWhere() (query string) {
-	if len(w.conditions) == 0 {
+func (w *Wrapper) buildWhere(typ string) (query string) {
+	var conditions []condition
+	if typ == "HAVING" {
+		conditions = w.havingConditions
+		if len(conditions) == 0 {
+			return
+		}
+		query = "HAVING "
+	} else {
+		conditions = w.conditions
+		if len(conditions) == 0 {
+			return
+		}
+		query = "WHERE "
+	}
+
+	if len(conditions) == 0 {
 		return
 	}
-	query = "WHERE "
-	for i, v := range w.conditions {
+
+	for i, v := range conditions {
 		if i != 0 {
 			query += fmt.Sprintf("%s ", v.connector)
 		}

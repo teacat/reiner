@@ -346,7 +346,7 @@ db.Table("Users").GetValue("COUNT(*)")
 page := 2
 db.PageLimit = 20
 db.Table("Users").Paginate(page)
-// 等效於：SELECT * FROM Users LIMIT 20, 40
+// 等效於：SELECT * FROM Users LIMIT 20, 20
 
 fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
