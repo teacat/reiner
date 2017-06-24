@@ -446,19 +446,23 @@ db.Table("Users").Where("ID", ">=", 50).Get()
 
 ### 介於／不介於
 
-透過 `WhereBetween` 和 `WhereNotBetween` 條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
+條件也可以用來限制數值內容是否在某數之間（相反之，也能夠限制是否不在某範圍內）。
 
 ```go
-db.Table("Users").WhereBetween("ID", []int{0, 20}).Get()
+db.Table("Users").Where("ID", "BETWEEN", 0, 20).Get()
 // 等效於：SELECT * FROM Users WHERE ID BETWEEN ? AND ?
 ```
 
 ### 於清單／不於清單內
 
-透過 `WhereIn` 和 `WhereNotIn` 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
+條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
-db.Table("Users").WhereIn("ID", []interface{}{1, 5, 27, -1, "d"}).Get()
+db.Table("Users").WhereIn("ID", "IN", 1, 5, 27, -1, "d").Get()
+// 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)
+
+list := []interface{}{1, 5, 27, -1, "d"}
+db.Table("Users").WhereIn("ID", "IN", list...).Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)
 ```
 
@@ -480,13 +484,13 @@ db.Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
 
 ### 空值
 
-透過 `WhereNull` 和 `WhereNotNull` 確定某個欄位是否為空值。
+確定某個欄位是否為空值。
 
 ```go
 // 別這樣。
 db.Table("Users").Where("LastName", "NULL").Get()
 // 這樣才對。
-db.Table("Users").WhereNull("LastName").Get()
+db.Table("Users").Where("LastName", "IS", nil).Get()
 // 等效於：SELECT * FROM Users WHERE LastName IS NULL
 ```
 
@@ -569,7 +573,7 @@ db.Table("Users").Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLog
 生條件中可以透過 `?` 符號，並且在後面傳入自訂變數。
 
 ```go
-db.Table("Users").Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get()
+db.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
 // 等效於：SELECT * FROM Users WHERE (ID = ? OR ID = ?) AND Login = ?
 ```
 
@@ -652,7 +656,7 @@ subQuery.Table("Users").Get()
 
 ```go
 subQuery := db.SubQuery()
-subQuery.Table("Products").Where("Quantity", 2, ">").Get("UserID")
+subQuery.Table("Products").Where("Quantity", ">", 2).Get("UserID")
 
 db.Table("Users").Where("ID", subQuery, "IN").Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)

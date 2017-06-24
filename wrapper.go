@@ -16,13 +16,8 @@ type function struct {
 	values []interface{}
 }
 type condition struct {
-	column    string
-	operator  string
+	args      []interface{}
 	connector string
-	query     string
-	subQuery  *Wrapper
-	typ       string
-	value     interface{}
 }
 
 type join struct {
@@ -93,10 +88,22 @@ func (w *Wrapper) buildPair(data interface{}) {
 	//}
 }
 
-func (w *Wrapper) bindParams(data []interface{}) {
-	for _, v := range data {
-		w.bindParam(v)
+func (w *Wrapper) bindParams(data interface{}) (query string) {
+	switch d := data.(type) {
+	case []interface{}:
+		for _, v := range d {
+			query += fmt.Sprintf("%s, ", w.bindParam(v))
+		}
+	case []int:
+		for _, v := range d {
+			query += fmt.Sprintf("%s, ", w.bindParam(v))
+		}
+	case []string:
+		for _, v := range d {
+			query += fmt.Sprintf("%s, ", w.bindParam(v))
+		}
 	}
+	query = trim(query)
 	return
 }
 
@@ -123,6 +130,8 @@ func (w *Wrapper) paramToQuery(data interface{}) (param string) {
 		param = fmt.Sprintf("(%s)", v.query)
 	case function:
 		param = v.query
+	case nil:
+		param = "NULL"
 	default:
 		param = "?"
 	}
@@ -258,28 +267,6 @@ func (w *Wrapper) buildUpdate(data interface{}) (query string) {
 	return
 }
 
-func (w *Wrapper) buildWhere() (query string) {
-	if len(w.conditions) == 0 {
-		return
-	}
-
-	query = "WHERE "
-	for i, v := range w.conditions {
-		if i != 0 {
-			query += fmt.Sprintf("%s ", v.connector)
-		}
-		switch v.typ {
-		case "Query":
-		case "QueryValue":
-		case "SubQuery":
-		case "Equal":
-			query += fmt.Sprintf("%s %s %s ", v.column, v.operator, w.bindParam(v.value))
-		case "CustomOperator":
-		}
-	}
-	return
-}
-
 func (w *Wrapper) buildLimit() (query string) {
 	switch len(w.limit) {
 	case 0:
@@ -362,58 +349,78 @@ func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error)
 	return
 }
 
-func (w *Wrapper) Having(args ...interface{}) *Wrapper {
-	return w
-}
+func (w *Wrapper) buildWhere() (query string) {
+	if len(w.conditions) == 0 {
+		return
+	}
+	query = "WHERE "
+	for i, v := range w.conditions {
+		if i != 0 {
+			query += fmt.Sprintf("%s ", v.connector)
+		}
 
-func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
-	return w
+		var typ string
+		switch q := v.args[0].(type) {
+		case string:
+			if strings.Contains(q, "?") || strings.Contains(q, "(") || len(v.args) == 1 {
+				typ = "Query"
+			} else {
+				typ = "Column"
+			}
+		case *Wrapper:
+			typ = "SubQuery"
+		}
+
+		switch len(v.args) {
+		// .Where("Column = Column")
+		case 1:
+			query += fmt.Sprintf("%s ", v.args[0].(string))
+		// .Where("Column = ?", "Value")
+		// .Where("Column", "Value")
+		// .Where(subQuery, "EXISTS")
+		case 2:
+			switch typ {
+			case "Query":
+				query += fmt.Sprintf("%s ", v.args[0].(string))
+				w.bindParam(v.args[1])
+			case "Column":
+				query += fmt.Sprintf("%s = %s", v.args[0].(string), w.bindParam(v.args[1]))
+			case "SubQuery":
+				query += fmt.Sprintf("%s %s", v.args[1].(string), w.bindParam(v.args[0]))
+			}
+		// .Where("Column", ">", "Value")
+		// .Where("Column", "IN", subQuery)
+		// .Where("Column", "IS", nil)
+		case 3:
+			if v.args[1].(string) == "IN" || v.args[1].(string) == "NOT IN" {
+				query += fmt.Sprintf("%s %s (%s)", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+			} else {
+				query += fmt.Sprintf("%s %s %s", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+			}
+
+		// .Where("(Column = ? OR Column = SHA(?))", "Value", "Value")
+		// .Where("Column", "BETWEEN", 1, 20)
+		default:
+			if typ == "Query" {
+				query += fmt.Sprintf("%s ", v.args[0].(string))
+				w.bindParams(v.args[1:])
+			} else {
+				switch v.args[1].(string) {
+				case "BETWEEN", "NOT BETWEEN":
+					query += fmt.Sprintf("%s %s %s, %s", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]), w.bindParam(v.args[3]))
+				case "IN", "NOT IN":
+					query += fmt.Sprintf("%s %s (%s)", v.args[0].(string), v.args[1].(string), w.bindParams(v.args[2:]))
+				}
+			}
+		}
+	}
+	return
 }
 
 func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
-	//w.conditions = append(w.conditions, )
 	var c condition
-	switch len(args) {
-	// .Where("Column = Column2")
-	case 1:
-		c.query = args[0].(string)
-		c.typ = "Query"
-	// .Where(subQuery, "EXISTS")
-	// .Where("Column", 12345)
-	// .Where("SHA(?)", 12345)
-	// .Where("(Column > ? OR Column < ?)", []int{}{12345, 678910})
-	// .Where("CreatedAt", t.IsWeekday(5))
-	case 2:
-		switch v := args[0].(type) {
-		case *Wrapper:
-			c.subQuery = v
-			c.operator = args[1].(string)
-			c.typ = "SubQuery"
-		case string:
-			isQuery := strings.Contains(v, "?") || strings.Contains(v, "(")
-			if isQuery {
-				c.query = v
-				c.value = args[1]
-				c.typ = "QueryValue"
-			} else {
-				c.column = v
-				c.operator = "="
-				c.value = args[1]
-				c.typ = "Equal"
-			}
-		}
-	// .Where("Column", ">", 123456)
-	// .Where("Column", "IS NOT", nil)
-	// .Where("Column", "BETWEEN", []int{}{12345, 678910})
-	// .Where("Column", "IN", subQuery)
-	// .Where(subQuery, "IN", subQuery)
-	case 3:
-		c.column = args[0].(string)
-		c.operator = args[1].(string)
-		c.value = args[2]
-		c.typ = "CustomOperator"
-	}
 	c.connector = connector
+	c.args = args
 	if typ == "HAVING" {
 		w.havingConditions = append(w.havingConditions, c)
 	} else {
@@ -431,27 +438,13 @@ func (w *Wrapper) OrWhere(args ...interface{}) *Wrapper {
 	return w
 }
 
-func (w *Wrapper) WhereBetween(args ...interface{}) *Wrapper {
+func (w *Wrapper) Having(args ...interface{}) *Wrapper {
+	w.saveCondition("HAVING", "AND", args...)
 	return w
 }
 
-func (w *Wrapper) WhereNotBetween(args ...interface{}) *Wrapper {
-	return w
-}
-
-func (w *Wrapper) WhereIn(args ...interface{}) *Wrapper {
-	return w
-}
-
-func (w *Wrapper) WhereNotIn(args ...interface{}) *Wrapper {
-	return w
-}
-
-func (w *Wrapper) WhereNull(args ...interface{}) *Wrapper {
-	return w
-}
-
-func (w *Wrapper) WhereNotNull(args ...interface{}) *Wrapper {
+func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
+	w.saveCondition("HAVING", "OR", args...)
 	return w
 }
 
