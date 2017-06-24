@@ -201,20 +201,20 @@ func TestWhereOperator(t *testing.T) {
 
 func TestWhereBetween(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").WhereBetween("ID", []int{0, 20}).Get()
+	wrapper.Table("Users").Where("ID", "BETWEEN", 0, 20).Get()
 	assert.Equal("SELECT * FROM Users WHERE ID BETWEEN ? AND ?", wrapper.LastQuery)
 
-	wrapper.Table("Users").WhereNotBetween("ID", []int{0, 20}).Get()
+	wrapper.Table("Users").Where("ID", "NOT BETWEEN", 0, 20).Get()
 	assert.Equal("SELECT * FROM Users WHERE ID NOT BETWEEN ? AND ?", wrapper.LastQuery)
 }
 
 func TestWhereIn(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").WhereIn("ID", []interface{}{1, 5, 27, -1, "d"}).Get()
+	wrapper.Table("Users").Where("ID", "IN", 1, 5, 27, -1, "d").Get()
 	assert.Equal("SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)", wrapper.LastQuery)
 
-	wrapper.Table("Users").WhereNotIn("ID", []interface{}{1, 5, 27, -1, "d"}).Get()
-	assert.Equal("SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)", wrapper.LastQuery)
+	wrapper.Table("Users").Where("ID", "NOT IN", 1, 5, 27, -1, "d").Get()
+	assert.Equal("SELECT * FROM Users WHERE ID NOT IN (?, ?, ?, ?, ?)", wrapper.LastQuery)
 }
 
 func TestOrWhere(t *testing.T) {
@@ -228,10 +228,10 @@ func TestOrWhere(t *testing.T) {
 
 func TestWhereNull(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").WhereNull("LastName").Get()
+	wrapper.Table("Users").Where("LastName", "IS", nil).Get()
 	assert.Equal("SELECT * FROM Users WHERE LastName IS NULL", wrapper.LastQuery)
 
-	wrapper.Table("Users").WhereNotNull("LastName").Get()
+	wrapper.Table("Users").Where("LastName", "IS NOT", nil).Get()
 	assert.Equal("SELECT * FROM Users WHERE LastName IS NOT NULL", wrapper.LastQuery)
 }
 
@@ -304,7 +304,7 @@ func TestDelete(t *testing.T) {
 func TestOrderBy(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.Table("Users").OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get()
-	assert.Equal("SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND();", wrapper.LastQuery)
+	assert.Equal("SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND()", wrapper.LastQuery)
 }
 
 func TestOrderByField(t *testing.T) {

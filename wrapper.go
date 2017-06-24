@@ -384,18 +384,18 @@ func (w *Wrapper) buildWhere() (query string) {
 				query += fmt.Sprintf("%s ", v.args[0].(string))
 				w.bindParam(v.args[1])
 			case "Column":
-				query += fmt.Sprintf("%s = %s", v.args[0].(string), w.bindParam(v.args[1]))
+				query += fmt.Sprintf("%s = %s ", v.args[0].(string), w.bindParam(v.args[1]))
 			case "SubQuery":
-				query += fmt.Sprintf("%s %s", v.args[1].(string), w.bindParam(v.args[0]))
+				query += fmt.Sprintf("%s %s ", v.args[1].(string), w.bindParam(v.args[0]))
 			}
 		// .Where("Column", ">", "Value")
 		// .Where("Column", "IN", subQuery)
 		// .Where("Column", "IS", nil)
 		case 3:
 			if v.args[1].(string) == "IN" || v.args[1].(string) == "NOT IN" {
-				query += fmt.Sprintf("%s %s (%s)", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+				query += fmt.Sprintf("%s %s (%s) ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
 			} else {
-				query += fmt.Sprintf("%s %s %s", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+				query += fmt.Sprintf("%s %s %s ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
 			}
 
 		// .Where("(Column = ? OR Column = SHA(?))", "Value", "Value")
@@ -407,9 +407,9 @@ func (w *Wrapper) buildWhere() (query string) {
 			} else {
 				switch v.args[1].(string) {
 				case "BETWEEN", "NOT BETWEEN":
-					query += fmt.Sprintf("%s %s %s, %s", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]), w.bindParam(v.args[3]))
+					query += fmt.Sprintf("%s %s %s AND %s ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]), w.bindParam(v.args[3]))
 				case "IN", "NOT IN":
-					query += fmt.Sprintf("%s %s (%s)", v.args[0].(string), v.args[1].(string), w.bindParams(v.args[2:]))
+					query += fmt.Sprintf("%s %s (%s) ", v.args[0].(string), v.args[1].(string), w.bindParams(v.args[2:]))
 				}
 			}
 		}
