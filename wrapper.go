@@ -26,8 +26,8 @@ type order struct {
 }
 
 type join struct {
-	table      string
 	typ        string
+	table      interface{}
 	condition  string
 	conditions []condition
 }
@@ -43,7 +43,7 @@ type Wrapper struct {
 	havingConditions   []condition
 	queryOptions       []string
 	destination        interface{}
-	joins              map[tableName]join
+	joins              map[string]*join
 	params             []interface{}
 	onDuplicateColumns []string
 	lastInsertIDColumn string
@@ -554,31 +554,70 @@ func (w *Wrapper) GroupBy(columns ...string) *Wrapper {
 	return w
 }
 
+func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
+	switch v := table.(type) {
+	case *Wrapper:
+		w.joins[v.query] = &join{
+			typ:       typ,
+			table:     table,
+			condition: condition,
+		}
+	case string:
+		w.joins[v] = &join{
+			typ:       typ,
+			table:     table,
+			condition: condition,
+		}
+	}
+}
+
 func (w *Wrapper) LeftJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "LEFT", condition)
 	return w
 }
 
 func (w *Wrapper) RightJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "RIGHT", condition)
 	return w
 }
 
 func (w *Wrapper) InnerJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "INNER", condition)
 	return w
 }
 
-func (w *Wrapper) NatualJoin(table interface{}, condition string) *Wrapper {
+func (w *Wrapper) NaturalJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "NATURAL", condition)
 	return w
 }
 
 func (w *Wrapper) CrossJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "CROSS", condition)
 	return w
 }
 
-func (w *Wrapper) JoinWhere(table string, args ...interface{}) *Wrapper {
+func (w *Wrapper) saveJoinCondition(connector string, table interface{}, args ...interface{}) {
+	switch v := table.(type) {
+	case *Wrapper:
+		w.joins[v.query].conditions = append(w.joins[v.query].conditions, condition{
+			args:      args,
+			connector: connector,
+		})
+	case string:
+		w.joins[v].conditions = append(w.joins[v].conditions, condition{
+			args:      args,
+			connector: connector,
+		})
+	}
+}
+
+func (w *Wrapper) JoinWhere(table interface{}, args ...interface{}) *Wrapper {
+	w.saveJoinCondition("AND", table, args...)
 	return w
 }
 
-func (w *Wrapper) JoinOrWhere(args ...interface{}) *Wrapper {
+func (w *Wrapper) JoinOrWhere(table interface{}, args ...interface{}) *Wrapper {
+	w.saveJoinCondition("OR", table, args...)
 	return w
 }
 
