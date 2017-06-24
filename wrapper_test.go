@@ -317,6 +317,8 @@ func TestGroupBy(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.Table("Users").GroupBy("Name").Get()
 	assert.Equal("SELECT * FROM Users GROUP BY Name", wrapper.LastQuery)
+	wrapper.Table("Users").GroupBy("Name", "ID").Get()
+	assert.Equal("SELECT * FROM Users GROUP BY Name, ID", wrapper.LastQuery)
 }
 
 func TestJoin(t *testing.T) {

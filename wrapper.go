@@ -49,6 +49,7 @@ type Wrapper struct {
 	lastInsertIDColumn string
 	limit              []int
 	orders             []order
+	groupBy            []string
 
 	//
 	Timestamp *Timestamp
@@ -205,6 +206,7 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
 	w.query += w.buildOrderBy()
+	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -218,6 +220,8 @@ func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
 	w.query += w.buildOrderBy()
+	w.query += w.buildGroupBy()
+	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -228,6 +232,8 @@ func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
+	w.query += w.buildOrderBy()
+	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -302,6 +308,7 @@ func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
 	w.query += w.buildOrderBy()
+	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -332,6 +339,7 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
 	w.query += w.buildOrderBy()
+	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -495,6 +503,7 @@ func (w *Wrapper) Delete() (err error) {
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
 	w.query += w.buildOrderBy()
+	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -528,7 +537,20 @@ func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper {
 	return w
 }
 
-func (w *Wrapper) GroupBy(column string) *Wrapper {
+func (w *Wrapper) buildGroupBy() (query string) {
+	if len(w.groupBy) == 0 {
+		return
+	}
+	query += "GROUP BY "
+	for _, v := range w.groupBy {
+		query += fmt.Sprintf("%s, ", v)
+	}
+	query = trim(query)
+	return
+}
+
+func (w *Wrapper) GroupBy(columns ...string) *Wrapper {
+	w.groupBy = columns
 	return w
 }
 
