@@ -20,6 +20,11 @@ type condition struct {
 	connector string
 }
 
+type order struct {
+	column string
+	args   []interface{}
+}
+
 type join struct {
 	table      string
 	typ        string
@@ -43,6 +48,7 @@ type Wrapper struct {
 	onDuplicateColumns []string
 	lastInsertIDColumn string
 	limit              []int
+	orders             []order
 
 	//
 	Timestamp *Timestamp
@@ -77,6 +83,7 @@ func newWrapper(db *DB) *Wrapper {
 func (w *Wrapper) clean() {
 	w.tableName = []string{}
 	w.params = []interface{}{}
+	w.orders = []order{}
 	w.conditions = []condition{}
 	w.havingConditions = []condition{}
 	w.limit = []int{}
@@ -197,6 +204,8 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query += w.buildDuplicate()
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
+	w.query += w.buildOrderBy()
+	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -208,6 +217,7 @@ func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query += w.buildDuplicate()
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
+	w.query += w.buildOrderBy()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -218,6 +228,7 @@ func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
+	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
 	w.clean()
@@ -290,6 +301,7 @@ func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query = w.buildUpdate(data)
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
+	w.query += w.buildOrderBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -319,6 +331,7 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
+	w.query += w.buildOrderBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
 	w.LastQuery = w.query
@@ -472,11 +485,46 @@ func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
 	return w
 }
 
-func (w *Wrapper) Delete() (err error) {
+func (w *Wrapper) buildDelete(tableNames ...string) (query string) {
+	query += fmt.Sprintf("DELETE FROM %s ", strings.Join(tableNames, ", "))
 	return
 }
 
-func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper { //sorting string, fields ...[]string
+func (w *Wrapper) Delete() (err error) {
+	w.query = w.buildDelete(w.tableName...)
+	w.query += w.buildWhere("WHERE")
+	w.query += w.buildWhere("HAVING")
+	w.query += w.buildOrderBy()
+	w.query += w.buildLimit()
+	w.query = strings.TrimSpace(w.query)
+	w.LastQuery = w.query
+	w.clean()
+	return
+}
+
+func (w *Wrapper) buildOrderBy() (query string) {
+	if len(w.orders) == 0 {
+		return
+	}
+	query += "ORDER BY "
+	for _, v := range w.orders {
+		if len(v.args) == 1 {
+			query += fmt.Sprintf("%s %s, ", v.column, v.args[0])
+		} else if len(v.args) > 1 {
+			query += fmt.Sprintf("FIELD (%s, %s) %s, ", v.column, w.bindParams(v.args[1:]), v.args[0])
+		} else {
+			query += fmt.Sprintf("%s, ", v.column)
+		}
+	}
+	query = trim(query)
+	return
+}
+
+func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper {
+	w.orders = append(w.orders, order{
+		column: column,
+		args:   args,
+	})
 	return w
 }
 

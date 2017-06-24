@@ -603,7 +603,7 @@ db.Table("Users").OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()"
 也能夠從值進行排序，只需要傳入一個切片即可。
 
 ```go
-db.Table("Users").OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get()
+db.Table("Users").OrderBy("UserGroup", "ASC", "SuperUser", "Admin", "Users").Get()
 // 等效於：SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC
 ```
 

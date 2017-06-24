@@ -309,7 +309,7 @@ func TestOrderBy(t *testing.T) {
 
 func TestOrderByField(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").OrderBy("UserGroup", "ASC", []string{"SuperUser", "Admin", "Users"}).Get()
+	wrapper.Table("Users").OrderBy("UserGroup", "ASC", "SuperUser", "Admin", "Users").Get()
 	assert.Equal("SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC", wrapper.LastQuery)
 }
 
