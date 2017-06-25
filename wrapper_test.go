@@ -329,6 +329,13 @@ func TestJoin(t *testing.T) {
 		Where("Users.ID", 6).
 		Get("Users.Name", "Products.ProductName")
 	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", wrapper.LastQuery)
+	wrapper.
+		Table("Products").
+		LeftJoin("Users", "Products.TenantID = Users.TenantID").
+		RightJoin("Posts", "Products.TenantID = Posts.TenantID").
+		Where("Users.ID", 6).
+		Get("Users.Name", "Products.ProductName")
+	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID) RIGHT JOIN Posts ON (Products.TenantID = Posts.TenantID) WHERE Users.ID = ?", wrapper.LastQuery)
 }
 
 func TestJoinWhere(t *testing.T) {
@@ -345,6 +352,14 @@ func TestJoinWhere(t *testing.T) {
 		JoinWhere("Users", "Users.Username", "Wow").
 		Get("Users.Name", "Products.ProductName")
 	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID AND Users.Username = ?)", wrapper.LastQuery)
+	wrapper.
+		Table("Products").
+		LeftJoin("Users", "Products.TenantID = Users.TenantID").
+		RightJoin("Posts", "Products.TenantID = Posts.TenantID").
+		JoinWhere("Posts", "Posts.Username", "Wow").
+		JoinWhere("Users", "Users.Username", "Wow").
+		Get("Users.Name", "Products.ProductName")
+	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID AND Users.Username = ?) RIGHT JOIN Posts ON (Products.TenantID = Posts.TenantID AND Posts.Username = ?)", wrapper.LastQuery)
 }
 
 func TestSubQueryGet(t *testing.T) {
