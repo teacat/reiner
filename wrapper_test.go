@@ -235,16 +235,6 @@ func TestWhereNull(t *testing.T) {
 	assert.Equal("SELECT * FROM Users WHERE LastName IS NOT NULL", wrapper.LastQuery)
 }
 
-func TestTimestampRelative(t *testing.T) {
-	assert := assert.New(t)
-	ts := wrapper.Timestamp
-	wrapper.Table("Users").Where("CreatedAt", ts.Now("-1Y")).Get()
-	assert.Equal("SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
-
-	wrapper.Table("Users").Where("CreatedAt", ts.Now("-1D")).Get()
-	assert.Equal("SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.LastQuery)
-}
-
 func TestTimestampDate(t *testing.T) {
 	assert := assert.New(t)
 	ts := wrapper.Timestamp
@@ -291,7 +281,7 @@ func TestRawWhere(t *testing.T) {
 
 func TestRawWhereParams(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("(ID = ? OR ID = ?)", []int{6, 2}).Where("Login", "Mike").Get()
+	wrapper.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
 	assert.Equal("SELECT * FROM Users WHERE (ID = ? OR ID = ?) AND Login = ?", wrapper.LastQuery)
 }
 

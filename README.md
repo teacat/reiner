@@ -500,20 +500,6 @@ db.Table("Users").Where("LastName", "IS", nil).Get()
 
 需要注意的是 Reiner 中的 `Timestamp` 工具無法串聯使用，這意味著當你想要確認時間戳是否為某年某月時，你需要有兩個 `Where` 條件，而不行使用 `IsYear().IsMonth()`。更多的用法可以在原生文件中找到，這裡僅列出不完全的範例供大略參考。
 
-#### 相對
-
-判斷的方式可以是目前的相對時間，如昨天則是 `-1D`，明天即是 `+1D`、以此類推可使用 `Y`（年）、`M`（月）、`D`（天）、`W`（星期）、`h`（小時）、`m`（分）、`s`（秒），請記得注意大小寫。
-
-```go
-t := db.Timestamp
-
-db.Table("Users").Where("CreatedAt", t.Now("-1Y")).Get()
-// 等效於：SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?
-
-db.Table("Users").Where("CreatedAt", t.Now("-1D")).Get()
-// 等效於：SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?
-```
-
 #### 日期
 
 判斷是否為特定年、月、日、星期或完整日期。

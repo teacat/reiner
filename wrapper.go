@@ -78,7 +78,7 @@ type Wrapper struct {
 //     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
 // Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
 func newWrapper(db *DB) *Wrapper {
-	return &Wrapper{db: db}
+	return &Wrapper{db: db, Timestamp: &Timestamp{}}
 }
 
 func (w *Wrapper) clean() {
@@ -92,12 +92,6 @@ func (w *Wrapper) clean() {
 	w.havingConditions = []condition{}
 	w.limit = []int{}
 	w.query = ""
-}
-
-func (w *Wrapper) buildPair(data interface{}) {
-	//switch v := data.(type) {
-	//case *Wrapper:
-	//}
 }
 
 func (w *Wrapper) bindParams(data interface{}) (query string) {
@@ -129,6 +123,8 @@ func (w *Wrapper) bindParam(data interface{}) (param string) {
 		if len(v.values) > 0 {
 			w.params = append(w.params, v.values...)
 		}
+	case Timestamp:
+		w.params = append(w.params, v.value)
 	default:
 		w.params = append(w.params, data)
 	}
@@ -251,9 +247,7 @@ func (w *Wrapper) Now(formats ...string) function {
 		unit := string(v[len(v)-1])
 		query += fmt.Sprintf("%s INTERVAL %s %s ", operator, interval, unitMap[unit])
 	}
-	return function{
-		query: strings.TrimSpace(query),
-	}
+	return w.Func(strings.TrimSpace(query))
 }
 
 func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {
@@ -386,7 +380,12 @@ func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 				query += fmt.Sprintf("%s ", v.args[0].(string))
 				w.bindParam(v.args[1])
 			case "Column":
-				query += fmt.Sprintf("%s = %s ", v.args[0].(string), w.bindParam(v.args[1]))
+				switch d := v.args[1].(type) {
+				case Timestamp:
+					query += fmt.Sprintf(d.query, v.args[0].(string), w.bindParam(d))
+				default:
+					query += fmt.Sprintf("%s = %s ", v.args[0].(string), w.bindParam(d))
+				}
 			case "SubQuery":
 				query += fmt.Sprintf("%s %s ", v.args[1].(string), w.bindParam(v.args[0]))
 			}
