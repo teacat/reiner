@@ -328,7 +328,7 @@ func TestJoin(t *testing.T) {
 		LeftJoin("Users", "Products.TenantID = Users.TenantID").
 		Where("Users.ID", 6).
 		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", wrapper.LastQuery)
+	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", wrapper.LastQuery)
 }
 
 func TestJoinWhere(t *testing.T) {
@@ -336,10 +336,15 @@ func TestJoinWhere(t *testing.T) {
 	wrapper.
 		Table("Products").
 		LeftJoin("Users", "Products.TenantID = Users.TenantID").
-		JoinWhere("Users", "Users.Username", "Wow").
 		JoinOrWhere("Users", "Users.TenantID", 5).
 		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)", wrapper.LastQuery)
+	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)", wrapper.LastQuery)
+	wrapper.
+		Table("Products").
+		LeftJoin("Users", "Products.TenantID = Users.TenantID").
+		JoinWhere("Users", "Users.Username", "Wow").
+		Get("Users.Name", "Products.ProductName")
+	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID AND Users.Username = ?)", wrapper.LastQuery)
 }
 
 func TestSubQueryGet(t *testing.T) {
@@ -370,7 +375,7 @@ func TestSubQueryJoin(t *testing.T) {
 		Table("Products").
 		LeftJoin(subQuery, "Products.UserID = U.ID").
 		Get("U.Username", "Products.ProductName")
-	assert.Equal("SELECT Users.Username, Products.ProductName FROM Products AS Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID", wrapper.LastQuery)
+	assert.Equal("SELECT Users.Username, Products.ProductName FROM Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID", wrapper.LastQuery)
 }
 
 func TestSubQueryExist(t *testing.T) {

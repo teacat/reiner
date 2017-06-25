@@ -84,6 +84,9 @@ func newWrapper(db *DB) *Wrapper {
 func (w *Wrapper) clean() {
 	w.tableName = []string{}
 	w.params = []interface{}{}
+	w.onDuplicateColumns = []string{}
+	w.groupBy = []string{}
+	w.joins = map[string]*join{}
 	w.orders = []order{}
 	w.conditions = []condition{}
 	w.havingConditions = []condition{}
@@ -202,13 +205,7 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
-	w.query += w.buildDuplicate()
-	w.query += w.buildWhere("WHERE")
-	w.query += w.buildWhere("HAVING")
-	w.query += w.buildOrderBy()
-	w.query += w.buildGroupBy()
-	w.query += w.buildLimit()
-	w.query = strings.TrimSpace(w.query)
+	w.buildQuery()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -216,13 +213,7 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
-	w.query += w.buildDuplicate()
-	w.query += w.buildWhere("WHERE")
-	w.query += w.buildWhere("HAVING")
-	w.query += w.buildOrderBy()
-	w.query += w.buildGroupBy()
-	w.query += w.buildLimit()
-	w.query = strings.TrimSpace(w.query)
+	w.buildQuery()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -230,12 +221,7 @@ func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
-	w.query += w.buildWhere("WHERE")
-	w.query += w.buildWhere("HAVING")
-	w.query += w.buildOrderBy()
-	w.query += w.buildGroupBy()
-	w.query += w.buildLimit()
-	w.query = strings.TrimSpace(w.query)
+	w.buildQuery()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -305,12 +291,7 @@ func (w *Wrapper) buildLimit() (query string) {
 
 func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query = w.buildUpdate(data)
-	w.query += w.buildWhere("WHERE")
-	w.query += w.buildWhere("HAVING")
-	w.query += w.buildOrderBy()
-	w.query += w.buildGroupBy()
-	w.query += w.buildLimit()
-	w.query = strings.TrimSpace(w.query)
+	w.buildQuery()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -336,12 +317,7 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
-	w.query += w.buildWhere("WHERE")
-	w.query += w.buildWhere("HAVING")
-	w.query += w.buildOrderBy()
-	w.query += w.buildGroupBy()
-	w.query += w.buildLimit()
-	w.query = strings.TrimSpace(w.query)
+	w.buildQuery()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -379,26 +355,7 @@ func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error)
 	return
 }
 
-func (w *Wrapper) buildWhere(typ string) (query string) {
-	var conditions []condition
-	if typ == "HAVING" {
-		conditions = w.havingConditions
-		if len(conditions) == 0 {
-			return
-		}
-		query = "HAVING "
-	} else {
-		conditions = w.conditions
-		if len(conditions) == 0 {
-			return
-		}
-		query = "WHERE "
-	}
-
-	if len(conditions) == 0 {
-		return
-	}
-
+func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 	for i, v := range conditions {
 		if i != 0 {
 			query += fmt.Sprintf("%s ", v.connector)
@@ -462,6 +419,23 @@ func (w *Wrapper) buildWhere(typ string) (query string) {
 	return
 }
 
+func (w *Wrapper) buildWhere(typ string) (query string) {
+	var conditions []condition
+	if typ == "HAVING" {
+		conditions = w.havingConditions
+		query = "HAVING "
+	} else {
+		conditions = w.conditions
+		query = "WHERE "
+	}
+	if len(conditions) == 0 {
+		query = ""
+		return
+	}
+	query += w.buildConditions(conditions)
+	return
+}
+
 func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
 	var c condition
 	c.connector = connector
@@ -498,14 +472,20 @@ func (w *Wrapper) buildDelete(tableNames ...string) (query string) {
 	return
 }
 
-func (w *Wrapper) Delete() (err error) {
-	w.query = w.buildDelete(w.tableName...)
+func (w *Wrapper) buildQuery() {
+	w.query += w.buildDuplicate()
+	w.query += w.buildJoin()
 	w.query += w.buildWhere("WHERE")
 	w.query += w.buildWhere("HAVING")
 	w.query += w.buildOrderBy()
 	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
+}
+
+func (w *Wrapper) Delete() (err error) {
+	w.query = w.buildDelete(w.tableName...)
+	w.buildQuery()
 	w.LastQuery = w.query
 	w.clean()
 	return
@@ -517,12 +497,16 @@ func (w *Wrapper) buildOrderBy() (query string) {
 	}
 	query += "ORDER BY "
 	for _, v := range w.orders {
-		if len(v.args) == 1 {
-			query += fmt.Sprintf("%s %s, ", v.column, v.args[0])
-		} else if len(v.args) > 1 {
-			query += fmt.Sprintf("FIELD (%s, %s) %s, ", v.column, w.bindParams(v.args[1:]), v.args[0])
-		} else {
+		switch len(v.args) {
+		// .OrderBy("RAND()")
+		case 0:
 			query += fmt.Sprintf("%s, ", v.column)
+		// .OrderBy("ID", "ASC")
+		case 1:
+			query += fmt.Sprintf("%s %s, ", v.column, v.args[0])
+		// .OrderBy("UserGroup", "ASC", "SuperUser", "Admin")
+		default:
+			query += fmt.Sprintf("FIELD (%s, %s) %s, ", v.column, w.bindParams(v.args[1:]), v.args[0])
 		}
 	}
 	query = trim(query)
@@ -572,27 +556,22 @@ func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
 }
 
 func (w *Wrapper) LeftJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "LEFT", condition)
+	w.saveJoin(table, "LEFT JOIN", condition)
 	return w
 }
 
 func (w *Wrapper) RightJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "RIGHT", condition)
+	w.saveJoin(table, "RIGHT JOIN", condition)
 	return w
 }
 
 func (w *Wrapper) InnerJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "INNER", condition)
+	w.saveJoin(table, "INNER JOIN", condition)
 	return w
 }
 
 func (w *Wrapper) NaturalJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "NATURAL", condition)
-	return w
-}
-
-func (w *Wrapper) CrossJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "CROSS", condition)
+	w.saveJoin(table, "NATURAL JOIN", condition)
 	return w
 }
 
@@ -619,6 +598,30 @@ func (w *Wrapper) JoinWhere(table interface{}, args ...interface{}) *Wrapper {
 func (w *Wrapper) JoinOrWhere(table interface{}, args ...interface{}) *Wrapper {
 	w.saveJoinCondition("OR", table, args...)
 	return w
+}
+
+func (w *Wrapper) buildJoin() (query string) {
+	if len(w.joins) == 0 {
+		return
+	}
+
+	for _, v := range w.joins {
+		query += fmt.Sprintf("%s ", v.typ)
+		switch d := v.table.(type) {
+		case *Wrapper:
+			query += fmt.Sprintf("%s AS %s ON ", w.bindParam(d), d.alias)
+		case string:
+			query += fmt.Sprintf("%s ON ", d)
+		}
+
+		if len(v.conditions) == 0 {
+			query += fmt.Sprintf("(%s) ", v.condition)
+		} else {
+			conditionsQuery := strings.TrimSpace(w.buildConditions(v.conditions))
+			query += fmt.Sprintf("(%s %s %s) ", v.condition, v.conditions[0].connector, conditionsQuery)
+		}
+	}
+	return
 }
 
 func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
