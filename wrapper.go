@@ -308,7 +308,8 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 }
 
 func (w *Wrapper) GetOne(columns ...string) (err error) {
-	err = w.Limit(1).Get(columns...)
+	w.query = w.buildSelect(columns...)
+	w.buildQuery()
 	return
 }
 
