@@ -355,8 +355,8 @@ func TestJoinWhere(t *testing.T) {
 func TestSubQueryGet(t *testing.T) {
 	assert := assert.New(t)
 	subQuery := wrapper.SubQuery()
-	subQuery.Table("Products").Where("Quantity", 2, ">").Get("UserID")
-	wrapper.Table("Users").Where("ID", subQuery, "IN").Get()
+	subQuery.Table("Products").Where("Quantity", ">", 2).Get("UserID")
+	wrapper.Table("Users").Where("ID", "IN", subQuery).Get()
 	assert.Equal("SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)", wrapper.LastQuery)
 }
 
@@ -378,9 +378,9 @@ func TestSubQueryJoin(t *testing.T) {
 	subQuery.Table("Users").Where("Active", 1).Get()
 	wrapper.
 		Table("Products").
-		LeftJoin(subQuery, "Products.UserID = U.ID").
-		Get("U.Username", "Products.ProductName")
-	assert.Equal("SELECT Users.Username, Products.ProductName FROM Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID", wrapper.LastQuery)
+		LeftJoin(subQuery, "Products.UserID = Users.ID").
+		Get("Users.Username", "Products.ProductName")
+	assert.Equal("SELECT Users.Username, Products.ProductName FROM Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON (Products.UserID = Users.ID)", wrapper.LastQuery)
 }
 
 func TestSubQueryExist(t *testing.T) {

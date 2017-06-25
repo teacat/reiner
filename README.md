@@ -437,7 +437,7 @@ db.Table("Users").Where("LastLogin = CreatedAt").Get()
 
 ### 自訂運算子
 
-在 `Where` 或 `Having` 的最後一個參數你可以自訂條件的運算子，如 >=、<=、<>⋯等。
+在 `Where` 或 `Having` 中，你可以自訂條件的運算子，如 >=、<=、<>⋯等。
 
 ```go
 db.Table("Users").Where("ID", ">=", 50).Get()
@@ -644,7 +644,7 @@ subQuery.Table("Users").Get()
 subQuery := db.SubQuery()
 subQuery.Table("Products").Where("Quantity", ">", 2).Get("UserID")
 
-db.Table("Users").Where("ID", subQuery, "IN").Get()
+db.Table("Users").Where("ID", "IN", subQuery).Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)
 ```
 

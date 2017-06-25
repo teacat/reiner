@@ -202,24 +202,18 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.buildQuery()
-	w.LastQuery = w.query
-	w.clean()
 	return
 }
 
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.buildQuery()
-	w.LastQuery = w.query
-	w.clean()
 	return
 }
 
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
 	w.buildQuery()
-	w.LastQuery = w.query
-	w.clean()
 	return
 }
 
@@ -286,8 +280,6 @@ func (w *Wrapper) buildLimit() (query string) {
 func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query = w.buildUpdate(data)
 	w.buildQuery()
-	w.LastQuery = w.query
-	w.clean()
 	return
 }
 
@@ -312,8 +304,6 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
 	w.buildQuery()
-	w.LastQuery = w.query
-	w.clean()
 	return
 }
 
@@ -393,12 +383,16 @@ func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 		// .Where("Column", "IN", subQuery)
 		// .Where("Column", "IS", nil)
 		case 3:
-			if v.args[1].(string) == "IN" || v.args[1].(string) == "NOT IN" {
-				query += fmt.Sprintf("%s %s (%s) ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+			if typ == "Query" {
+				query += fmt.Sprintf("%s ", v.args[0].(string))
+				w.bindParams(v.args[1:])
 			} else {
-				query += fmt.Sprintf("%s %s %s ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+				if v.args[1].(string) == "IN" || v.args[1].(string) == "NOT IN" {
+					query += fmt.Sprintf("%s %s (%s) ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+				} else {
+					query += fmt.Sprintf("%s %s %s ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+				}
 			}
-
 		// .Where("(Column = ? OR Column = SHA(?))", "Value", "Value")
 		// .Where("Column", "BETWEEN", 1, 20)
 		default:
@@ -480,13 +474,16 @@ func (w *Wrapper) buildQuery() {
 	w.query += w.buildGroupBy()
 	w.query += w.buildLimit()
 	w.query = strings.TrimSpace(w.query)
+	w.LastQuery = w.query
+
+	if !w.isSubQuery {
+		w.clean()
+	}
 }
 
 func (w *Wrapper) Delete() (err error) {
 	w.query = w.buildDelete(w.tableName...)
 	w.buildQuery()
-	w.LastQuery = w.query
-	w.clean()
 	return
 }
 
@@ -624,7 +621,13 @@ func (w *Wrapper) buildJoin() (query string) {
 }
 
 func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
-	return w
+	newWrapper := &Wrapper{
+		isSubQuery: true,
+	}
+	if len(alias) > 0 {
+		newWrapper.alias = alias[0]
+	}
+	return newWrapper
 }
 
 func (w *Wrapper) Has() (has bool, err error) {
