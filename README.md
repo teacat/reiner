@@ -23,6 +23,18 @@
 
 我們都知道 [Golang](https://golang.org/) 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
 
+```go
+package main
+
+func main() {
+	db, _ := reiner.New("...")
+	// 透過 Copy() 建立新的 Reiner 複製體，
+	// 這能避免兩個 Goroutine 編輯相同的 Reiner 進而確保執行緒（或 Goroutine）安全性。
+	go doSomething(db.Copy())
+	go doSomething(db.Copy())
+}
+```
+
 # 索引
 
 * [安裝方式](#安裝方式)
@@ -765,6 +777,8 @@ ids := db.LastInsertIDs
 
 交易函式僅限於 [InnoDB](https://zh.wikipedia.org/zh-tw/InnoDB) 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 `Begin` 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 `Rollback` 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 `Commit` 將這次的變更永久地儲存到資料庫中。
 
+此函式並**不適用**於多個主從伺服器（Master）。
+
 ```go
 err := db.Table("Wallets").Begin().Insert(data)
 if err != nil {
@@ -783,9 +797,11 @@ db.Table("Users").SetLockMethod("WRITE").Lock()
 
 // 呼叫其他的 Lock() 函式也會自動將前一個上鎖解鎖，當然你也可以手動呼叫 Unlock() 解鎖。
 db.Unlock()
+// 等效於：UNLOCK TABLES
 
 // 同時間要鎖上兩個表格也很簡單。
 db.Table("Users", "Logs").SetLockMethod("READ").Lock()
+// 等效於：LOCK TABLES Users READ, Logs READ
 ```
 
 ## 指令關鍵字
@@ -810,6 +826,15 @@ db.Table("Users").SetQueryOption("SQL_NO_CACHE").Get()
 ```go
 db.Table("Users").SetQueryOption("LOW_PRIORITY", "IGNORE").Insert(data)
 // Gives: INSERT LOW_PRIORITY IGNORE INTO Users ...
+```
+
+## 效能追蹤
+
+```go
+db.SetTrace(true)
+db.Table("Users").Get()
+
+fmt.Printf("%+v", db.Traces)
 ```
 
 # 表格建構函式
