@@ -458,11 +458,11 @@ db.Table("Users").Where("ID", "BETWEEN", 0, 20).Get()
 條件能夠限制並確保取得的內容不在（或者在）指定清單內。
 
 ```go
-db.Table("Users").WhereIn("ID", "IN", 1, 5, 27, -1, "d").Get()
+db.Table("Users").Where("ID", "IN", 1, 5, 27, -1, "d").Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)
 
 list := []interface{}{1, 5, 27, -1, "d"}
-db.Table("Users").WhereIn("ID", "IN", list...).Get()
+db.Table("Users").Where("ID", "IN", list...).Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)
 ```
 
