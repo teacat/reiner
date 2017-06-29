@@ -249,9 +249,9 @@ db.Table("Users").InsertMulti(data)
 // 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)
 ```
 
-#### 省略重複鍵名
+#### ~~省略重複鍵名~~（暫時棄用）
 
-當所有資料都有一樣的插入欄位名稱時，鍵名可以只需要輸入一次。
+~~當所有資料都有一樣的插入欄位名稱時，鍵名可以只需要輸入一次。~~
 
 ```go
 values := [][]interface{}{
