@@ -9,22 +9,25 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type tableName string
-
+// function represents a database function like `SHA(?)` or `NOW()`.
 type function struct {
 	query  string
 	values []interface{}
 }
+
+// condition represents a WHERE or HAVING condition.
 type condition struct {
 	args      []interface{}
 	connector string
 }
 
+// order represents a ORDER statement.
 type order struct {
 	column string
 	args   []interface{}
 }
 
+// join represents a table joining infromation.
 type join struct {
 	typ        string
 	table      interface{}
@@ -32,7 +35,7 @@ type join struct {
 	conditions []condition
 }
 
-// Wrapper represents a database connection.
+// Wrapper represents a database query wrapper, which contains the database connection.
 type Wrapper struct {
 	db                 *DB
 	isSubQuery         bool
@@ -51,7 +54,7 @@ type Wrapper struct {
 	orders             []order
 	groupBy            []string
 
-	//
+	// Timestamp is the timestamp tool.
 	Timestamp *Timestamp
 	// Count is the count of the results, or the affected rows.
 	Count int
@@ -63,24 +66,22 @@ type Wrapper struct {
 	TotalPage int
 	// LasyQuery is last executed query.
 	LastQuery string
-	//
+	// LastInsertID is the last insert ID.
 	LastInsertID int
-	//
+	// LastInsertIDs is the last insert IDs.
 	LastInsertIDs []int
-	//
+	// LastRow is the `*sql.Rows` from the last result.
 	LastRows *sql.Rows
-	//
+	// LastRow is the `*sql.Row` from the last result.
 	LastRow *sql.Row
 }
 
-// New creates a new database connection which provides the MySQL wrapper functions.
-// The first data source name is for the master, the rest are for the slaves, which is used for the read/write split.
-//     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
-// Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
+// newWrapper creates a new database function wrapper by the passed database connection.
 func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{db: db, Timestamp: &Timestamp{}}
 }
 
+// clean cleans the last executed result.
 func (w *Wrapper) clean() {
 	w.tableName = []string{}
 	w.params = []interface{}{}
@@ -94,6 +95,7 @@ func (w *Wrapper) clean() {
 	w.query = ""
 }
 
+// bindParams binds the values of the interface slice to the database, and generates the prepared statement.
 func (w *Wrapper) bindParams(data interface{}) (query string) {
 	switch d := data.(type) {
 	case []interface{}:
@@ -113,7 +115,8 @@ func (w *Wrapper) bindParams(data interface{}) (query string) {
 	return
 }
 
-func (w *Wrapper) bindParam(data interface{}) (param string) {
+// bindParam binds the single value to the database and generates the prepared statement.
+func (w *Wrapper) bindParam(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
 	case *Wrapper:
 		if len(v.params) > 0 {
@@ -128,14 +131,21 @@ func (w *Wrapper) bindParam(data interface{}) (param string) {
 	default:
 		w.params = append(w.params, data)
 	}
-	param = w.paramToQuery(data)
+	param = w.paramToQuery(data, parentheses...)
 	return
 }
 
-func (w *Wrapper) paramToQuery(data interface{}) (param string) {
+// paramToQuery converts the value to the prepare statement.
+func (w *Wrapper) paramToQuery(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
 	case *Wrapper:
-		param = fmt.Sprintf("(%s)", v.query)
+		if len(parentheses) > 0 {
+			if parentheses[0] == false {
+				param = fmt.Sprintf("%s", v.query)
+			}
+		} else {
+			param = fmt.Sprintf("(%s)", v.query)
+		}
 	case function:
 		param = v.query
 	case nil:
@@ -146,6 +156,7 @@ func (w *Wrapper) paramToQuery(data interface{}) (param string) {
 	return
 }
 
+// buildDuplicate builds the `ON DUPLICATE KEY UPDATE` statement.
 func (w *Wrapper) buildDuplicate() (query string) {
 	if len(w.onDuplicateColumns) == 0 {
 		return
@@ -161,6 +172,7 @@ func (w *Wrapper) buildDuplicate() (query string) {
 	return
 }
 
+// buildInsert builds the `INSERT INTO` query.
 func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) {
 	var columns, values, options string
 	if len(w.queryOptions) > 0 {
@@ -194,29 +206,34 @@ func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) 
 	return
 }
 
+// Table specifies the name of the table.
 func (w *Wrapper) Table(tableName ...string) *Wrapper {
 	w.tableName = tableName
 	return w
 }
 
+// Insert builds and executes the insert query.
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.buildQuery()
 	return
 }
 
+// InsertMulti builds and executes a single insert query with the many rows.
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	w.buildQuery()
 	return
 }
 
+// Replace builds and executes the replace query just like what `Insert` does.
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
 	w.buildQuery()
 	return
 }
 
+// Func returns a database function, so it won't be treated like a normal data value.
 func (w *Wrapper) Func(query string, data ...interface{}) function {
 	return function{
 		query:  query,
@@ -224,6 +241,9 @@ func (w *Wrapper) Func(query string, data ...interface{}) function {
 	}
 }
 
+// Now returns a database function based on the `INTERVAL`.
+// The formats can be like `+1Y`, `-2M`, it's possible to chain the units with `Now("+1Y", "-2M")`.
+// Here're the supported units: `Y`(Year), `M`(Month), `D`(Day), `W`(Week), `h`(Hour), `m`(Minute), `s`(Second).
 func (w *Wrapper) Now(formats ...string) function {
 	query := "NOW() "
 	unitMap := map[string]string{
@@ -244,6 +264,7 @@ func (w *Wrapper) Now(formats ...string) function {
 	return w.Func(strings.TrimSpace(query))
 }
 
+// OnDuplicate stores the columns which would be updated when the inserted row has duplicated.
 func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {
 	w.onDuplicateColumns = columns
 	if len(lastInsertID) != 0 {
@@ -252,6 +273,7 @@ func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper
 	return w
 }
 
+// buildUpdate builds the `UPDATE` query.
 func (w *Wrapper) buildUpdate(data interface{}) (query string) {
 	var set string
 	query = fmt.Sprintf("UPDATE %s SET ", w.tableName[0])
@@ -265,6 +287,7 @@ func (w *Wrapper) buildUpdate(data interface{}) (query string) {
 	return
 }
 
+// buildLimit builds the `LIMIT` statement.
 func (w *Wrapper) buildLimit() (query string) {
 	switch len(w.limit) {
 	case 0:
@@ -277,21 +300,24 @@ func (w *Wrapper) buildLimit() (query string) {
 	return
 }
 
+// Update updates the rows with the specified data.
 func (w *Wrapper) Update(data interface{}) (err error) {
 	w.query = w.buildUpdate(data)
 	w.buildQuery()
 	return
 }
 
-func (w *Wrapper) Limit(count int, to ...int) *Wrapper {
-	if len(to) == 0 {
-		w.limit = []int{count}
+// Limit creates the limit statement in the end of the query.
+func (w *Wrapper) Limit(from int, count ...int) *Wrapper {
+	if len(count) == 0 {
+		w.limit = []int{from}
 	} else {
-		w.limit = []int{count, to[0]}
+		w.limit = []int{from, count[0]}
 	}
 	return w
 }
 
+// buildSelect builds the `SELECT` query.
 func (w *Wrapper) buildSelect(columns ...string) (query string) {
 	if len(columns) == 0 {
 		query = fmt.Sprintf("SELECT * FROM %s ", w.tableName[0])
@@ -301,29 +327,35 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 	return
 }
 
+// Get gets the specified columns of the rows from the specifed database table.
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
 	w.buildQuery()
 	return
 }
 
+// GetOne gets the specified columns of a single row from the specifed database table.
 func (w *Wrapper) GetOne(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
 	w.buildQuery()
 	return
 }
 
+// GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
 func (w *Wrapper) GetValue(column string) (err error) {
 	err = w.Get(fmt.Sprintf("%s AS Value", column))
 	return
 }
 
+// Paginate acts the same as `Get` but with the automatically page caculation.
+// Make sure you have specified the `PageLimit` (Default: 20) to limit the rows of a page.
 func (w *Wrapper) Paginate(pageCount int, columns ...string) (err error) {
 	err = w.Limit(w.PageLimit*(pageCount-1), w.PageLimit).Get(columns...)
 	w.TotalPage = w.TotalCount / w.PageLimit
 	return
 }
 
+// RawQuery executes the passed raw query and binds the passed values to the prepared statments.
 func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
 	w.query = query
 	w.LastQuery = w.query
@@ -331,15 +363,19 @@ func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
 	return
 }
 
+// RawQueryOne works the same as `GetOne`, and it only gets a single row as the result.
 func (w *Wrapper) RawQueryOne(query string, values ...interface{}) (err error) {
 	err = w.RawQuery(query, values...)
 	return
 }
 
+// RawQueryValue works the same as `GetValue`, it gets the value slice instead of a single value if there's no `LIMIT 1` was specifed in the raw query.
 func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error) {
+	err = w.RawQuery(query, values...)
 	return
 }
 
+// buildConditions cooks the conditions to the `WHERE` or the `HAVING` statement.
 func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 	for i, v := range conditions {
 		if i != 0 {
@@ -389,7 +425,7 @@ func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 				w.bindParams(v.args[1:])
 			} else {
 				if v.args[1].(string) == "IN" || v.args[1].(string) == "NOT IN" {
-					query += fmt.Sprintf("%s %s (%s) ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
+					query += fmt.Sprintf("%s %s (%s) ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2], false))
 				} else {
 					query += fmt.Sprintf("%s %s %s ", v.args[0].(string), v.args[1].(string), w.bindParam(v.args[2]))
 				}
@@ -413,6 +449,7 @@ func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 	return
 }
 
+// buildWhere builds the `WHERE` or the `HAVING` statement based on the stored conditons.
 func (w *Wrapper) buildWhere(typ string) (query string) {
 	var conditions []condition
 	if typ == "HAVING" {
@@ -430,6 +467,7 @@ func (w *Wrapper) buildWhere(typ string) (query string) {
 	return
 }
 
+// saveCondition stores a condition to the right place.
 func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
 	var c condition
 	c.connector = connector
@@ -441,31 +479,37 @@ func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
 	}
 }
 
+// Where adds a new `WHERE AND` condition.
 func (w *Wrapper) Where(args ...interface{}) *Wrapper {
 	w.saveCondition("WHERE", "AND", args...)
 	return w
 }
 
+// OrWhere adds a new `WHERE OR` condition.
 func (w *Wrapper) OrWhere(args ...interface{}) *Wrapper {
 	w.saveCondition("WHERE", "OR", args...)
 	return w
 }
 
+// Having adds a new `HAVING AND` condition.
 func (w *Wrapper) Having(args ...interface{}) *Wrapper {
 	w.saveCondition("HAVING", "AND", args...)
 	return w
 }
 
+// OrHaving adds a new `HAVING OR` condition.
 func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
 	w.saveCondition("HAVING", "OR", args...)
 	return w
 }
 
+// buildDelete builds and executes the delete query.
 func (w *Wrapper) buildDelete(tableNames ...string) (query string) {
 	query += fmt.Sprintf("DELETE FROM %s ", strings.Join(tableNames, ", "))
 	return
 }
 
+// buildQuery builds the whole query.
 func (w *Wrapper) buildQuery() {
 	w.query += w.buildDuplicate()
 	w.query += w.buildJoin()
@@ -482,12 +526,15 @@ func (w *Wrapper) buildQuery() {
 	}
 }
 
+// Delete deletes the row(s), use it with the `Where` condition so your whole table won't be wiped.
+// It's very important alright? Cause .. you know ..fuck.
 func (w *Wrapper) Delete() (err error) {
 	w.query = w.buildDelete(w.tableName...)
 	w.buildQuery()
 	return
 }
 
+// buildOrderBy builds the `ORDERY BY` statement based on the stored orders.
 func (w *Wrapper) buildOrderBy() (query string) {
 	if len(w.orders) == 0 {
 		return
@@ -510,6 +557,7 @@ func (w *Wrapper) buildOrderBy() (query string) {
 	return
 }
 
+// OrderBy orders the getting result based on a single column (or the fields) with the specified sorting like `ASC` and `DESC`.
 func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper {
 	w.orders = append(w.orders, order{
 		column: column,
@@ -518,6 +566,7 @@ func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper {
 	return w
 }
 
+// buildGroupBy builds the `GROUP BY` statement.
 func (w *Wrapper) buildGroupBy() (query string) {
 	if len(w.groupBy) == 0 {
 		return
@@ -530,11 +579,13 @@ func (w *Wrapper) buildGroupBy() (query string) {
 	return
 }
 
+// GroupBy groups the columns when executing the query.
 func (w *Wrapper) GroupBy(columns ...string) *Wrapper {
 	w.groupBy = columns
 	return w
 }
 
+// saveJoin saves the table joining information.
 func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
 	switch v := table.(type) {
 	case *Wrapper:
@@ -552,26 +603,31 @@ func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
 	}
 }
 
+// LeftJoin left joins a table.
 func (w *Wrapper) LeftJoin(table interface{}, condition string) *Wrapper {
 	w.saveJoin(table, "LEFT JOIN", condition)
 	return w
 }
 
+// RightJoin right joins a table.
 func (w *Wrapper) RightJoin(table interface{}, condition string) *Wrapper {
 	w.saveJoin(table, "RIGHT JOIN", condition)
 	return w
 }
 
+// InnerJoin inner joins a table.
 func (w *Wrapper) InnerJoin(table interface{}, condition string) *Wrapper {
 	w.saveJoin(table, "INNER JOIN", condition)
 	return w
 }
 
+// NaturalJoin natural joins a table.
 func (w *Wrapper) NaturalJoin(table interface{}, condition string) *Wrapper {
 	w.saveJoin(table, "NATURAL JOIN", condition)
 	return w
 }
 
+// saveJoinCondition saves a table join condition to the specifed table joining information.
 func (w *Wrapper) saveJoinCondition(connector string, table interface{}, args ...interface{}) {
 	switch v := table.(type) {
 	case *Wrapper:
@@ -587,16 +643,31 @@ func (w *Wrapper) saveJoinCondition(connector string, table interface{}, args ..
 	}
 }
 
+// JoinWhere creates a `WHERE AND` statement for the specified joining table.
 func (w *Wrapper) JoinWhere(table interface{}, args ...interface{}) *Wrapper {
 	w.saveJoinCondition("AND", table, args...)
 	return w
 }
 
+// JoinOrWhere creates a `WHERE OR` statement for the specified joining table.
 func (w *Wrapper) JoinOrWhere(table interface{}, args ...interface{}) *Wrapper {
 	w.saveJoinCondition("OR", table, args...)
 	return w
 }
 
+// JoinWhere creates a `HAVING AND` statement for the specified joining table.
+func (w *Wrapper) JoinHaving(table interface{}, args ...interface{}) *Wrapper {
+	//w.saveJoinCondition("AND", table, args...)
+	//return w
+}
+
+// JoinOrWhere creates a `HAVING OR` statement for the specified joining table.
+func (w *Wrapper) JoinOrHaving(table interface{}, args ...interface{}) *Wrapper {
+	//w.saveJoinCondition("OR", table, args...)
+	//return w
+}
+
+// buildJoin builds the join statement.
 func (w *Wrapper) buildJoin() (query string) {
 	if len(w.joins) == 0 {
 		return
@@ -621,6 +692,7 @@ func (w *Wrapper) buildJoin() (query string) {
 	return
 }
 
+// SubQuery converts the current query into a sub query so it won't be executed, and it could be passed to the any other statement like `Where`, the alias is required when passing the sub query to the joining statement.
 func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
 	newWrapper := &Wrapper{
 		isSubQuery: true,
@@ -631,47 +703,65 @@ func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
 	return newWrapper
 }
 
+// Has returns true when there's a such result, it's useful when you want to validate if there's a duplicated email address, or the usename.
 func (w *Wrapper) Has() (has bool, err error) {
+	w.query = w.buildSelect()
+	w.buildQuery()
 	return
 }
 
+// Disconnect disconnects the current database conection.
 func (w *Wrapper) Disconnect() (err error) {
 	return
 }
 
+// Ping pings the database to make sure it's working.
 func (w *Wrapper) Ping() (err error) {
 	return
 }
 
+// Connect reconnects to the database after the connection has disconnected.
 func (w *Wrapper) Connect() (err error) {
 	return
 }
 
+// Begin starts a transcation.
 func (w *Wrapper) Begin() *Wrapper {
 	return w
 }
 
+// Rollback rolls the changes back to where the transaction started.
 func (w *Wrapper) Rollback() *Wrapper {
 	return w
 }
 
+// Commit commits the current transaction, so the changes will be saved into the database permanently.
 func (w *Wrapper) Commit() *Wrapper {
 	return w
 }
 
+// SetLockMethod sets the lock method before locked the tables, it could be `WRITE` or `READ`.
 func (w *Wrapper) SetLockMethod() *Wrapper {
 	return w
 }
 
-func (w *Wrapper) Lock() *Wrapper {
+// Lock locks the tables with the specified lock method.
+func (w *Wrapper) Lock(tableNames ...string) *Wrapper {
 	return w
 }
 
-func (w *Wrapper) Unlock() *Wrapper {
+// Unlock unlocks the locked tables.
+func (w *Wrapper) Unlock(tableNames ...string) *Wrapper {
 	return w
 }
 
+// SetQueryOption sets the query options like `SQL_NO_CACHE`.
 func (w *Wrapper) SetQueryOption(options ...string) *Wrapper {
+	return w
+}
+
+// SetTrace sets the trace mode as on or off, so you can get the traces by accessing the `Trace` property.
+func (w *Wrapper) SetTrace(enable bool) *Wrapper {
 	return w
 }
 

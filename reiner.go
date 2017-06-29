@@ -4,7 +4,10 @@ func main() {
 
 }
 
-//
+// New creates a new database connection which provides the MySQL wrapper functions.
+// The first data source name is for the master, the rest are for the slaves, which is used for the read/write split.
+//     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
+// Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
 func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 	var masters, slaves []string
 	// One master only
