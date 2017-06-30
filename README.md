@@ -155,9 +155,10 @@ if err != nil {
 db, _ := reiner.New()
 db.Table("Users").Where("Username", "YamiOdymel").Get()
 
-// 然後像這樣透過原生的 `database/sql` 執行指令。
-sql.Prepare(db.LastQuery)
+// 透過 `Query` 取得 Reiner 所建立的 Query 然後透過原生的 `database/sql` 執行指令。
+sql.Prepare(db.Query())
 sql.Exec("YamiOdymel")
+// 等效於：SELECT * FROM Users WHERE Username = ?
 ```
 
 ## 資料綁定與處理
@@ -166,7 +167,7 @@ Reiner 允許你將結果與結構體切片或結構體綁定在一起。
 
 ```go
 var user []*User
-err := db.Bind(&user).Get("Users")
+err := db.Bind(&user).Table("Users").Get()
 ```
 
 ### 逐行掃描
@@ -742,6 +743,7 @@ if err := db.Ping(); err != nil {
 ```go
 db.Table("Users").Get()
 fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
+// 輸出：SELECT * FROM Users
 ```
 
 ### 結果／影響的行數
@@ -762,15 +764,19 @@ fmt.Println("總共更新 %s 筆資料", db.Count)
 當插入一筆新的資料，而該表格帶有自動遞增的欄位時，就能透過 `LastInsertID` 取得最新一筆資料的編號。
 
 ```go
+var id int
+
 db.Table("Users").Insert(data)
-id := db.LastInsertID
+id = db.LastInsertID
 ```
 
 如果你是同時間插入多筆資料，你仍可以透過 `LastInsertIDs` 取得剛才插入的所有資料編號。
 
 ```go
+var ids []int
+
 db.Table("Users").InsertMulti(data)
-ids := db.LastInsertIDs
+ids = db.LastInsertIDs
 ```
 
 ## 交易函式
@@ -780,11 +786,25 @@ ids := db.LastInsertIDs
 此函式並**不適用**於多個主從伺服器（Master）。
 
 ```go
-err := db.Table("Wallets").Begin().Insert(data)
+// 當交易開始時請使用回傳的 `tx` 而不是原先的 `db`，這樣才能確保交易繼續。
+tx, err := db.Begin()
 if err != nil {
-	db.Rollback()
-} else {
-	db.Commit()
+	panic(err)
+}
+
+// 如果插入資料時發生錯誤，則呼叫 `Rollback()` 回到交易剛開始的時候。
+if err = tx.Table("Wallets").Insert(data); err != nil {
+	tx.Rollback()
+	panic(err)
+}
+if err = tx.Table("Users").Insert(data); err != nil {
+	tx.Rollback()
+	panic(err)
+}
+
+// 透過 `Commit()` 確保上列變更都已經永久地儲存到資料庫。
+if err := tx.Commit(); err != nil {
+	panic(err)
 }
 ```
 
@@ -833,7 +853,7 @@ db.Table("Users").SetQueryOption("LOW_PRIORITY", "IGNORE").Insert(data)
 ```go
 db.SetTrace(true)
 db.Table("Users").Get()
-
+db.Table("Users").Get()
 fmt.Printf("%+v", db.Traces)
 ```
 
