@@ -10,11 +10,16 @@ func main() {
 // Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
 func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 	var masters, slaves []string
-	// One master only
-	if len(dataSourceNames) == 1 {
+
+	switch len(dataSourceNames) {
+	// Query builder mode.
+	case 0:
+		return &Wrapper{builderMode: true, Timestamp: &Timestamp{}}, nil
+	// One master only.
+	case 1:
 		masters = append(masters, dataSourceNames[0].(string))
-		// Master(s) and the slave(s).
-	} else if len(dataSourceNames) == 2 {
+	// Master(s) and the slave(s).
+	case 2:
 		switch v := dataSourceNames[0].(type) {
 		// Multiple masters.
 		case []string:

@@ -155,9 +155,10 @@ if err != nil {
 db, _ := reiner.New()
 db.Table("Users").Where("Username", "YamiOdymel").Get()
 
-// 透過 `Query` 取得 Reiner 所建立的 Query 然後透過原生的 `database/sql` 執行指令。
-sql.Prepare(db.Query())
-sql.Exec("YamiOdymel")
+// 透過 `Query` 取得 Reiner 所建立的 Query 當作欲執行的資料庫指令。
+sql.Prepare(db.Query)
+// 接著展開 `Params` 即是我們在 Reiner 中存放的值。
+sql.Exec(db.Params...)
 // 等效於：SELECT * FROM Users WHERE Username = ?
 ```
 
@@ -782,8 +783,6 @@ ids = db.LastInsertIDs
 ## 交易函式
 
 交易函式僅限於 [InnoDB](https://zh.wikipedia.org/zh-tw/InnoDB) 型態的資料表格，這能令你的資料寫入更加安全。你可以透過 `Begin` 開始記錄並繼續你的資料庫寫入行為，如果途中發生錯誤，你能透過 `Rollback` 回到紀錄之前的狀態，即為回溯（或滾回、退回），如果這筆交易已經沒有問題了，透過 `Commit` 將這次的變更永久地儲存到資料庫中。
-
-此函式並**不適用**於多個主從伺服器（Master）。
 
 ```go
 // 當交易開始時請使用回傳的 `tx` 而不是原先的 `db`，這樣才能確保交易繼續。

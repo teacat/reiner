@@ -110,8 +110,13 @@ func (d *DB) getWriteConnetion() (db *sql.DB) {
 }
 
 // getDB gets the database connection based on the query, used for the read/write splitting.
-func (d *DB) getDB(query string) (db *sql.DB) {
-	firstAction := strings.Split(query, " ")[0]
+func (d *DB) getDB(query ...string) (db *sql.DB) {
+	if len(query) == 0 || d.isSingleConnection {
+		db = d.mainConnection.db
+		return
+	}
+
+	firstAction := strings.Split(query[0], " ")[0]
 	isWrite := firstAction == "INSERT" || firstAction == "CREATE"
 	if isWrite {
 		db = d.getWriteConnetion()
@@ -121,35 +126,22 @@ func (d *DB) getDB(query string) (db *sql.DB) {
 	return
 }
 
+//
+func (d *DB) Prepare(query string) (*sql.Stmt, error) {
+	return d.getDB(query).Prepare(query)
+}
+
 // Exec executes the queries and returns the result, not the rows.
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
-	var db *sql.DB
-	if d.isSingleConnection {
-		db = d.mainConnection.db
-	} else {
-		db = d.getDB(query)
-	}
-	return db.Exec(query, args...)
+	return d.getDB(query).Exec(query, args...)
 }
 
 // Query executes the SQL queries.
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	var db *sql.DB
-	if d.isSingleConnection {
-		db = d.mainConnection.db
-	} else {
-		db = d.getDB(query)
-	}
-	return db.Query(query, args...)
+	return d.getDB(query).Query(query, args...)
 }
 
 // QueryRow executes the query which has only one row as the result.
 func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
-	var db *sql.DB
-	if d.isSingleConnection {
-		db = d.mainConnection.db
-	} else {
-		db = d.getDB(query)
-	}
-	return db.QueryRow(query, args...)
+	return d.getDB(query).QueryRow(query, args...)
 }
