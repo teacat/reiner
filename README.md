@@ -263,20 +263,6 @@ db.Table("Users").InsertMulti(data)
 // 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)
 ```
 
-#### ~~省略重複鍵名~~（暫時棄用）
-
-~~當所有資料都有一樣的插入欄位名稱時，鍵名可以只需要輸入一次。~~
-
-```go
-values := [][]interface{}{
-	{"YamiOdymel", "test"},
-	{"Karisu", "12345"},
-}
-columns := []string{"username", "password"}
-db.Table("Users").InsertMulti(values, columns)
-// 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)
-```
-
 ## 更新
 
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
@@ -357,10 +343,10 @@ db.Table("Users").GetValue("COUNT(*)")
 分頁就像是取得資料ㄧ樣，但更擅長用於多筆資料、不會一次顯示完畢的內容。Reiner 能夠幫你自動處理換頁功能，讓你不需要自行計算換頁時的筆數應該從何開始。為此，你需要定義兩個變數，一個是目前的頁數，另一個是單頁能有幾筆資料。
 
 ```go
-page := 2
-db.PageLimit = 20
+page := 1
+db.PageLimit = 10
 db.Table("Users").Paginate(page)
-// 等效於：SELECT * FROM Users LIMIT 20, 20
+// 等效於：SELECT * FROM Users LIMIT 0, 10
 
 fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```

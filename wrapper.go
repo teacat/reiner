@@ -3,7 +3,6 @@ package reiner
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -69,6 +68,7 @@ type Wrapper struct {
 	groupBy            []string
 	lockMethod         string
 	tracing            bool
+	scanner            func(*sql.Rows)
 
 	// Timestamp is the timestamp tool.
 	Timestamp *Timestamp
@@ -391,30 +391,28 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.Query = w.buildSelect(columns...)
 	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	rows, err := stmt.Query(w.Params...)
+	if err != nil {
+		return err
+	}
+	_, err = load(rows, w.destination)
+	if err != nil {
+		return err
+	}
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
 	return
-}
-
-func replace(i, v interface{}) {
-	val := reflect.ValueOf(i)
-	if val.Kind() != reflect.Ptr {
-		fmt.Println(`panic("not a pointer")`)
-		return
-	}
-
-	val = val.Elem()
-
-	newVal := reflect.Indirect(reflect.ValueOf(v))
-
-	if !val.Type().AssignableTo(newVal.Type()) {
-		fmt.Println(`panic("mismatched types")`)
-		return
-	}
-
-	val.Set(newVal)
 }
 
 // GetOne gets the specified columns of a single row from the specifed database table.
 func (w *Wrapper) GetOne(columns ...string) (err error) {
+	w.Limit(1)
 	w.Query = w.buildSelect(columns...)
 	w.buildQuery()
 	stmt, err := w.db.Prepare(w.Query)
@@ -429,14 +427,33 @@ func (w *Wrapper) GetOne(columns ...string) (err error) {
 	if err != nil {
 		return err
 	}
-
+	if !w.isSubQuery {
+		w.clean()
+	}
 	// Count
 	return
 }
 
 // GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
 func (w *Wrapper) GetValue(column string) (err error) {
-	err = w.Get(fmt.Sprintf("%s AS Value", column))
+	w.Query = w.buildSelect(column)
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	rows, err := stmt.Query(w.Params...)
+	if err != nil {
+		return err
+	}
+	_, err = load(rows, w.destination)
+	if err != nil {
+		return err
+	}
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
 	return
 }
 
@@ -873,6 +890,7 @@ func (w *Wrapper) Copy() *Wrapper {
 
 // Scan scans the rows of the result, and mapping it to the specified variable.
 func (w *Wrapper) Scan(h func(*sql.Rows)) *Wrapper {
+
 	return w
 }
 
