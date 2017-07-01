@@ -3,6 +3,7 @@ package reiner
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -374,10 +375,46 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 	return
 }
 
+func replace(i, v interface{}) {
+	val := reflect.ValueOf(i)
+	if val.Kind() != reflect.Ptr {
+		fmt.Println(`panic("not a pointer")`)
+		return
+	}
+
+	val = val.Elem()
+
+	newVal := reflect.Indirect(reflect.ValueOf(v))
+
+	if !val.Type().AssignableTo(newVal.Type()) {
+		fmt.Println(`panic("mismatched types")`)
+		return
+	}
+
+	val.Set(newVal)
+}
+
 // GetOne gets the specified columns of a single row from the specifed database table.
 func (w *Wrapper) GetOne(columns ...string) (err error) {
 	w.Query = w.buildSelect(columns...)
 	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	rows, err := stmt.Query(w.Params...)
+	if err != nil {
+		return err
+	}
+	_, err = load(rows, w.destination)
+	if err != nil {
+		return err
+	}
+
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
 	return
 }
 
@@ -824,7 +861,8 @@ func (w *Wrapper) Scan(h func(*sql.Rows)) *Wrapper {
 }
 
 // Bind binds the destination of the result.
-func (w *Wrapper) Bind() *Wrapper {
+func (w *Wrapper) Bind(destination interface{}) *Wrapper {
+	w.destination = destination
 	return w
 }
 

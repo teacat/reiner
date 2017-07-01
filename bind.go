@@ -5,31 +5,49 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"reflect"
 	"unicode"
 )
 
 var (
-	dummyDest   interface{}
-	typeValuer  = reflect.TypeOf((*driver.Valuer)(nil)).Elem()
-	typeScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	ErrNotFound           = errors.New("dbr: not found")
+	ErrNotSupported       = errors.New("dbr: not supported")
+	ErrTableNotSpecified  = errors.New("dbr: table not specified")
+	ErrColumnNotSpecified = errors.New("dbr: column not specified")
+	ErrInvalidPointer     = errors.New("dbr: attempt to load into an invalid pointer")
+	ErrPlaceholderCount   = errors.New("dbr: wrong placeholder count")
+	ErrInvalidSliceLength = errors.New("dbr: length of slice is 0. length must be >= 1")
+	ErrCantConvertToTime  = errors.New("dbr: can't convert to time.Time")
+	ErrInvalidTimestring  = errors.New("dbr: invalid time string")
 )
 
-// Load loads any value from sql.Rows, and mapping it to the value.
-// Source: https://github.com/eurie-inc/dbr/blob/b5850bff6a3ea03ee6c1a0fa5235fe5f420db9d9/load.go
-func Load(rows *sql.Rows, value interface{}) (int, error) {
+// Load loads any value from sql.Rows
+func load(rows *sql.Rows, value interface{}) (int, error) {
 	defer rows.Close()
+
 	column, err := rows.Columns()
 	if err != nil {
 		return 0, err
 	}
+
 	v := reflect.ValueOf(value)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
-		return 0, errors.New("invalid pointer")
+		return 0, ErrInvalidPointer
 	}
 	v = v.Elem()
 	isSlice := v.Kind() == reflect.Slice && v.Type().Elem().Kind() != reflect.Uint8
 	count := 0
+	var elemType reflect.Type
+	if isSlice {
+		elemType = v.Type().Elem()
+	} else {
+		elemType = v.Type()
+	}
+	extractor, err := findExtractor(elemType)
+	if err != nil {
+		return count, err
+	}
 	for rows.Next() {
 		var elem reflect.Value
 		if isSlice {
@@ -37,13 +55,11 @@ func Load(rows *sql.Rows, value interface{}) (int, error) {
 		} else {
 			elem = v
 		}
-		ptr, err := findPtr(column, elem)
-		if err != nil {
-			return 0, err
-		}
+		ptr := extractor(column, elem)
+
 		err = rows.Scan(ptr...)
 		if err != nil {
-			return 0, err
+			return count, err
 		}
 		count++
 		if isSlice {
@@ -55,10 +71,48 @@ func Load(rows *sql.Rows, value interface{}) (int, error) {
 	return count, nil
 }
 
-// camelCaseToSnakeCase converts the camel case struct field name to the snake case for the database.
+type dummyScanner struct{}
+
+func (dummyScanner) Scan(interface{}) error {
+	return nil
+}
+
+type keyValueMap map[string]interface{}
+
+type kvScanner struct {
+	column string
+	m      keyValueMap
+}
+
+func (kv *kvScanner) Scan(v interface{}) error {
+	kv.m[kv.column] = v
+	return nil
+}
+
+type pointersExtractor func(columns []string, value reflect.Value) []interface{}
+
+var (
+	dummyDest       sql.Scanner = dummyScanner{}
+	typeScanner                 = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	typeKeyValueMap             = reflect.TypeOf(keyValueMap(nil))
+)
+
+// structMap builds index to fast lookup fields in struct
+func structMap(t reflect.Type) map[string][]int {
+	m := make(map[string][]int)
+	structTraverse(m, t, nil)
+	return m
+}
+
+var (
+	typeValuer = reflect.TypeOf((*driver.Valuer)(nil)).Elem()
+)
+
 func camelCaseToSnakeCase(name string) string {
 	buf := new(bytes.Buffer)
+
 	runes := []rune(name)
+
 	for i := 0; i < len(runes); i++ {
 		buf.WriteRune(unicode.ToLower(runes[i]))
 		if i != len(runes)-1 && unicode.IsUpper(runes[i+1]) &&
@@ -67,25 +121,22 @@ func camelCaseToSnakeCase(name string) string {
 			buf.WriteRune('_')
 		}
 	}
+
 	return buf.String()
+
 }
 
-// structValue gets the pointer of the field and mapping the values of the rows to the fields.
-func structValue(m map[string]reflect.Value, value reflect.Value) {
-	if value.Type().Implements(typeValuer) {
+func structTraverse(m map[string][]int, t reflect.Type, head []int) {
+	if t.Implements(typeValuer) {
 		return
 	}
-	switch value.Kind() {
+	switch t.Kind() {
 	case reflect.Ptr:
-		if value.IsNil() {
-			return
-		}
-		structValue(m, value.Elem())
+		structTraverse(m, t.Elem(), head)
 	case reflect.Struct:
-		t := value.Type()
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
-			if field.PkgPath != "" {
+			if field.PkgPath != "" && !field.Anonymous {
 				// unexported
 				continue
 			}
@@ -99,44 +150,73 @@ func structValue(m map[string]reflect.Value, value reflect.Value) {
 				//tag = camelCaseToSnakeCase(field.Name)
 				tag = field.Name
 			}
-			fieldValue := value.Field(i)
 			if _, ok := m[tag]; !ok {
-				m[tag] = fieldValue
+				m[tag] = append(head, i)
 			}
-			structValue(m, fieldValue)
+			structTraverse(m, field.Type, append(head, i))
 		}
 	}
 }
 
-// structMap creates a map for the fields.
-func structMap(value reflect.Value) map[string]reflect.Value {
-	m := make(map[string]reflect.Value)
-	structValue(m, value)
-	return m
-}
-
-// findPtr finds the pointer of the value.
-func findPtr(column []string, value reflect.Value) ([]interface{}, error) {
-	if value.Addr().Type().Implements(typeScanner) {
-		return []interface{}{value.Addr().Interface()}, nil
-	}
-	switch value.Kind() {
-	case reflect.Struct:
+func getStructFieldsExtractor(t reflect.Type) pointersExtractor {
+	mapping := structMap(t)
+	return func(columns []string, value reflect.Value) []interface{} {
 		var ptr []interface{}
-		m := structMap(value)
-		for _, key := range column {
-			if val, ok := m[key]; ok {
-				ptr = append(ptr, val.Addr().Interface())
+		for _, key := range columns {
+			if index, ok := mapping[key]; ok {
+				ptr = append(ptr, value.FieldByIndex(index).Addr().Interface())
 			} else {
-				ptr = append(ptr, &dummyDest)
+				ptr = append(ptr, dummyDest)
 			}
 		}
-		return ptr, nil
-	case reflect.Ptr:
+		return ptr
+	}
+}
+
+func getIndirectExtractor(extractor pointersExtractor) pointersExtractor {
+	return func(columns []string, value reflect.Value) []interface{} {
 		if value.IsNil() {
 			value.Set(reflect.New(value.Type().Elem()))
 		}
-		return findPtr(column, value.Elem())
+		return extractor(columns, value.Elem())
 	}
-	return []interface{}{value.Addr().Interface()}, nil
+}
+
+func mapExtractor(columns []string, value reflect.Value) []interface{} {
+	if value.IsNil() {
+		value.Set(reflect.MakeMap(value.Type()))
+	}
+	m := value.Convert(typeKeyValueMap).Interface().(keyValueMap)
+	var ptr []interface{}
+	for _, c := range columns {
+		ptr = append(ptr, &kvScanner{column: c, m: m})
+	}
+	return ptr
+}
+
+func dummyExtractor(columns []string, value reflect.Value) []interface{} {
+	return []interface{}{value.Addr().Interface()}
+}
+
+func findExtractor(t reflect.Type) (pointersExtractor, error) {
+	if reflect.PtrTo(t).Implements(typeScanner) {
+		return dummyExtractor, nil
+	}
+
+	switch t.Kind() {
+	case reflect.Map:
+		if !t.ConvertibleTo(typeKeyValueMap) {
+			return nil, fmt.Errorf("expected %v, got %v", typeKeyValueMap, t)
+		}
+		return mapExtractor, nil
+	case reflect.Ptr:
+		inner, err := findExtractor(t.Elem())
+		if err != nil {
+			return nil, err
+		}
+		return getIndirectExtractor(inner), nil
+	case reflect.Struct:
+		return getStructFieldsExtractor(t), nil
+	}
+	return dummyExtractor, nil
 }
