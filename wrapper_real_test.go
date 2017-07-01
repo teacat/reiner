@@ -45,10 +45,28 @@ func TestRealInsert(t *testing.T) {
 	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?)", realWrapper.LastQuery)
 }
 
+func TestRealInsertMulti(t *testing.T) {
+	assert := assert.New(t)
+	err := realWrapper.Table("Users").InsertMulti([]map[string]interface{}{
+		{
+			"Username": "Karisu",
+			"Password": "ka_ri_su",
+			"Age":      17,
+		},
+		{
+			"Username": "Shirone",
+			"Password": "shiroi",
+			"Age":      18,
+		},
+	})
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?), (?, ?, ?)", realWrapper.LastQuery)
+}
+
 func TestRealGetOne(t *testing.T) {
 	assert := assert.New(t)
 	var u User
-	err = realWrapper.Bind(&u).Table("Users").GetOne()
+	err := realWrapper.Bind(&u).Table("Users").GetOne()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users", realWrapper.LastQuery)
 

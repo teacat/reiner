@@ -211,14 +211,17 @@ func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) 
 		values = fmt.Sprintf("(%s)", trim(values))
 
 	case []map[string]interface{}:
-		for index, single := range realData {
+		var columnNames []string
+		// Get the column names first, so we can range the map in order.
+		for name := range realData[0] {
+			columnNames = append(columnNames, name)
+			// Build the column name query.
+			columns += fmt.Sprintf("%s, ", name)
+		}
+		for _, single := range realData {
 			var currentValues string
-			for column, value := range single {
-				// Get the column names from the first data set only.
-				if index == 0 {
-					columns += fmt.Sprintf("%s, ", column)
-				}
-				currentValues += fmt.Sprintf("%s, ", w.bindParam(value))
+			for _, name := range columnNames {
+				currentValues += fmt.Sprintf("%s, ", w.bindParam(single[name]))
 			}
 			values += fmt.Sprintf("(%s), ", trim(currentValues))
 		}
@@ -239,7 +242,6 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.Query = w.buildInsert("INSERT", data)
 	w.buildQuery()
-
 	stmt, err := w.db.Prepare(w.Query)
 	if err != nil {
 		return err
@@ -264,6 +266,23 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.Query = w.buildInsert("INSERT", data)
 	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(w.Params...)
+	if err != nil {
+		return err
+	}
+	//id, err := r.LastInsertId()
+	//if err != nil {
+	//	return err
+	//}
+	//w.LastInsertID = int(id)
+	// Count
+	if !w.isSubQuery {
+		w.clean()
+	}
 	return
 }
 
@@ -411,9 +430,6 @@ func (w *Wrapper) GetOne(columns ...string) (err error) {
 		return err
 	}
 
-	if !w.isSubQuery {
-		w.clean()
-	}
 	// Count
 	return
 }
