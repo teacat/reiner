@@ -116,8 +116,7 @@ func TestRealInsertFunc(t *testing.T) {
 
 func TestRealOnDuplicateInsert(t *testing.T) {
 	assert := assert.New(t)
-	lastInsertID := "ID"
-	err := rw.Table("Users").OnDuplicate([]string{"Age", "Password"}, lastInsertID).Insert(map[string]interface{}{
+	err := rw.Table("Users").OnDuplicate([]string{"Age", "Password"}).Insert(map[string]interface{}{
 		"Username": "YamiOdymel",
 		"Password": "test",
 		"Age":      95,

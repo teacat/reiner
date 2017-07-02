@@ -49,18 +49,24 @@ type Trace struct {
 
 // Wrapper represents a database query wrapper, which contains the database connection.
 type Wrapper struct {
-	db                 *DB
-	builderMode        bool
-	isSubQuery         bool
-	Query              string
-	alias              string
+	db *DB
+	// builderMode enables when the wrapper is used to build the queries,
+	// the queries won't be executed in this mode.
+	builderMode bool
+	// isSubQuery tells if the wrapper is a sub query or not.
+	// The query won't be executed if it's a sub query.
+	isSubQuery bool
+	// alias is the alias for the table when joining the table as a sub query.
+	alias string
+	// destination represents a pointer to the destination of the result.
+	destination interface{}
+	// scanner handles the rows scan function after the result was fetched.
+	scanner            func(*sql.Rows)
 	tableName          []string
 	conditions         []condition
 	havingConditions   []condition
 	queryOptions       []string
-	destination        interface{}
 	joins              map[string]*join
-	Params             []interface{}
 	onDuplicateColumns []string
 	lastInsertIDColumn string
 	limit              []int
@@ -68,19 +74,20 @@ type Wrapper struct {
 	groupBy            []string
 	lockMethod         string
 	tracing            bool
-	scanner            func(*sql.Rows)
 
+	// Params represents the parameter values of the query.
+	Params []interface{}
+	// Query represents the builded query.
+	Query string
 	// Timestamp is the timestamp tool.
 	Timestamp *Timestamp
-	//
+	// Traces represents the trace of each executed query.
 	Traces []Trace
-	// Count is the count of the results, or the affected rows.
-	Count int
 	//
 	TotalCount int
-	//
+	// PageLimit limits the amount of the rows can be feteched in a page.
 	PageLimit int
-	//
+	// TotalPage represents the count of total page.
 	TotalPage int
 	// LasyQuery is last executed query.
 	LastQuery string
@@ -112,10 +119,65 @@ func (w *Wrapper) clean() {
 	w.conditions = []condition{}
 	w.havingConditions = []condition{}
 	w.limit = []int{}
-	if !w.builderMode {
-		//w.Query = ""
+}
+
+//=======================================================
+// Save Functions
+//=======================================================
+
+// saveJoin saves the table joining information.
+func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
+	switch v := table.(type) {
+	// Sub query joining.
+	case *Wrapper:
+		w.joins[v.Query] = &join{
+			typ:       typ,
+			table:     table,
+			condition: condition,
+		}
+	// Common table joining.
+	case string:
+		w.joins[v] = &join{
+			typ:       typ,
+			table:     table,
+			condition: condition,
+		}
 	}
 }
+
+// saveJoinCondition saves a table join condition to the specifed table joining information.
+func (w *Wrapper) saveJoinCondition(connector string, table interface{}, args ...interface{}) {
+	switch v := table.(type) {
+	// Sub query condition.
+	case *Wrapper:
+		w.joins[v.Query].conditions = append(w.joins[v.Query].conditions, condition{
+			args:      args,
+			connector: connector,
+		})
+	// Common condition.
+	case string:
+		w.joins[v].conditions = append(w.joins[v].conditions, condition{
+			args:      args,
+			connector: connector,
+		})
+	}
+}
+
+// saveCondition stores a condition to the right place.
+func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
+	var c condition
+	c.connector = connector
+	c.args = args
+	if typ == "HAVING" {
+		w.havingConditions = append(w.havingConditions, c)
+	} else {
+		w.conditions = append(w.conditions, c)
+	}
+}
+
+//=======================================================
+// Param Functions
+//=======================================================
 
 // bindParams binds the values of the interface slice to the database, and generates the prepared statement.
 func (w *Wrapper) bindParams(data interface{}) (query string) {
@@ -178,159 +240,26 @@ func (w *Wrapper) paramToQuery(data interface{}, parentheses ...bool) (param str
 	return
 }
 
-// buildDuplicate builds the `ON DUPLICATE KEY UPDATE` statement.
-func (w *Wrapper) buildDuplicate() (query string) {
-	if len(w.onDuplicateColumns) == 0 {
+//=======================================================
+// Build Functions
+//=======================================================
+
+// buildWhere builds the `WHERE` or the `HAVING` statement based on the stored conditons.
+func (w *Wrapper) buildWhere(typ string) (query string) {
+	var conditions []condition
+	if typ == "HAVING" {
+		conditions = w.havingConditions
+		query = "HAVING "
+	} else {
+		conditions = w.conditions
+		query = "WHERE "
+	}
+	if len(conditions) == 0 {
+		query = ""
 		return
 	}
-	query += "ON DUPLICATE KEY UPDATE "
-	if w.lastInsertIDColumn != "" {
-		query += fmt.Sprintf("%s=LAST_INSERT_ID(%s), ", w.lastInsertIDColumn, w.lastInsertIDColumn)
-	}
-	for _, v := range w.onDuplicateColumns {
-		query += fmt.Sprintf("%s = VALUE(%s), ", v, v)
-	}
-	query = trim(query)
+	query += w.buildConditions(conditions)
 	return
-}
-
-// buildInsert builds the `INSERT INTO` query.
-func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) {
-	var columns, values, options string
-	if len(w.queryOptions) > 0 {
-		options = fmt.Sprintf("%s ", strings.Join(w.queryOptions, ", "))
-	}
-
-	// Build the query based on the data type.
-	switch realData := data.(type) {
-	case map[string]interface{}:
-		for column, value := range realData {
-			columns += fmt.Sprintf("%s, ", column)
-			values += fmt.Sprintf("%s, ", w.bindParam(value))
-		}
-		values = fmt.Sprintf("(%s)", trim(values))
-
-	case []map[string]interface{}:
-		var columnNames []string
-		// Get the column names first, so we can range the map in order.
-		for name := range realData[0] {
-			columnNames = append(columnNames, name)
-			// Build the column name query.
-			columns += fmt.Sprintf("%s, ", name)
-		}
-		for _, single := range realData {
-			var currentValues string
-			for _, name := range columnNames {
-				currentValues += fmt.Sprintf("%s, ", w.bindParam(single[name]))
-			}
-			values += fmt.Sprintf("(%s), ", trim(currentValues))
-		}
-		values = trim(values)
-	}
-	columns = trim(columns)
-	query = fmt.Sprintf("%s %sINTO %s (%s) VALUES %s ", operator, options, w.tableName[0], columns, values)
-	return
-}
-
-// Table specifies the name of the table.
-func (w *Wrapper) Table(tableName ...string) *Wrapper {
-	w.tableName = tableName
-	return w
-}
-
-// Insert builds and executes the insert query.
-func (w *Wrapper) Insert(data interface{}) (err error) {
-	w.Query = w.buildInsert("INSERT", data)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	r, err := stmt.Exec(w.Params...)
-	if err != nil {
-		return err
-	}
-	id, err := r.LastInsertId()
-	if err != nil {
-		return err
-	}
-	w.LastInsertID = int(id)
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
-	return nil
-}
-
-// InsertMulti builds and executes a single insert query with the many rows.
-func (w *Wrapper) InsertMulti(data interface{}) (err error) {
-	w.Query = w.buildInsert("INSERT", data)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(w.Params...)
-	if err != nil {
-		return err
-	}
-	//id, err := r.LastInsertId()
-	//if err != nil {
-	//	return err
-	//}
-	//w.LastInsertID = int(id)
-	// Count
-	if !w.isSubQuery {
-		w.clean()
-	}
-	return
-}
-
-// Replace builds and executes the replace query just like what `Insert` does.
-func (w *Wrapper) Replace(data interface{}) (err error) {
-	w.Query = w.buildInsert("REPLACE", data)
-	w.buildQuery()
-	return
-}
-
-// Func returns a database function, so it won't be treated like a normal data value.
-func (w *Wrapper) Func(query string, data ...interface{}) function {
-	return function{
-		query:  query,
-		values: data,
-	}
-}
-
-// Now returns a database function based on the `INTERVAL`.
-// The formats can be like `+1Y`, `-2M`, it's possible to chain the units with `Now("+1Y", "-2M")`.
-// Here're the supported units: `Y`(Year), `M`(Month), `D`(Day), `W`(Week), `h`(Hour), `m`(Minute), `s`(Second).
-func (w *Wrapper) Now(formats ...string) function {
-	query := "NOW() "
-	unitMap := map[string]string{
-		"Y": "YEAR",
-		"M": "MONTH",
-		"D": "DAY",
-		"W": "WEEK",
-		"h": "HOUR",
-		"m": "MINUTE",
-		"s": "SECOND",
-	}
-	for _, v := range formats {
-		operator := string(v[0])
-		interval := v[1 : len(v)-1]
-		unit := string(v[len(v)-1])
-		query += fmt.Sprintf("%s INTERVAL %s %s ", operator, interval, unitMap[unit])
-	}
-	return w.Func(strings.TrimSpace(query))
-}
-
-// OnDuplicate stores the columns which would be updated when the inserted row has duplicated.
-func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {
-	w.onDuplicateColumns = columns
-	if len(lastInsertID) != 0 {
-		w.lastInsertIDColumn = lastInsertID[0]
-	}
-	return w
 }
 
 // buildUpdate builds the `UPDATE` query.
@@ -360,23 +289,6 @@ func (w *Wrapper) buildLimit() (query string) {
 	return
 }
 
-// Update updates the rows with the specified data.
-func (w *Wrapper) Update(data interface{}) (err error) {
-	w.Query = w.buildUpdate(data)
-	w.buildQuery()
-	return
-}
-
-// Limit creates the limit statement in the end of the query.
-func (w *Wrapper) Limit(from int, count ...int) *Wrapper {
-	if len(count) == 0 {
-		w.limit = []int{from}
-	} else {
-		w.limit = []int{from, count[0]}
-	}
-	return w
-}
-
 // buildSelect builds the `SELECT` query.
 func (w *Wrapper) buildSelect(columns ...string) (query string) {
 	if len(columns) == 0 {
@@ -384,107 +296,6 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 	} else {
 		query = fmt.Sprintf("SELECT %s FROM %s ", strings.Join(columns, ", "), w.tableName[0])
 	}
-	return
-}
-
-// Get gets the specified columns of the rows from the specifed database table.
-func (w *Wrapper) Get(columns ...string) (err error) {
-	w.Query = w.buildSelect(columns...)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	rows, err := stmt.Query(w.Params...)
-	if err != nil {
-		return err
-	}
-	_, err = load(rows, w.destination)
-	if err != nil {
-		return err
-	}
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
-	return
-}
-
-// GetOne gets the specified columns of a single row from the specifed database table.
-func (w *Wrapper) GetOne(columns ...string) (err error) {
-	w.Limit(1)
-	w.Query = w.buildSelect(columns...)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	rows, err := stmt.Query(w.Params...)
-	if err != nil {
-		return err
-	}
-	_, err = load(rows, w.destination)
-	if err != nil {
-		return err
-	}
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
-	return
-}
-
-// GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
-func (w *Wrapper) GetValue(column string) (err error) {
-	w.Query = w.buildSelect(column)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	rows, err := stmt.Query(w.Params...)
-	if err != nil {
-		return err
-	}
-	_, err = load(rows, w.destination)
-	if err != nil {
-		return err
-	}
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
-	return
-}
-
-// Paginate acts the same as `Get` but with the automatically page caculation.
-// Make sure you have specified the `PageLimit` (Default: 20) to limit the rows of a page.
-func (w *Wrapper) Paginate(pageCount int, columns ...string) (err error) {
-	err = w.Limit(w.PageLimit*(pageCount-1), w.PageLimit).Get(columns...)
-	w.TotalPage = w.TotalCount / w.PageLimit
-	return
-}
-
-// RawQuery executes the passed raw query and binds the passed values to the prepared statments.
-func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
-	if len(values) == 0 {
-
-	}
-	w.Query = query
-	w.LastQuery = w.Query
-	w.bindParams(values)
-	return
-}
-
-// RawQueryOne works the same as `GetOne`, and it only gets a single row as the result.
-func (w *Wrapper) RawQueryOne(query string, values ...interface{}) (err error) {
-	err = w.RawQuery(query, values...)
-	return
-}
-
-// RawQueryValue works the same as `GetValue`, it gets the value slice instead of a single value if there's no `LIMIT 1` was specifed in the raw query.
-func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error) {
-	err = w.RawQuery(query, values...)
 	return
 }
 
@@ -565,60 +376,6 @@ func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 	return
 }
 
-// buildWhere builds the `WHERE` or the `HAVING` statement based on the stored conditons.
-func (w *Wrapper) buildWhere(typ string) (query string) {
-	var conditions []condition
-	if typ == "HAVING" {
-		conditions = w.havingConditions
-		query = "HAVING "
-	} else {
-		conditions = w.conditions
-		query = "WHERE "
-	}
-	if len(conditions) == 0 {
-		query = ""
-		return
-	}
-	query += w.buildConditions(conditions)
-	return
-}
-
-// saveCondition stores a condition to the right place.
-func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
-	var c condition
-	c.connector = connector
-	c.args = args
-	if typ == "HAVING" {
-		w.havingConditions = append(w.havingConditions, c)
-	} else {
-		w.conditions = append(w.conditions, c)
-	}
-}
-
-// Where adds a new `WHERE AND` condition.
-func (w *Wrapper) Where(args ...interface{}) *Wrapper {
-	w.saveCondition("WHERE", "AND", args...)
-	return w
-}
-
-// OrWhere adds a new `WHERE OR` condition.
-func (w *Wrapper) OrWhere(args ...interface{}) *Wrapper {
-	w.saveCondition("WHERE", "OR", args...)
-	return w
-}
-
-// Having adds a new `HAVING AND` condition.
-func (w *Wrapper) Having(args ...interface{}) *Wrapper {
-	w.saveCondition("HAVING", "AND", args...)
-	return w
-}
-
-// OrHaving adds a new `HAVING OR` condition.
-func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
-	w.saveCondition("HAVING", "OR", args...)
-	return w
-}
-
 // buildDelete builds and executes the delete query.
 func (w *Wrapper) buildDelete(tableNames ...string) (query string) {
 	query += fmt.Sprintf("DELETE FROM %s ", strings.Join(tableNames, ", "))
@@ -636,14 +393,6 @@ func (w *Wrapper) buildQuery() {
 	w.Query += w.buildLimit()
 	w.Query = strings.TrimSpace(w.Query)
 	w.LastQuery = w.Query
-}
-
-// Delete deletes the row(s), use it with the `Where` condition so your whole table won't be wiped.
-// It's very important alright? Cause .. you know ..fuck.
-func (w *Wrapper) Delete() (err error) {
-	w.Query = w.buildDelete(w.tableName...)
-	w.buildQuery()
-	return
 }
 
 // buildOrderBy builds the `ORDERY BY` statement based on the stored orders.
@@ -669,15 +418,6 @@ func (w *Wrapper) buildOrderBy() (query string) {
 	return
 }
 
-// OrderBy orders the getting result based on a single column (or the fields) with the specified sorting like `ASC` and `DESC`.
-func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper {
-	w.orders = append(w.orders, order{
-		column: column,
-		args:   args,
-	})
-	return w
-}
-
 // buildGroupBy builds the `GROUP BY` statement.
 func (w *Wrapper) buildGroupBy() (query string) {
 	if len(w.groupBy) == 0 {
@@ -691,84 +431,58 @@ func (w *Wrapper) buildGroupBy() (query string) {
 	return
 }
 
-// GroupBy groups the columns when executing the query.
-func (w *Wrapper) GroupBy(columns ...string) *Wrapper {
-	w.groupBy = columns
-	return w
-}
-
-// saveJoin saves the table joining information.
-func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
-	switch v := table.(type) {
-	// Sub query joining.
-	case *Wrapper:
-		w.joins[v.Query] = &join{
-			typ:       typ,
-			table:     table,
-			condition: condition,
-		}
-	// Common table joining.
-	case string:
-		w.joins[v] = &join{
-			typ:       typ,
-			table:     table,
-			condition: condition,
-		}
+// buildDuplicate builds the `ON DUPLICATE KEY UPDATE` statement.
+func (w *Wrapper) buildDuplicate() (query string) {
+	if len(w.onDuplicateColumns) == 0 {
+		return
 	}
-}
-
-// LeftJoin left joins a table.
-func (w *Wrapper) LeftJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "LEFT JOIN", condition)
-	return w
-}
-
-// RightJoin right joins a table.
-func (w *Wrapper) RightJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "RIGHT JOIN", condition)
-	return w
-}
-
-// InnerJoin inner joins a table.
-func (w *Wrapper) InnerJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "INNER JOIN", condition)
-	return w
-}
-
-// NaturalJoin natural joins a table.
-func (w *Wrapper) NaturalJoin(table interface{}, condition string) *Wrapper {
-	w.saveJoin(table, "NATURAL JOIN", condition)
-	return w
-}
-
-// saveJoinCondition saves a table join condition to the specifed table joining information.
-func (w *Wrapper) saveJoinCondition(connector string, table interface{}, args ...interface{}) {
-	switch v := table.(type) {
-	// Sub query condition.
-	case *Wrapper:
-		w.joins[v.Query].conditions = append(w.joins[v.Query].conditions, condition{
-			args:      args,
-			connector: connector,
-		})
-	// Common condition.
-	case string:
-		w.joins[v].conditions = append(w.joins[v].conditions, condition{
-			args:      args,
-			connector: connector,
-		})
+	query += "ON DUPLICATE KEY UPDATE "
+	if w.lastInsertIDColumn != "" {
+		query += fmt.Sprintf("%s=LAST_INSERT_ID(%s), ", w.lastInsertIDColumn, w.lastInsertIDColumn)
 	}
+	for _, v := range w.onDuplicateColumns {
+		query += fmt.Sprintf("%s = VALUE(%s), ", v, v)
+	}
+	query = trim(query)
+	return
 }
 
-// JoinWhere creates a `WHERE AND` statement for the specified joining table.
-func (w *Wrapper) JoinWhere(table interface{}, args ...interface{}) *Wrapper {
-	w.saveJoinCondition("AND", table, args...)
-	return w
-}
+// buildInsert builds the `INSERT INTO` query.
+func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) {
+	var columns, values, options string
+	if len(w.queryOptions) > 0 {
+		options = fmt.Sprintf("%s ", strings.Join(w.queryOptions, ", "))
+	}
 
-// JoinOrWhere creates a `WHERE OR` statement for the specified joining table.
-func (w *Wrapper) JoinOrWhere(table interface{}, args ...interface{}) *Wrapper {
-	w.saveJoinCondition("OR", table, args...)
-	return w
+	// Build the query based on the data type.
+	switch realData := data.(type) {
+	case map[string]interface{}:
+		for column, value := range realData {
+			columns += fmt.Sprintf("%s, ", column)
+			values += fmt.Sprintf("%s, ", w.bindParam(value))
+		}
+		values = fmt.Sprintf("(%s)", trim(values))
+
+	case []map[string]interface{}:
+		var columnNames []string
+		// Get the column names first, so we can range the map in order.
+		for name := range realData[0] {
+			columnNames = append(columnNames, name)
+			// Build the column name query.
+			columns += fmt.Sprintf("%s, ", name)
+		}
+		for _, single := range realData {
+			var currentValues string
+			for _, name := range columnNames {
+				currentValues += fmt.Sprintf("%s, ", w.bindParam(single[name]))
+			}
+			values += fmt.Sprintf("(%s), ", trim(currentValues))
+		}
+		values = trim(values)
+	}
+	columns = trim(columns)
+	query = fmt.Sprintf("%s %sINTO %s (%s) VALUES %s ", operator, options, w.tableName[0], columns, values)
+	return
 }
 
 // buildJoin builds the join statement.
@@ -799,6 +513,309 @@ func (w *Wrapper) buildJoin() (query string) {
 	return
 }
 
+//=======================================================
+// Exported Functions
+//=======================================================
+
+// Table specifies the name of the table.
+func (w *Wrapper) Table(tableName ...string) *Wrapper {
+	w.tableName = tableName
+	return w
+}
+
+//=======================================================
+// Select Functions
+//=======================================================
+
+// Get gets the specified columns of the rows from the specifed database table.
+func (w *Wrapper) Get(columns ...string) (err error) {
+	w.Query = w.buildSelect(columns...)
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	rows, err := stmt.Query(w.Params...)
+	if err != nil {
+		return err
+	}
+	_, err = load(rows, w.destination)
+	if err != nil {
+		return err
+	}
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
+	return
+}
+
+// GetOne gets the specified columns of a single row from the specifed database table.
+func (w *Wrapper) GetOne(columns ...string) (err error) {
+	w.Limit(1)
+	w.Query = w.buildSelect(columns...)
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	rows, err := stmt.Query(w.Params...)
+	if err != nil {
+		return err
+	}
+	_, err = load(rows, w.destination)
+	if err != nil {
+		return err
+	}
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
+	return
+}
+
+// GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
+func (w *Wrapper) GetValue(column string) (err error) {
+	w.Query = w.buildSelect(column)
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	rows, err := stmt.Query(w.Params...)
+	if err != nil {
+		return err
+	}
+	_, err = load(rows, w.destination)
+	if err != nil {
+		return err
+	}
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
+	return
+}
+
+// Paginate acts the same as `Get` but with the automatically page caculation.
+// Make sure you have specified the `PageLimit` (Default: 20) to limit the rows of a page.
+func (w *Wrapper) Paginate(pageCount int, columns ...string) (err error) {
+	err = w.Limit(w.PageLimit*(pageCount-1), w.PageLimit).Get(columns...)
+	w.TotalPage = w.TotalCount / w.PageLimit
+	return
+}
+
+//=======================================================
+// Insert Functions
+//=======================================================
+
+// Insert builds and executes the insert query.
+func (w *Wrapper) Insert(data interface{}) (err error) {
+	w.Query = w.buildInsert("INSERT", data)
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	r, err := stmt.Exec(w.Params...)
+	if err != nil {
+		return err
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return err
+	}
+	w.LastInsertID = int(id)
+	if !w.isSubQuery {
+		w.clean()
+	}
+	// Count
+	return nil
+}
+
+// InsertMulti builds and executes a single insert query with the many rows.
+func (w *Wrapper) InsertMulti(data interface{}) (err error) {
+	w.Query = w.buildInsert("INSERT", data)
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(w.Params...)
+	if err != nil {
+		return err
+	}
+	//id, err := r.LastInsertId()
+	//if err != nil {
+	//	return err
+	//}
+	//w.LastInsertID = int(id)
+	// Count
+	if !w.isSubQuery {
+		w.clean()
+	}
+	return
+}
+
+// Delete deletes the row(s), use it with the `Where` condition so your whole table won't be wiped.
+// It's very important alright? Cause .. you know ..fuck.
+func (w *Wrapper) Delete() (err error) {
+	w.Query = w.buildDelete(w.tableName...)
+	w.buildQuery()
+	return
+}
+
+//=======================================================
+// Update Functions
+//=======================================================
+
+// Replace builds and executes the replace query just like what `Insert` does.
+func (w *Wrapper) Replace(data interface{}) (err error) {
+	w.Query = w.buildInsert("REPLACE", data)
+	w.buildQuery()
+	return
+}
+
+// Update updates the rows with the specified data.
+func (w *Wrapper) Update(data interface{}) (err error) {
+	w.Query = w.buildUpdate(data)
+	w.buildQuery()
+	return
+}
+
+// OnDuplicate stores the columns which would be updated when the inserted row has duplicated.
+func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {
+	w.onDuplicateColumns = columns
+	if len(lastInsertID) != 0 {
+		w.lastInsertIDColumn = lastInsertID[0]
+	}
+	return w
+}
+
+//=======================================================
+// Limitation Functions
+//=======================================================
+
+// Limit creates the limit statement in the end of the query.
+func (w *Wrapper) Limit(from int, count ...int) *Wrapper {
+	if len(count) == 0 {
+		w.limit = []int{from}
+	} else {
+		w.limit = []int{from, count[0]}
+	}
+	return w
+}
+
+// OrderBy orders the getting result based on a single column (or the fields) with the specified sorting like `ASC` and `DESC`.
+func (w *Wrapper) OrderBy(column string, args ...interface{}) *Wrapper {
+	w.orders = append(w.orders, order{
+		column: column,
+		args:   args,
+	})
+	return w
+}
+
+// GroupBy groups the columns when executing the query.
+func (w *Wrapper) GroupBy(columns ...string) *Wrapper {
+	w.groupBy = columns
+	return w
+}
+
+//=======================================================
+// Query Functions
+//=======================================================
+
+// RawQuery executes the passed raw query and binds the passed values to the prepared statments.
+func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
+	if len(values) == 0 {
+
+	}
+	w.Query = query
+	w.LastQuery = w.Query
+	w.bindParams(values)
+	return
+}
+
+// RawQueryOne works the same as `GetOne`, and it only gets a single row as the result.
+func (w *Wrapper) RawQueryOne(query string, values ...interface{}) (err error) {
+	err = w.RawQuery(query, values...)
+	return
+}
+
+// RawQueryValue works the same as `GetValue`, it gets the value slice instead of a single value if there's no `LIMIT 1` was specifed in the raw query.
+func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error) {
+	err = w.RawQuery(query, values...)
+	return
+}
+
+//=======================================================
+// Condition Functions
+//=======================================================
+
+// Where adds a new `WHERE AND` condition.
+func (w *Wrapper) Where(args ...interface{}) *Wrapper {
+	w.saveCondition("WHERE", "AND", args...)
+	return w
+}
+
+// OrWhere adds a new `WHERE OR` condition.
+func (w *Wrapper) OrWhere(args ...interface{}) *Wrapper {
+	w.saveCondition("WHERE", "OR", args...)
+	return w
+}
+
+// Having adds a new `HAVING AND` condition.
+func (w *Wrapper) Having(args ...interface{}) *Wrapper {
+	w.saveCondition("HAVING", "AND", args...)
+	return w
+}
+
+// OrHaving adds a new `HAVING OR` condition.
+func (w *Wrapper) OrHaving(args ...interface{}) *Wrapper {
+	w.saveCondition("HAVING", "OR", args...)
+	return w
+}
+
+//=======================================================
+// Join Functions
+//=======================================================
+
+// LeftJoin left joins a table.
+func (w *Wrapper) LeftJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "LEFT JOIN", condition)
+	return w
+}
+
+// RightJoin right joins a table.
+func (w *Wrapper) RightJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "RIGHT JOIN", condition)
+	return w
+}
+
+// InnerJoin inner joins a table.
+func (w *Wrapper) InnerJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "INNER JOIN", condition)
+	return w
+}
+
+// NaturalJoin natural joins a table.
+func (w *Wrapper) NaturalJoin(table interface{}, condition string) *Wrapper {
+	w.saveJoin(table, "NATURAL JOIN", condition)
+	return w
+}
+
+// JoinWhere creates a `WHERE AND` statement for the specified joining table.
+func (w *Wrapper) JoinWhere(table interface{}, args ...interface{}) *Wrapper {
+	w.saveJoinCondition("AND", table, args...)
+	return w
+}
+
+// JoinOrWhere creates a `WHERE OR` statement for the specified joining table.
+func (w *Wrapper) JoinOrWhere(table interface{}, args ...interface{}) *Wrapper {
+	w.saveJoinCondition("OR", table, args...)
+	return w
+}
+
 // SubQuery converts the current query into a sub query so it won't be executed, and it could be passed to the any other statement like `Where`, the alias is required when passing the sub query to the joining statement.
 func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
 	newWrapper := &Wrapper{
@@ -817,6 +834,10 @@ func (w *Wrapper) Has() (has bool, err error) {
 	return
 }
 
+//=======================================================
+// Database Functions
+//=======================================================
+
 // Disconnect disconnects the current database conection.
 func (w *Wrapper) Disconnect() (err error) {
 	return
@@ -831,6 +852,10 @@ func (w *Wrapper) Ping() (err error) {
 func (w *Wrapper) Connect() (err error) {
 	return
 }
+
+//=======================================================
+// Transactions
+//=======================================================
 
 // Begin starts a transcation.
 func (w *Wrapper) Begin() (tx *Wrapper, err error) {
@@ -847,6 +872,49 @@ func (w *Wrapper) Rollback() bool {
 // Commit commits the current transaction, so the changes will be saved into the database permanently.
 func (w *Wrapper) Commit() error {
 	return nil
+}
+
+//=======================================================
+// Helper Functions
+//=======================================================
+
+// Count returns the count of the result rows.
+func (w *Wrapper) Count() (count int) {
+	for w.LastRows.Next() {
+		count++
+	}
+	return
+}
+
+// Func returns a database function, so it won't be treated like a normal data value.
+func (w *Wrapper) Func(query string, data ...interface{}) function {
+	return function{
+		query:  query,
+		values: data,
+	}
+}
+
+// Now returns a database function based on the `INTERVAL`.
+// The formats can be like `+1Y`, `-2M`, it's possible to chain the units with `Now("+1Y", "-2M")`.
+// Here're the supported units: `Y`(Year), `M`(Month), `D`(Day), `W`(Week), `h`(Hour), `m`(Minute), `s`(Second).
+func (w *Wrapper) Now(formats ...string) function {
+	query := "NOW() "
+	unitMap := map[string]string{
+		"Y": "YEAR",
+		"M": "MONTH",
+		"D": "DAY",
+		"W": "WEEK",
+		"h": "HOUR",
+		"m": "MINUTE",
+		"s": "SECOND",
+	}
+	for _, v := range formats {
+		operator := string(v[0])
+		interval := v[1 : len(v)-1]
+		unit := string(v[len(v)-1])
+		query += fmt.Sprintf("%s INTERVAL %s %s ", operator, interval, unitMap[unit])
+	}
+	return w.Func(strings.TrimSpace(query))
 }
 
 // SetLockMethod sets the lock method before locked the tables, it could be `WRITE` or `READ`.
@@ -883,6 +951,10 @@ func (w *Wrapper) SetTrace(enable bool) *Wrapper {
 	return w
 }
 
+//=======================================================
+// Object Functions
+//=======================================================
+
 // Copy returns a database wrapper which has the exists data, it's useful when you're trying to pass the database wrapper to the goroutines to make sure it's thread safe.
 func (w *Wrapper) Copy() *Wrapper {
 	return w
@@ -899,6 +971,10 @@ func (w *Wrapper) Bind(destination interface{}) *Wrapper {
 	w.destination = destination
 	return w
 }
+
+//=======================================================
+// Others
+//=======================================================
 
 // Migration returns a new table migration struct
 // based on the current database connection for the migration functions.

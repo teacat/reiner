@@ -569,8 +569,8 @@ db.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
 
 ```go
 err := db.Table("Users").Where("ID", 1).Delete()
-if err == nil && db.Count != 0 {
-    fmt.Printf("成功地刪除了 %d 筆資料！", db.Count)
+if count := db.Count(); err == nil && count != 0 {
+    fmt.Printf("成功地刪除了 %d 筆資料！", count)
 }
 // 等效於：DELETE FROM Users WHERE ID = ?
 ```
