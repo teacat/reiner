@@ -16,12 +16,6 @@ func TestMain(t *testing.T) {
 	assert.NoError(err)
 }
 
-type user struct {
-	Username string `db:"Username"`
-	Password string `db:"Password"`
-	Age      int    `db:"Age"`
-}
-
 func TestInsert(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.Table("Users").Insert(map[string]interface{}{
