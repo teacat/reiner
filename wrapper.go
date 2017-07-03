@@ -616,7 +616,7 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 
 // GetOne gets the specified columns of a single row from the specifed database table.
 func (w *Wrapper) GetOne(columns ...string) (err error) {
-	w.Limit(1)
+	//w.Limit(1)
 	w.query = w.buildSelect(columns...)
 	rows, err := w.runQuery()
 	if err != nil {
@@ -918,10 +918,12 @@ func (w *Wrapper) Commit() error {
 
 // Count returns the count of the result rows.
 func (w *Wrapper) Count() (count int) {
+	// Count the rows from the *sql.Rows if it's available.
 	if w.LastRows != nil {
 		for w.LastRows.Next() {
 			count++
 		}
+		// Get the rowAffected from the sql.Result if it's available.
 	} else if w.LastResult != nil {
 		rowAffected, err := w.LastResult.RowsAffected()
 		if err != nil {
@@ -929,6 +931,7 @@ func (w *Wrapper) Count() (count int) {
 		} else {
 			count = int(rowAffected)
 		}
+		// Otherwise just return 0.
 	} else {
 		count = 0
 	}
@@ -1007,13 +1010,38 @@ func (w *Wrapper) SetTrace(status bool) *Wrapper {
 //=======================================================
 
 // Copy returns a new database wrapper based on the current configurations. It's useful when you're trying to pass the database wrapper to the goroutines to make sure it's thread safe.
-func (w *Wrapper) Copy() *Wrapper {
-	newW := &Wrapper{
-		db:         w.db,
-		executable: true,
-		Timestamp:  &Timestamp{},
+func (w *Wrapper) Copy(deepCopy bool) (copiedWrapper *Wrapper) {
+	if !deepCopy {
+		copiedWrapper = &Wrapper{
+			db:         w.db,
+			executable: true,
+			Timestamp:  &Timestamp{},
+		}
+	} else {
+		copiedWrapper = &Wrapper{
+			db:                 w.db,
+			executable:         true,
+			Timestamp:          &Timestamp{},
+			alias:              w.alias,
+			destination:        w.destination,
+			scanner:            w.scanner,
+			tableName:          w.tableName,
+			conditions:         w.conditions,
+			havingConditions:   w.havingConditions,
+			queryOptions:       w.queryOptions,
+			joins:              w.joins,
+			onDuplicateColumns: w.onDuplicateColumns,
+			lastInsertIDColumn: w.lastInsertIDColumn,
+			limit:              w.limit,
+			orders:             w.orders,
+			groupBy:            w.groupBy,
+			lockMethod:         w.lockMethod,
+			tracing:            w.tracing,
+			query:              w.query,
+			params:             w.params,
+		}
 	}
-	return newW
+	return
 }
 
 // Scan scans the rows of the result, and mapping it to the specified variable.
