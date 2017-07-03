@@ -17,13 +17,14 @@ func TestRealRealMain(t *testing.T) {
 
 	migration = rw.Migration()
 
-	err = migration.Drop("Users")
+	err = migration.Drop("Users", "Posts", "Products")
 	assert.NoError(err)
 
 	err = migration.Table("Users").
 		Column("Username").Varchar(32).Primary().
 		Column("Password").Varchar(32).
 		Column("Age").Int(2).
+		Charset("utf8").
 		Create()
 	assert.NoError(err)
 
@@ -31,6 +32,7 @@ func TestRealRealMain(t *testing.T) {
 		Column("ID").Int(32).Primary().
 		Column("Username").Varchar(32).
 		Column("Title").Varchar(32).
+		Charset("utf8").
 		Create()
 	assert.NoError(err)
 
@@ -38,6 +40,7 @@ func TestRealRealMain(t *testing.T) {
 		Column("ID").Int(32).Primary().
 		Column("Username").Varchar(32).
 		Column("PostID").Int(32).
+		Charset("utf8").
 		Create()
 	assert.NoError(err)
 }
@@ -69,6 +72,15 @@ func TestRealInsert(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?)", rw.Query())
+	assert.Equal(1, rw.Count())
+
+	err = rw.Table("Products").Insert(map[string]interface{}{
+		"Username": "YamiOdymel",
+		"ID":       1,
+		"PostID":   1,
+	})
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Products (Username, ID, PostID) VALUES (?, ?, ?)", rw.Query())
 	assert.Equal(1, rw.Count())
 }
 
@@ -510,7 +522,7 @@ func TestRealJoin(t *testing.T) {
 		Get("Users.Age", "Posts.Title")
 	assert.NoError(err)
 	assert.Equal("SELECT Users.Age, Posts.Title FROM Users LEFT JOIN Posts ON (Posts.Username = Users.Username) RIGHT JOIN Products ON (Products.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
-	assert.Equal(0, rw.Count())
+	assert.Equal(1, rw.Count())
 }
 
 func TestRealJoinWhere(t *testing.T) {
@@ -541,11 +553,12 @@ func TestRealSubQueryInsert(t *testing.T) {
 	subQuery := rw.SubQuery()
 	subQuery.Table("Users").Where("Username", "YamiOdymel").Get("Username")
 	err := rw.Table("Posts").Insert(map[string]interface{}{
+		"ID":       1,
 		"Title":    "測試商品",
 		"Username": subQuery,
 	})
 	assert.NoError(err)
-	assert.Equal("INSERT INTO Posts (Title, Username) VALUES (?, (SELECT Username FROM Users WHERE Username = ?))", rw.Query())
+	assert.Equal("INSERT INTO Posts (ID, Title, Username) VALUES (?, ?, (SELECT Username FROM Users WHERE Username = ?))", rw.Query())
 	assert.Equal(1, rw.Count())
 }
 
