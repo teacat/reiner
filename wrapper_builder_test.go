@@ -112,23 +112,23 @@ func TestGetColumns(t *testing.T) {
 
 func TestGetOne(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", 1).GetOne()
+	wrapper.Table("Users").Where("ID", 1).Get()
 	assert.Equal("SELECT * FROM Users WHERE ID = ?", wrapper.Query())
 
-	wrapper.Table("Users").GetOne("SUM(ID)", "COUNT(*) AS Count")
+	wrapper.Table("Users").Get("SUM(ID)", "COUNT(*) AS Count")
 	assert.Equal("SELECT SUM(ID), COUNT(*) AS Count FROM Users", wrapper.Query())
 }
 
 func TestGetValue(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").GetValue("Username")
-	assert.Equal("SELECT Username AS Value FROM Users", wrapper.Query())
+	wrapper.Table("Users").Get("Username")
+	assert.Equal("SELECT Username FROM Users", wrapper.Query())
 
-	wrapper.Table("Users").Limit(5).GetValue("Username")
-	assert.Equal("SELECT Username AS Value FROM Users LIMIT 5", wrapper.Query())
+	wrapper.Table("Users").Limit(5).Get("Username")
+	assert.Equal("SELECT Username FROM Users LIMIT 5", wrapper.Query())
 
-	wrapper.Table("Users").GetValue("COUNT(*)")
-	assert.Equal("SELECT COUNT(*) AS Value FROM Users", wrapper.Query())
+	wrapper.Table("Users").Get("COUNT(*)")
+	assert.Equal("SELECT COUNT(*) FROM Users", wrapper.Query())
 }
 
 func TestPaginate(t *testing.T) {
@@ -146,13 +146,13 @@ func TestRawQuery(t *testing.T) {
 
 func TestRawQueryOne(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
+	wrapper.RawQuery("SELECT * FROM Users WHERE ID = ?", 10)
 	assert.Equal("SELECT * FROM Users WHERE ID = ?", wrapper.Query())
 }
 
 func TestRawQueryValue(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.RawQueryValue("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
+	wrapper.RawQuery("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
 	assert.Equal("SELECT Password FROM Users WHERE ID = ? LIMIT 1", wrapper.Query())
 }
 
@@ -344,7 +344,7 @@ func TestSubQueryGet(t *testing.T) {
 func TestSubQueryInsert(t *testing.T) {
 	assert := assert.New(t)
 	subQuery := wrapper.SubQuery()
-	subQuery.Table("Users").Where("ID", 6).GetOne("Name")
+	subQuery.Table("Users").Where("ID", 6).Get("Name")
 	wrapper.Table("Products").Insert(map[string]interface{}{
 		"ProductName": "測試商品",
 		"UserID":      subQuery,

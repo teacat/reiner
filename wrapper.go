@@ -207,6 +207,7 @@ func (w *Wrapper) bindParam(data interface{}, parentheses ...bool) (param string
 		if len(v.values) > 0 {
 			w.params = append(w.params, v.values...)
 		}
+	case nil:
 	case Timestamp:
 		w.params = append(w.params, v.value)
 	default:
@@ -614,27 +615,6 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 	return
 }
 
-// GetOne gets the specified columns of a single row from the specifed database table.
-func (w *Wrapper) GetOne(columns ...string) (err error) {
-	//w.Limit(1)
-	w.query = w.buildSelect(columns...)
-	_, err = w.runQuery()
-	if err != nil {
-		return
-	}
-	return
-}
-
-// GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
-func (w *Wrapper) GetValue(column string) (err error) {
-	w.query = w.buildSelect(column)
-	_, err = w.runQuery()
-	if err != nil {
-		return
-	}
-	return
-}
-
 // Paginate acts the same as `Get` but with the automatically page caculation.
 // Make sure you have specified the `PageLimit` (Default: 20) to limit the rows of a page.
 func (w *Wrapper) Paginate(pageCount int, columns ...string) (err error) {
@@ -758,18 +738,6 @@ func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
 	w.query = query
 	w.params = values
 	_, err = w.runQuery()
-	return
-}
-
-// RawQueryOne works the same as `GetOne`, and it only gets a single row as the result.
-func (w *Wrapper) RawQueryOne(query string, values ...interface{}) (err error) {
-	err = w.RawQuery(query, values...)
-	return
-}
-
-// RawQueryValue works the same as `GetValue`, it gets the value slice instead of a single value if there's no `LIMIT 1` was specifed in the raw query.
-func (w *Wrapper) RawQueryValue(query string, values ...interface{}) (err error) {
-	err = w.RawQuery(query, values...)
 	return
 }
 

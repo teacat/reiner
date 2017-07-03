@@ -190,7 +190,15 @@ func TestRealGetOne(t *testing.T) {
 	assert := assert.New(t)
 
 	var u user
-	err := rw.Table("Users").Bind(&u).Where("Username", "YamiOdymel").GetOne()
+	err := rw.Table("Users").Bind(&u).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users", rw.Query())
+	assert.Equal(1, rw.Count())
+	assert.Equal(12, u.Age)
+	assert.Equal("12345", u.Password)
+	assert.Equal("Karisu", u.Username)
+
+	err = rw.Table("Users").Bind(&u).Where("Username", "YamiOdymel").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Username = ?", rw.Query())
 	assert.Equal(1, rw.Count())
@@ -198,33 +206,42 @@ func TestRealGetOne(t *testing.T) {
 	assert.Equal("123456", u.Password)
 	assert.Equal("YamiOdymel", u.Username)
 
-	var m map[string]interface{}
-	err = rw.Table("Users").Bind(&m).GetOne("SUM(Age) AS Sum", "COUNT(*) AS Count")
-	// rw.Table("Users").Bind(&sum, &cnt).GetOne("SUM(Username) AS Sum", "COUNT(*) AS Count")
+	var i struct {
+		Sum   int
+		Count int
+	}
+	err = rw.Table("Users").Bind(&i).Get("SUM(Age) AS Sum", "COUNT(*) AS Count")
 	assert.NoError(err)
 	assert.Equal("SELECT SUM(Age) AS Sum, COUNT(*) AS Count FROM Users", rw.Query())
-	assert.Equal(196, m["Sum"])
-	assert.Equal(4, m["Count"])
+	assert.Equal(196, i.Sum)
+	assert.Equal(4, i.Count)
+
+	var m map[string]interface{}
+	err = rw.Table("Users").Bind(&m).Get("SUM(Age) AS Sum", "COUNT(*) AS Count")
+	assert.NoError(err)
+	assert.Equal("SELECT SUM(Age) AS Sum, COUNT(*) AS Count FROM Users", rw.Query())
+	assert.Equal("196", string(m["Sum"].([]uint8)))
+	assert.Equal(4, int(m["Count"].(int64)))
 }
 
 func TestRealGetValue(t *testing.T) {
 	assert := assert.New(t)
 	var u []string
-	err := rw.Table("Users").Bind(&u).GetValue("Username")
+	err := rw.Table("Users").Bind(&u).Get("Username")
 	assert.NoError(err)
-	assert.Equal("SELECT Username AS Value FROM Users", rw.Query())
+	assert.Equal("SELECT Username FROM Users", rw.Query())
 	assert.Len(u, 4)
 
-	err = rw.Table("Users").Bind(&u).Limit(2).GetValue("Username")
+	err = rw.Table("Users").Bind(&u).Limit(2).Get("Username")
 	assert.NoError(err)
-	assert.Equal("SELECT Username AS Value FROM Users LIMIT 2", rw.Query())
+	assert.Equal("SELECT Username FROM Users LIMIT 2", rw.Query())
 	assert.Len(u, 2)
 	assert.Equal(2, rw.Count())
 
 	var c int
-	err = rw.Table("Users").Bind(&c).GetValue("COUNT(*)")
+	err = rw.Table("Users").Bind(&c).Get("COUNT(*)")
 	assert.NoError(err)
-	assert.Equal("SELECT COUNT(*) AS Value FROM Users", rw.Query())
+	assert.Equal("SELECT COUNT(*) FROM Users", rw.Query())
 	assert.Equal(1, rw.Count())
 	assert.Equal(4, c)
 }
@@ -234,12 +251,12 @@ func TestRealPaginate(t *testing.T) {
 	rw.PageLimit = 2
 	err := rw.Table("Users").Paginate(1)
 	assert.NoError(err)
-	assert.Equal("SELECT * FROM Users LIMIT 0, 2", rw.Query())
+	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 2", rw.Query())
 	assert.Equal(2, rw.Count())
 
 	err = rw.Table("Users").Paginate(2)
 	assert.NoError(err)
-	assert.Equal("SELECT * FROM Users LIMIT 2, 2", rw.Query())
+	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 2, 2", rw.Query())
 	assert.Equal(2, rw.Count())
 }
 
@@ -248,15 +265,15 @@ func TestRealRawQuery(t *testing.T) {
 	var u []user
 	err := rw.Bind(&u).RawQuery("SELECT * FROM Users WHERE Age >= ?", 80)
 	assert.NoError(err)
-	assert.Equal("SELECT * FROM Users WHERE Username >= ?", rw.Query())
-	assert.Equal(3, rw.Count())
-	assert.Len(u, 3)
+	assert.Equal("SELECT * FROM Users WHERE Age >= ?", rw.Query())
+	assert.Equal(2, rw.Count())
+	assert.Len(u, 2)
 }
 
 func TestRealRawQueryOne(t *testing.T) {
 	assert := assert.New(t)
 	var u user
-	err := rw.RawQueryOne("SELECT * FROM Users WHERE Username = ?", "YamiOdymel")
+	err := rw.Bind(&u).RawQuery("SELECT * FROM Users WHERE Username = ?", "YamiOdymel")
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Username = ?", rw.Query())
 	assert.Equal(1, rw.Count())
@@ -266,16 +283,22 @@ func TestRealRawQueryOne(t *testing.T) {
 func TestRealRawQueryValue(t *testing.T) {
 	assert := assert.New(t)
 	var p string
-	err := rw.Bind(&p).RawQueryValue("SELECT Password FROM Users WHERE Username = ? LIMIT 1", "YamiOdymel")
+	err := rw.Bind(&p).RawQuery("SELECT Password FROM Users WHERE Username = ?", "YamiOdymel")
+	assert.NoError(err)
+	assert.Equal("SELECT Password FROM Users WHERE Username = ?", rw.Query())
+	assert.Equal(1, rw.Count())
+	assert.Equal("123456", p)
+
+	err = rw.Bind(&p).RawQuery("SELECT Password FROM Users WHERE Username = ? LIMIT 1", "YamiOdymel")
 	assert.NoError(err)
 	assert.Equal("SELECT Password FROM Users WHERE Username = ? LIMIT 1", rw.Query())
 	assert.Equal(1, rw.Count())
-	assert.Equal("davai", p)
+	assert.Equal("123456", p)
 
 	var ps []string
-	err = rw.Bind(&p).RawQueryValue("SELECT Password FROM Users")
+	err = rw.Bind(&ps).RawQuery("SELECT Password FROM Users")
 	assert.NoError(err)
-	assert.Equal("SELECT Password FROM Users LIMIT 1", rw.Query())
+	assert.Equal("SELECT Password FROM Users", rw.Query())
 	assert.Equal(4, rw.Count())
 	assert.Len(ps, 4)
 }
@@ -309,7 +332,7 @@ func TestRealWhereOperator(t *testing.T) {
 	err := rw.Table("Users").Where("Age", "<=", 80).Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Age <= ?", rw.Query())
-	assert.Equal(3, rw.Count())
+	assert.Equal(2, rw.Count())
 }
 
 func TestRealWhereBetween(t *testing.T) {
@@ -317,12 +340,12 @@ func TestRealWhereBetween(t *testing.T) {
 	err := rw.Table("Users").Where("Age", "BETWEEN", 0, 80).Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Age BETWEEN ? AND ?", rw.Query())
-	assert.Equal(3, rw.Count())
+	assert.Equal(2, rw.Count())
 
 	err = rw.Table("Users").Where("Age", "NOT BETWEEN", 0, 80).Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Age NOT BETWEEN ? AND ?", rw.Query())
-	assert.Equal(1, rw.Count())
+	assert.Equal(2, rw.Count())
 }
 
 func TestRealWhereIn(t *testing.T) {
@@ -335,7 +358,7 @@ func TestRealWhereIn(t *testing.T) {
 	err = rw.Table("Users").Where("Username", "NOT IN", 1, 5, 27, -1, "d").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Username NOT IN (?, ?, ?, ?, ?)", rw.Query())
-	assert.Equal(5, rw.Count())
+	assert.Equal(4, rw.Count())
 }
 
 func TestRealOrWhere(t *testing.T) {
@@ -355,13 +378,14 @@ func TestRealWhereNull(t *testing.T) {
 	assert := assert.New(t)
 	err := rw.Table("Users").Where("Username", "IS", nil).Get()
 	assert.NoError(err)
+	//panic(rw.Params())
 	assert.Equal("SELECT * FROM Users WHERE Username IS NULL", rw.Query())
 	assert.Equal(0, rw.Count())
 
 	err = rw.Table("Users").Where("Username", "IS NOT", nil).Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Username IS NOT NULL", rw.Query())
-	assert.Equal(5, rw.Count())
+	assert.Equal(4, rw.Count())
 }
 
 func TestRealTimestampDate(t *testing.T) {
@@ -419,7 +443,7 @@ func TestRealRawWhere(t *testing.T) {
 	err := rw.Table("Users").Where("Username != Password").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Username != Password", rw.Query())
-	assert.Equal(5, rw.Count())
+	assert.Equal(4, rw.Count())
 }
 
 func TestRealRawWhereParams(t *testing.T) {
@@ -443,7 +467,7 @@ func TestRealOrderBy(t *testing.T) {
 	err := rw.Table("Users").OrderBy("Age", "DESC").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users ORDER BY Age DESC", rw.Query())
-	assert.Equal(4, rw.Count())
+	assert.Equal(3, rw.Count())
 }
 
 func TestRealOrderByField(t *testing.T) {
@@ -451,7 +475,7 @@ func TestRealOrderByField(t *testing.T) {
 	err := rw.Table("Users").OrderBy("Username", "DESC", "YamiOdymel", "Karisu", "Dave").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users ORDER BY FIELD (Username, ?, ?, ?) DESC", rw.Query())
-	assert.Equal(2, rw.Count())
+	assert.Equal(3, rw.Count())
 }
 
 func TestRealGroupBy(t *testing.T) {
@@ -459,12 +483,12 @@ func TestRealGroupBy(t *testing.T) {
 	err := rw.Table("Users").GroupBy("Username").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users GROUP BY Username", rw.Query())
-	assert.Equal(4, rw.Count())
+	assert.Equal(3, rw.Count())
 
 	err = rw.Table("Users").GroupBy("Username", "Age").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users GROUP BY Username, Age", rw.Query())
-	assert.Equal(4, rw.Count())
+	assert.Equal(3, rw.Count())
 }
 
 func TestRealJoin(t *testing.T) {
@@ -475,8 +499,8 @@ func TestRealJoin(t *testing.T) {
 		Where("Users.Username", "YamiOdymel").
 		Get("Users.Age", "Posts.Title")
 	assert.NoError(err)
-	assert.Equal("SELECT Users.Age, Posts.Title FROM Posts LEFT JOIN Users ON (Posts.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
-	assert.Equal(1, rw.Count())
+	assert.Equal("SELECT Users.Age, Posts.Title FROM Users LEFT JOIN Posts ON (Posts.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
+	assert.Equal(0, rw.Count())
 
 	err = rw.
 		Table("Users").
@@ -485,7 +509,7 @@ func TestRealJoin(t *testing.T) {
 		Where("Users.Username", "YamiOdymel").
 		Get("Users.Age", "Posts.Title")
 	assert.NoError(err)
-	assert.Equal("SELECT Users.Age, Posts.Title FROM Posts LEFT JOIN Users ON (Posts.Username = Users.Username) RIGHT JOIN Products ON (Products.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
+	assert.Equal("SELECT Users.Age, Posts.Title FROM Users LEFT JOIN Posts ON (Posts.Username = Users.Username) RIGHT JOIN Products ON (Products.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
 	assert.Equal(1, rw.Count())
 }
 
@@ -498,7 +522,7 @@ func TestRealJoinWhere(t *testing.T) {
 		Where("Users.Username", "YamiOdymel").
 		Get("Users.Age", "Posts.Title")
 	assert.NoError(err)
-	assert.Equal("SELECT Users.Age, Posts.Title FROM Posts LEFT JOIN Users ON (Posts.Username = Users.Username AND Posts.ID = ?) WHERE Users.Username = ?", rw.Query())
+	assert.Equal("SELECT Users.Age, Posts.Title FROM Users LEFT JOIN Posts ON (Posts.Username = Users.Username AND Posts.ID = ?) WHERE Users.Username = ?", rw.Query())
 	assert.Equal(1, rw.Count())
 }
 
@@ -515,7 +539,7 @@ func TestRealSubQueryGet(t *testing.T) {
 func TestRealSubQueryInsert(t *testing.T) {
 	assert := assert.New(t)
 	subQuery := rw.SubQuery()
-	subQuery.Table("Users").Where("Username", "YamiOdymel").GetOne("Username")
+	subQuery.Table("Users").Where("Username", "YamiOdymel").Get("Username")
 	err := rw.Table("Posts").Insert(map[string]interface{}{
 		"Title":    "測試商品",
 		"Username": subQuery,
