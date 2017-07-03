@@ -469,7 +469,7 @@ func (w *Wrapper) buildDuplicate() (query string) {
 		query += fmt.Sprintf("%s=LAST_INSERT_ID(%s), ", w.lastInsertIDColumn, w.lastInsertIDColumn)
 	}
 	for _, v := range w.onDuplicateColumns {
-		query += fmt.Sprintf("%s = VALUE(%s), ", v, v)
+		query += fmt.Sprintf("%s = VALUES(%s), ", v, v)
 	}
 	query = trim(query)
 	return
@@ -556,6 +556,8 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 	w.cleanBefore()
 	w.buildQuery()
+	w.LastQuery = w.query
+	w.LastParams = w.params
 	// Execute the query if the wrapper is executable.
 	if w.executable {
 		var stmt *sql.Stmt
@@ -567,14 +569,12 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 		if err != nil {
 			return
 		}
-		_, err = load(rows, w.destination)
+		_, err = load(*rows, w.destination)
 		if err != nil {
 			return
 		}
 		w.LastRows = rows
 	}
-	w.LastQuery = w.query
-	w.LastParams = w.params
 	w.cleanAfter()
 	return
 }
@@ -582,6 +582,8 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 	w.cleanBefore()
 	w.buildQuery()
+	w.LastQuery = w.query
+	w.LastParams = w.params
 	// Execute the query if the wrapper is executable.
 	if w.executable {
 		var stmt *sql.Stmt
@@ -595,8 +597,6 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 		}
 		w.LastResult = res
 	}
-	w.LastQuery = w.query
-	w.LastParams = w.params
 	w.cleanAfter()
 	return
 }
@@ -920,8 +920,12 @@ func (w *Wrapper) Commit() error {
 func (w *Wrapper) Count() (count int) {
 	// Count the rows from the *sql.Rows if it's available.
 	if w.LastRows != nil {
-		for w.LastRows.Next() {
-			count++
+		if w.LastRows.Err() != nil {
+			count = 0
+		} else {
+			for w.LastRows.Next() {
+				count++
+			}
 		}
 		// Get the rowAffected from the sql.Result if it's available.
 	} else if w.LastResult != nil {
