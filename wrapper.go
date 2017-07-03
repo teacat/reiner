@@ -553,18 +553,6 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 // Select Functions
 //=======================================================
 
-// Query returns the last built query, it's the same as `LastQuery` but the name is more meaningful.
-func (w *Wrapper) Query() (query string) {
-	query = w.LastQuery
-	return
-}
-
-// Params returns the last used parameters, it's the same as `LastParams` but the name is more meaningful.
-func (w *Wrapper) Params() (params []interface{}) {
-	params = w.LastParams
-	return
-}
-
 func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 	w.cleanBefore()
 	w.buildQuery()
@@ -616,7 +604,13 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 // Get gets the specified columns of the rows from the specifed database table.
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
-	_, err = w.runQuery()
+	rows, err := w.runQuery()
+	if err != nil {
+		return
+	}
+	if w.scanner != nil {
+		w.scanner(rows)
+	}
 	return
 }
 
@@ -624,14 +618,26 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 func (w *Wrapper) GetOne(columns ...string) (err error) {
 	w.Limit(1)
 	w.query = w.buildSelect(columns...)
-	_, err = w.runQuery()
+	rows, err := w.runQuery()
+	if err != nil {
+		return
+	}
+	if w.scanner != nil {
+		w.scanner(rows)
+	}
 	return
 }
 
 // GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
 func (w *Wrapper) GetValue(column string) (err error) {
 	w.query = w.buildSelect(column)
-	_, err = w.runQuery()
+	rows, err := w.runQuery()
+	if err != nil {
+		return
+	}
+	if w.scanner != nil {
+		w.scanner(rows)
+	}
 	return
 }
 
@@ -1002,7 +1008,12 @@ func (w *Wrapper) SetTrace(status bool) *Wrapper {
 
 // Copy returns a new database wrapper based on the current configurations. It's useful when you're trying to pass the database wrapper to the goroutines to make sure it's thread safe.
 func (w *Wrapper) Copy() *Wrapper {
-	return w
+	newW := &Wrapper{
+		db:         w.db,
+		executable: true,
+		Timestamp:  &Timestamp{},
+	}
+	return newW
 }
 
 // Scan scans the rows of the result, and mapping it to the specified variable.
@@ -1015,6 +1026,18 @@ func (w *Wrapper) Scan(handler func(*sql.Rows)) *Wrapper {
 func (w *Wrapper) Bind(destination interface{}) *Wrapper {
 	w.destination = destination
 	return w
+}
+
+// Query returns the last built query, it's the same as `LastQuery` but the name is more meaningful.
+func (w *Wrapper) Query() (query string) {
+	query = w.LastQuery
+	return
+}
+
+// Params returns the last used parameters, it's the same as `LastParams` but the name is more meaningful.
+func (w *Wrapper) Params() (params []interface{}) {
+	params = w.LastParams
+	return
 }
 
 //=======================================================
