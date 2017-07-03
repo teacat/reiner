@@ -55,9 +55,7 @@ type Wrapper struct {
 	// alias is the alias for the table when joining the table as a sub query.
 	alias string
 	// destination represents a pointer to the destination of the result.
-	destination interface{}
-	// scanner handles the rows scan function after the result was fetched.
-	scanner            func(*sql.Rows)
+	destination        interface{}
 	tableName          []string
 	conditions         []condition
 	havingConditions   []condition
@@ -72,6 +70,7 @@ type Wrapper struct {
 	tracing            bool
 	query              string
 	params             []interface{}
+	count              int
 
 	// Timestamp is the timestamp tool.
 	Timestamp *Timestamp
@@ -87,8 +86,6 @@ type Wrapper struct {
 	LastQuery string
 	// LastInsertID is the last insert ID.
 	LastInsertID int
-	// LastRows is the `*sql.Rows` from the last result.
-	LastRows *sql.Rows
 	//
 	LastParams []interface{}
 	//
@@ -113,13 +110,12 @@ func (w *Wrapper) cleanAfter() {
 	w.havingConditions = []condition{}
 	w.limit = []int{}
 	w.destination = nil
-	w.scanner = nil
 }
 
 func (w *Wrapper) cleanBefore() {
 	w.LastInsertID = 0
 	w.LastResult = nil
-	w.LastRows = nil
+	w.count = 0
 }
 
 //=======================================================
@@ -561,6 +557,7 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 	// Execute the query if the wrapper is executable.
 	if w.executable {
 		var stmt *sql.Stmt
+		var count int
 		stmt, err = w.db.Prepare(w.query)
 		if err != nil {
 			return
@@ -569,11 +566,11 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 		if err != nil {
 			return
 		}
-		_, err = load(*rows, w.destination)
+		count, err = load(rows, w.destination)
 		if err != nil {
 			return
 		}
-		w.LastRows = rows
+		w.count = count
 	}
 	w.cleanAfter()
 	return
@@ -587,6 +584,7 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 	// Execute the query if the wrapper is executable.
 	if w.executable {
 		var stmt *sql.Stmt
+		var count int64
 		stmt, err = w.db.Prepare(w.query)
 		if err != nil {
 			return
@@ -596,6 +594,11 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 			return
 		}
 		w.LastResult = res
+		count, err = res.RowsAffected()
+		if err != nil {
+			return
+		}
+		w.count = int(count)
 	}
 	w.cleanAfter()
 	return
@@ -604,12 +607,9 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 // Get gets the specified columns of the rows from the specifed database table.
 func (w *Wrapper) Get(columns ...string) (err error) {
 	w.query = w.buildSelect(columns...)
-	rows, err := w.runQuery()
+	_, err = w.runQuery()
 	if err != nil {
 		return
-	}
-	if w.scanner != nil {
-		w.scanner(rows)
 	}
 	return
 }
@@ -618,12 +618,9 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 func (w *Wrapper) GetOne(columns ...string) (err error) {
 	//w.Limit(1)
 	w.query = w.buildSelect(columns...)
-	rows, err := w.runQuery()
+	_, err = w.runQuery()
 	if err != nil {
 		return
-	}
-	if w.scanner != nil {
-		w.scanner(rows)
 	}
 	return
 }
@@ -631,12 +628,9 @@ func (w *Wrapper) GetOne(columns ...string) (err error) {
 // GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
 func (w *Wrapper) GetValue(column string) (err error) {
 	w.query = w.buildSelect(column)
-	rows, err := w.runQuery()
+	_, err = w.runQuery()
 	if err != nil {
 		return
-	}
-	if w.scanner != nil {
-		w.scanner(rows)
 	}
 	return
 }
@@ -918,27 +912,7 @@ func (w *Wrapper) Commit() error {
 
 // Count returns the count of the result rows.
 func (w *Wrapper) Count() (count int) {
-	// Count the rows from the *sql.Rows if it's available.
-	if w.LastRows != nil {
-		if w.LastRows.Err() != nil {
-			count = 0
-		} else {
-			for w.LastRows.Next() {
-				count++
-			}
-		}
-		// Get the rowAffected from the sql.Result if it's available.
-	} else if w.LastResult != nil {
-		rowAffected, err := w.LastResult.RowsAffected()
-		if err != nil {
-			count = 0
-		} else {
-			count = int(rowAffected)
-		}
-		// Otherwise just return 0.
-	} else {
-		count = 0
-	}
+	count = w.count
 	return
 }
 
@@ -1028,7 +1002,6 @@ func (w *Wrapper) Copy(deepCopy bool) (copiedWrapper *Wrapper) {
 			Timestamp:          &Timestamp{},
 			alias:              w.alias,
 			destination:        w.destination,
-			scanner:            w.scanner,
 			tableName:          w.tableName,
 			conditions:         w.conditions,
 			havingConditions:   w.havingConditions,
@@ -1046,12 +1019,6 @@ func (w *Wrapper) Copy(deepCopy bool) (copiedWrapper *Wrapper) {
 		}
 	}
 	return
-}
-
-// Scan scans the rows of the result, and mapping it to the specified variable.
-func (w *Wrapper) Scan(handler func(*sql.Rows)) *Wrapper {
-	w.scanner = handler
-	return w
 }
 
 // Bind binds the destination of the result.

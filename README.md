@@ -171,28 +171,6 @@ var user []*User
 err := db.Bind(&user).Table("Users").Get()
 ```
 
-### 逐行掃描
-
-如果你偏好傳統的 `rows.Next` 來對每筆資料進行逐行掃描，Reiner 亦提供了 `Scan` 方式允許你傳入自訂的資料處理函式。你能夠在網路上找到ㄧ些輔助 `*sql.Rows` 的函式。
-
-```go
-err := db.Scan(func(rows *sql.Rows) {
-	var username, password string
-	rows.Scan(&username, &password)
-}).Table("Users").Get()
-```
-
-或者你不想要透過 Reiner 的 `Scan` 方式，你可以透過 `LastRows` 直接取得最後一次的 `*sql.Rows`。
-
-```go
-err := db.Table("Users").Get()
-rows := db.LastRows
-for rows.Next() {
-	var username, password string
-	rows.Scan(&username, &password)
-}
-```
-
 ## 插入
 
 透過 Reiner 你可以很輕鬆地透過建構體或是 map 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
