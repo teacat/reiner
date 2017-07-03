@@ -19,6 +19,8 @@ type Migration struct {
 type table struct {
 	name        string
 	comment     string
+	charset     string
+	collation   string
 	primaryKeys []key
 	indexKeys   []key
 	uniqueKeys  []key
@@ -204,6 +206,18 @@ func (m *Migration) Set(types ...interface{}) *Migration {
 // Column creates a new column.
 func (m *Migration) Column(name string) *Migration {
 	m.columns = append(m.columns, column{name: name, defaultValue: false})
+	return m
+}
+
+//
+func (m *Migration) Charset(charset string) *Migration {
+	m.table.charset = charset
+	return m
+}
+
+//
+func (m *Migration) Collation(collation string) *Migration {
+	m.table.collation = collation
 	return m
 }
 
@@ -500,6 +514,14 @@ func (m *Migration) tableBuilder() (query string) {
 		engineType = "innodb"
 	}
 	query += fmt.Sprintf("ENGINE=%s, ", strings.ToUpper(engineType))
+	// Charset.
+	if m.table.charset != "" {
+		query += fmt.Sprintf("DEFAULT CHARSET=%s, ", m.table.charset)
+	}
+	// Collation.
+	if m.table.collation != "" {
+		query += fmt.Sprintf("COLLATE=%s, ", m.table.collation)
+	}
 	// Comment.
 	if m.table.comment != "" {
 		query += fmt.Sprintf("COMMENT='%s', ", m.table.comment)
