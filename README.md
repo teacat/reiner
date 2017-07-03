@@ -156,9 +156,9 @@ db, _ := reiner.New()
 db.Table("Users").Where("Username", "YamiOdymel").Get()
 
 // 透過 `Query` 取得 Reiner 所建立的 Query 當作欲執行的資料庫指令。
-sql.Prepare(db.Query)
+sql.Prepare(db.Query())
 // 接著展開 `Params` 即是我們在 Reiner 中存放的值。
-sql.Exec(db.Params...)
+sql.Exec(db.Params()...)
 // 等效於：SELECT * FROM Users WHERE Username = ?
 ```
 
@@ -739,11 +739,11 @@ fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 
 ```go
 db.Table("Users").Get()
-fmt.Println("總共獲取 %s 筆資料", db.Count)
+fmt.Println("總共獲取 %s 筆資料", db.Count())
 db.Table("Users").Delete()
-fmt.Println("總共刪除 %s 筆資料", db.Count)
+fmt.Println("總共刪除 %s 筆資料", db.Count())
 db.Table("Users").Update(data)
-fmt.Println("總共更新 %s 筆資料", db.Count)
+fmt.Println("總共更新 %s 筆資料", db.Count())
 ```
 
 ### 最後插入的編號
@@ -765,9 +765,16 @@ var ids []int
 for ... {
 	err := db.Table("Users").Insert(data)
 	if err != nil {
-		ids = append(ids, db.LastInsertIDs)
+		ids = append(ids, db.LastInsertID)
 	}
 }
+```
+
+### 總筆數
+
+```go
+db.Table("Users").WithTotalCount().Get()
+db.TotalCount
 ```
 
 ## 交易函式

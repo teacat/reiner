@@ -14,7 +14,7 @@ func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 	switch len(dataSourceNames) {
 	// Query builder mode.
 	case 0:
-		return &Wrapper{builderMode: true, Timestamp: &Timestamp{}}, nil
+		return &Wrapper{executable: false, Timestamp: &Timestamp{}}, nil
 	// One master only.
 	case 1:
 		masters = append(masters, dataSourceNames[0].(string))
