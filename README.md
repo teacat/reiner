@@ -757,13 +757,17 @@ db.Table("Users").Insert(data)
 id = db.LastInsertID
 ```
 
-如果你是同時間插入多筆資料，你仍可以透過 `LastInsertIDs` 取得剛才插入的所有資料編號。
+如果你是經由 `InsertMulti` 同時間插入多筆資料，基於 MySQL 底層的設定，你並沒有辦法透過 `LastInsertID` 取得剛才插入的所有資料編號。如果你仍希望取得插入編號，請透過迴圈不斷地執行 `Insert` 並保存其 `LastInsertID` 資料。
 
 ```go
 var ids []int
 
-db.Table("Users").InsertMulti(data)
-ids = db.LastInsertIDs
+for ... {
+	err := db.Table("Users").Insert(data)
+	if err != nil {
+		ids = append(ids, db.LastInsertIDs)
+	}
+}
 ```
 
 ## 交易函式

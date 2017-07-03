@@ -50,6 +50,8 @@ type Trace struct {
 // Wrapper represents a database query wrapper, which contains the database connection.
 type Wrapper struct {
 	db *DB
+	// executable executes the built queries if it's true.
+	executable bool
 	// builderMode enables when the wrapper is used to build the queries,
 	// the queries won't be executed in this mode.
 	builderMode bool
@@ -93,12 +95,10 @@ type Wrapper struct {
 	LastQuery string
 	// LastInsertID is the last insert ID.
 	LastInsertID int
-	// LastInsertIDs is the last insert IDs.
-	LastInsertIDs []int
-	// LastRow is the `*sql.Rows` from the last result.
+	// LastRows is the `*sql.Rows` from the last result.
 	LastRows *sql.Rows
-	// LastRow is the `*sql.Row` from the last result.
-	LastRow *sql.Row
+	//
+	LastResult sql.Result
 }
 
 // newWrapper creates a new database function wrapper by the passed database connection.
@@ -109,7 +109,9 @@ func newWrapper(db *DB) *Wrapper {
 // clean cleans the last executed result.
 func (w *Wrapper) clean() {
 	w.LastInsertID = 0
-	w.LastInsertIDs = []int{}
+	w.LastResult = nil
+	w.queryOptions = []string{}
+	w.LastRows = nil
 	w.tableName = []string{}
 	w.Params = []interface{}{}
 	w.onDuplicateColumns = []string{}
@@ -119,6 +121,8 @@ func (w *Wrapper) clean() {
 	w.conditions = []condition{}
 	w.havingConditions = []condition{}
 	w.limit = []int{}
+	w.destination = nil
+	w.scanner = nil
 }
 
 //=======================================================
@@ -392,7 +396,6 @@ func (w *Wrapper) buildQuery() {
 	w.Query += w.buildGroupBy()
 	w.Query += w.buildLimit()
 	w.Query = strings.TrimSpace(w.Query)
-	w.LastQuery = w.Query
 }
 
 // buildOrderBy builds the `ORDERY BY` statement based on the stored orders.
@@ -527,26 +530,50 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 // Select Functions
 //=======================================================
 
-// Get gets the specified columns of the rows from the specifed database table.
-func (w *Wrapper) Get(columns ...string) (err error) {
-	w.Query = w.buildSelect(columns...)
+func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 	w.buildQuery()
 	stmt, err := w.db.Prepare(w.Query)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	rows, err := stmt.Query(w.Params...)
+	rows, err = stmt.Query(w.Params...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = load(rows, w.destination)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	w.LastRows = rows
+	w.LastQuery = w.Query
 	if !w.isSubQuery {
 		w.clean()
 	}
-	// Count
+	return
+}
+
+func (w *Wrapper) executeQuery() (res sql.Result, err error) {
+	w.buildQuery()
+	stmt, err := w.db.Prepare(w.Query)
+	if err != nil {
+		return
+	}
+	res, err = stmt.Exec(w.Params...)
+	if err != nil {
+		return
+	}
+	w.LastResult = res
+	w.LastQuery = w.Query
+	if !w.isSubQuery {
+		w.clean()
+	}
+	return
+}
+
+// Get gets the specified columns of the rows from the specifed database table.
+func (w *Wrapper) Get(columns ...string) (err error) {
+	w.Query = w.buildSelect(columns...)
+	_, err = w.runQuery()
 	return
 }
 
@@ -554,46 +581,14 @@ func (w *Wrapper) Get(columns ...string) (err error) {
 func (w *Wrapper) GetOne(columns ...string) (err error) {
 	w.Limit(1)
 	w.Query = w.buildSelect(columns...)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	rows, err := stmt.Query(w.Params...)
-	if err != nil {
-		return err
-	}
-	_, err = load(rows, w.destination)
-	if err != nil {
-		return err
-	}
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
+	_, err = w.runQuery()
 	return
 }
 
 // GetValue gets the value of the specified column of the rows, you'll get the slice of the values if you didn't specify `LIMIT 1`.
 func (w *Wrapper) GetValue(column string) (err error) {
 	w.Query = w.buildSelect(column)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
-	if err != nil {
-		return err
-	}
-	rows, err := stmt.Query(w.Params...)
-	if err != nil {
-		return err
-	}
-	_, err = load(rows, w.destination)
-	if err != nil {
-		return err
-	}
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
+	_, err = w.runQuery()
 	return
 }
 
@@ -612,48 +607,30 @@ func (w *Wrapper) Paginate(pageCount int, columns ...string) (err error) {
 // Insert builds and executes the insert query.
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.Query = w.buildInsert("INSERT", data)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
+	res, err := w.executeQuery()
 	if err != nil {
-		return err
+		return
 	}
-	r, err := stmt.Exec(w.Params...)
+	id, err := res.LastInsertId()
 	if err != nil {
-		return err
-	}
-	id, err := r.LastInsertId()
-	if err != nil {
-		return err
+		return
 	}
 	w.LastInsertID = int(id)
-	if !w.isSubQuery {
-		w.clean()
-	}
-	// Count
-	return nil
+	return
 }
 
 // InsertMulti builds and executes a single insert query with the many rows.
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.Query = w.buildInsert("INSERT", data)
-	w.buildQuery()
-	stmt, err := w.db.Prepare(w.Query)
+	res, err := w.executeQuery()
 	if err != nil {
-		return err
+		return
 	}
-	_, err = stmt.Exec(w.Params...)
+	id, err := res.LastInsertId()
 	if err != nil {
-		return err
+		return
 	}
-	//id, err := r.LastInsertId()
-	//if err != nil {
-	//	return err
-	//}
-	//w.LastInsertID = int(id)
-	// Count
-	if !w.isSubQuery {
-		w.clean()
-	}
+	w.LastInsertID = int(id)
 	return
 }
 
@@ -661,7 +638,7 @@ func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 // It's very important alright? Cause .. you know ..fuck.
 func (w *Wrapper) Delete() (err error) {
 	w.Query = w.buildDelete(w.tableName...)
-	w.buildQuery()
+	_, err = w.executeQuery()
 	return
 }
 
@@ -672,14 +649,14 @@ func (w *Wrapper) Delete() (err error) {
 // Replace builds and executes the replace query just like what `Insert` does.
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.Query = w.buildInsert("REPLACE", data)
-	w.buildQuery()
+	_, err = w.executeQuery()
 	return
 }
 
 // Update updates the rows with the specified data.
 func (w *Wrapper) Update(data interface{}) (err error) {
 	w.Query = w.buildUpdate(data)
-	w.buildQuery()
+	_, err = w.executeQuery()
 	return
 }
 
@@ -727,12 +704,9 @@ func (w *Wrapper) GroupBy(columns ...string) *Wrapper {
 
 // RawQuery executes the passed raw query and binds the passed values to the prepared statments.
 func (w *Wrapper) RawQuery(query string, values ...interface{}) (err error) {
-	if len(values) == 0 {
-
-	}
 	w.Query = query
-	w.LastQuery = w.Query
-	w.bindParams(values)
+	w.Params = values
+	_, err = w.runQuery()
 	return
 }
 
@@ -829,8 +803,15 @@ func (w *Wrapper) SubQuery(alias ...string) *Wrapper {
 
 // Has returns true when there's a such result, it's useful when you want to validate if there's a duplicated email address, or the usename.
 func (w *Wrapper) Has() (has bool, err error) {
-	w.Query = w.buildSelect()
-	w.buildQuery()
+	err = w.Limit(1).Get()
+	if err != nil {
+		has = false
+		return
+	}
+	if w.Count() > 0 {
+		has = true
+		return
+	}
 	return
 }
 
@@ -880,8 +861,19 @@ func (w *Wrapper) Commit() error {
 
 // Count returns the count of the result rows.
 func (w *Wrapper) Count() (count int) {
-	for w.LastRows.Next() {
-		count++
+	if w.LastRows != nil {
+		for w.LastRows.Next() {
+			count++
+		}
+	} else if w.LastResult != nil {
+		rowAffected, err := w.LastResult.RowsAffected()
+		if err != nil {
+			count = 0
+		} else {
+			count = int(rowAffected)
+		}
+	} else {
+		count = 0
 	}
 	return
 }
@@ -924,30 +916,32 @@ func (w *Wrapper) SetLockMethod(method string) *Wrapper {
 }
 
 // Lock locks the tables with the specified lock method.
-func (w *Wrapper) Lock(tableNames ...string) bool {
+func (w *Wrapper) Lock(tableNames ...string) (err error) {
 	var tables string
 	for _, v := range tableNames {
 		tables += fmt.Sprintf("%s %s, ", v, w.lockMethod)
 	}
 	tables = trim(tables)
 
-	w.RawQuery(fmt.Sprintf("LOCK TABLES %s", tables))
-	return false
+	err = w.RawQuery(fmt.Sprintf("LOCK TABLES %s", tables))
+	return
 }
 
 // Unlock unlocks the locked tables.
-func (w *Wrapper) Unlock(tableNames ...string) *Wrapper {
-	w.RawQuery("UNLOCK TABLES")
-	return w
+func (w *Wrapper) Unlock(tableNames ...string) (err error) {
+	err = w.RawQuery("UNLOCK TABLES")
+	return
 }
 
 // SetQueryOption sets the query options like `SQL_NO_CACHE`.
 func (w *Wrapper) SetQueryOption(options ...string) *Wrapper {
+	w.queryOptions = options
 	return w
 }
 
 // SetTrace sets the trace mode as on or off, so you can get the traces by accessing the `Trace` property.
-func (w *Wrapper) SetTrace(enable bool) *Wrapper {
+func (w *Wrapper) SetTrace(status bool) *Wrapper {
+	w.tracing = status
 	return w
 }
 
@@ -955,14 +949,14 @@ func (w *Wrapper) SetTrace(enable bool) *Wrapper {
 // Object Functions
 //=======================================================
 
-// Copy returns a database wrapper which has the exists data, it's useful when you're trying to pass the database wrapper to the goroutines to make sure it's thread safe.
+// Copy returns a new database wrapper based on the current configurations. It's useful when you're trying to pass the database wrapper to the goroutines to make sure it's thread safe.
 func (w *Wrapper) Copy() *Wrapper {
 	return w
 }
 
 // Scan scans the rows of the result, and mapping it to the specified variable.
-func (w *Wrapper) Scan(h func(*sql.Rows)) *Wrapper {
-
+func (w *Wrapper) Scan(handler func(*sql.Rows)) *Wrapper {
+	w.scanner = handler
 	return w
 }
 
