@@ -100,7 +100,7 @@ func TestRealReplace(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.Equal("REPLACE INTO Users (Username, Password, Age) VALUES (?, ?, ?)", rw.Query())
-	assert.Equal(1, rw.Count())
+	assert.Equal(2, rw.Count()) // Why 2? Check https://blog.xupeng.me/2013/10/11/mysql-replace-into-trap/
 }
 
 func TestRealInsertFunc(t *testing.T) {
@@ -124,13 +124,13 @@ func TestRealOnDuplicateInsert(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE Age = VALUES(Age), Password = VALUES(Password)", rw.Query())
-	assert.Equal(1, rw.Count())
+	assert.Equal(2, rw.Count())
 }
 
 func TestRealUpdate(t *testing.T) {
 	assert := assert.New(t)
 	err := rw.Table("Users").Where("Username", "YamiOdymel").Update(map[string]interface{}{
-		"Username": "Davai",
+		"Username": "YamiOdymel",
 		"Password": "123456",
 	})
 	assert.NoError(err)
@@ -162,7 +162,7 @@ func TestRealGet(t *testing.T) {
 func TestRealLimitGet(t *testing.T) {
 	assert := assert.New(t)
 	var u []user
-	err := rw.Table("Users").Limit(2).Get()
+	err := rw.Table("Users").Bind(&u).Limit(2).Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users LIMIT 2", rw.Query())
 	assert.Equal(2, rw.Count())
@@ -172,7 +172,7 @@ func TestRealLimitGet(t *testing.T) {
 func TestRealGetColumns(t *testing.T) {
 	assert := assert.New(t)
 	var u []user
-	err := rw.Table("Users").Get("Username", "Age")
+	err := rw.Table("Users").Bind(&u).Get("Username", "Age")
 	assert.NoError(err)
 	assert.Equal("SELECT Username, Age FROM Users", rw.Query())
 	assert.Equal(4, rw.Count())
@@ -193,16 +193,17 @@ func TestRealGetOne(t *testing.T) {
 	err := rw.Table("Users").Bind(&u).Where("Username", "YamiOdymel").GetOne()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users WHERE Username = ?", rw.Query())
-	assert.Equal(u.Age, 32)
-	assert.Equal(u.Password, 32)
-	assert.Equal(u.Username, "YamiOdymel")
+	assert.Equal(1, rw.Count())
+	assert.Equal(95, u.Age)
+	assert.Equal("123456", u.Password)
+	assert.Equal("YamiOdymel", u.Username)
 
 	var m map[string]interface{}
-	err = rw.Table("Users").Bind(&m).GetOne("SUM(Username) AS Sum", "COUNT(*) AS Count")
+	err = rw.Table("Users").Bind(&m).GetOne("SUM(Age) AS Sum", "COUNT(*) AS Count")
 	// rw.Table("Users").Bind(&sum, &cnt).GetOne("SUM(Username) AS Sum", "COUNT(*) AS Count")
 	assert.NoError(err)
-	assert.Equal("SELECT SUM(Username) AS Sum, COUNT(*) AS Count FROM Users", rw.Query())
-	assert.Equal(2018, m["Sum"])
+	assert.Equal("SELECT SUM(Age) AS Sum, COUNT(*) AS Count FROM Users", rw.Query())
+	assert.Equal(196, m["Sum"])
 	assert.Equal(4, m["Count"])
 }
 

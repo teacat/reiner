@@ -10,6 +10,8 @@ import (
 	"unicode"
 )
 
+// https://github.com/bgaifullin/dbr
+// https://github.com/bgaifullin/dbr/blob/master/load.go
 var (
 	ErrNotFound           = errors.New("dbr: not found")
 	ErrNotSupported       = errors.New("dbr: not supported")
@@ -25,6 +27,13 @@ var (
 // Load loads any value from sql.Rows
 func load(rows *sql.Rows, value interface{}) (int, error) {
 	defer rows.Close()
+	if value == nil {
+		count := 0
+		for rows.Next() {
+			count++
+		}
+		return count, nil
+	}
 
 	column, err := rows.Columns()
 	if err != nil {
@@ -35,8 +44,14 @@ func load(rows *sql.Rows, value interface{}) (int, error) {
 	if v.Kind() != reflect.Ptr || v.IsNil() {
 		return 0, ErrInvalidPointer
 	}
+
+	isSlice := v.Elem().Kind() == reflect.Slice && v.Elem().Type().Elem().Kind() != reflect.Uint8
+	if isSlice {
+		v.Elem().Set(reflect.MakeSlice(v.Type().Elem(), 0, v.Elem().Cap()))
+	}
+
 	v = v.Elem()
-	isSlice := v.Kind() == reflect.Slice && v.Type().Elem().Kind() != reflect.Uint8
+
 	count := 0
 	var elemType reflect.Type
 	if isSlice {
