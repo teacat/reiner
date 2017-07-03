@@ -500,7 +500,7 @@ func TestRealJoin(t *testing.T) {
 		Get("Users.Age", "Posts.Title")
 	assert.NoError(err)
 	assert.Equal("SELECT Users.Age, Posts.Title FROM Users LEFT JOIN Posts ON (Posts.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
-	assert.Equal(0, rw.Count())
+	assert.Equal(1, rw.Count())
 
 	err = rw.
 		Table("Users").
@@ -510,7 +510,7 @@ func TestRealJoin(t *testing.T) {
 		Get("Users.Age", "Posts.Title")
 	assert.NoError(err)
 	assert.Equal("SELECT Users.Age, Posts.Title FROM Users LEFT JOIN Posts ON (Posts.Username = Users.Username) RIGHT JOIN Products ON (Products.Username = Users.Username) WHERE Users.Username = ?", rw.Query())
-	assert.Equal(1, rw.Count())
+	assert.Equal(0, rw.Count())
 }
 
 func TestRealJoinWhere(t *testing.T) {

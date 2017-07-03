@@ -68,7 +68,7 @@ func TestOnDuplicateInsert(t *testing.T) {
 		"Password":  "test",
 		"UpdatedAt": wrapper.Now(),
 	})
-	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID), UpdatedAt = VALUE(UpdatedAt)", wrapper.Query())
+	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID), UpdatedAt = VALUES(UpdatedAt)", wrapper.Query())
 }
 
 func TestUpdate(t *testing.T) {
@@ -135,7 +135,7 @@ func TestPaginate(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.PageLimit = 20
 	wrapper.Table("Users").Paginate(2)
-	assert.Equal("SELECT * FROM Users LIMIT 20, 20", wrapper.Query())
+	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 20, 20", wrapper.Query())
 }
 
 func TestRawQuery(t *testing.T) {

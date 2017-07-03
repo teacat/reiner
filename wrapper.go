@@ -115,6 +115,7 @@ func (w *Wrapper) cleanAfter() {
 func (w *Wrapper) cleanBefore() {
 	w.LastInsertID = 0
 	w.LastResult = nil
+	w.LastParams = []interface{}{}
 	w.count = 0
 }
 
@@ -200,8 +201,8 @@ func (w *Wrapper) bindParams(data interface{}) (query string) {
 func (w *Wrapper) bindParam(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
 	case *Wrapper:
-		if len(v.params) > 0 {
-			w.params = append(w.params, v.params...)
+		if len(v.Params()) > 0 {
+			w.params = append(w.params, v.Params()...)
 		}
 	case function:
 		if len(v.values) > 0 {
