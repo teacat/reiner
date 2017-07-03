@@ -1,9 +1,5 @@
 package reiner
 
-func main() {
-
-}
-
 // New creates a new database connection which provides the MySQL wrapper functions.
 // The first data source name is for the master, the rest are for the slaves, which is used for the read/write split.
 //     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})

@@ -6,374 +6,548 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var wrapper *Wrapper
+var rw *Wrapper
 
-func TestMain(t *testing.T) {
+func TestRealRealMain(t *testing.T) {
+	var err error
 	assert := assert.New(t)
 
-	var err error
-	wrapper, err = New()
+	rw, err = New("root:root@/test?charset=utf8")
+	assert.NoError(err)
+
+	migration = rw.Migration()
+
+	err = migration.Drop("Users")
+	assert.NoError(err)
+
+	err = migration.Table("Users").
+		Column("Username").Varchar(32).Primary().
+		Column("Password").Varchar(32).
+		Column("Age").Int(2).
+		Create()
+	assert.NoError(err)
+
+	err = migration.Table("Posts").
+		Column("ID").Int(32).Primary().
+		Column("Username").Varchar(32).
+		Column("Title").Varchar(32).
+		Create()
+	assert.NoError(err)
+
+	err = migration.Table("Products").
+		Column("ID").Int(32).Primary().
+		Column("Username").Varchar(32).
+		Column("PostID").Int(32).
+		Create()
 	assert.NoError(err)
 }
 
-func TestInsert(t *testing.T) {
-	assert := assert.New(t)
-	wrapper.Table("Users").Insert(map[string]interface{}{
-		"Username": "YamiOdymel",
-		"Password": "test",
-	})
-	assert.Equal("INSERT INTO Users (Username, Password) VALUES (?, ?)", wrapper.Query())
+type user struct {
+	Username string
+	Password string
+	Age      int
 }
 
-func TestInsertMulti(t *testing.T) {
+type post struct {
+	ID       int
+	Username string
+	Title    string
+}
+
+type product struct {
+	ID       int
+	Username string
+	PostID   int
+}
+
+func TestRealInsert(t *testing.T) {
+	assert := assert.New(t)
+	err := rw.Table("Users").Insert(map[string]interface{}{
+		"Username": "YamiOdymel",
+		"Password": "test",
+		"Age":      64,
+	})
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?)", rw.Query)
+	assert.Equal(1, rw.Count)
+}
+
+func TestRealInsertMulti(t *testing.T) {
 	assert := assert.New(t)
 	data := []map[string]interface{}{
 		{
-			"Username": "YamiOdymel",
+			"Username": "Shirone",
 			"Password": "test",
+			"Age":      87,
 		}, {
 			"Username": "Karisu",
 			"Password": "12345",
+			"Age":      12,
 		},
 	}
-	wrapper.Table("Users").InsertMulti(data)
-	assert.Equal("INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)", wrapper.Query())
+	err := rw.Table("Users").InsertMulti(data)
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?), (?, ?, ?)", rw.Query)
+	assert.Equal(2, rw.Count)
 }
 
-func TestReplace(t *testing.T) {
+func TestRealReplace(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Replace(map[string]interface{}{
+	err := rw.Table("Users").Replace(map[string]interface{}{
+		"Username": "YamiOdymel",
+		"Password": "davai",
+	})
+	assert.NoError(err)
+	assert.Equal("REPLACE INTO Users (Username, Password) VALUES (?, ?)", rw.Query)
+	assert.Equal(1, rw.Count)
+}
+
+func TestRealInsertFunc(t *testing.T) {
+	assert := assert.New(t)
+	err := rw.Table("Users").Insert(map[string]interface{}{
+		"Username": rw.Now("+1Y"),
+		"Password": rw.Func("SHA1(?)", "secretpassword+salt"),
+		"Age":      rw.Func("1 + 1"),
+	})
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (NOW() + INTERVAL 1 YEAR, SHA(?), 1 + 1)", rw.Query)
+	assert.Equal(1, rw.Count)
+}
+
+func TestRealOnDuplicateInsert(t *testing.T) {
+	assert := assert.New(t)
+	err := rw.Table("Users").OnDuplicate([]string{"Age", "Password"}).Insert(map[string]interface{}{
 		"Username": "YamiOdymel",
 		"Password": "test",
+		"Age":      95,
 	})
-	assert.Equal("REPLACE INTO Users (Username, Password) VALUES (?, ?)", wrapper.Query())
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Users (Username, Password, Age) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE Age = VALUE(Age), Password = VALUE(Password)", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestInsertFunc(t *testing.T) {
+func TestRealUpdate(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Insert(map[string]interface{}{
-		"Username":  "YamiOdymel",
-		"Password":  wrapper.Func("SHA1(?)", "secretpassword+salt"),
-		"Expires":   wrapper.Now("+1Y"),
-		"CreatedAt": wrapper.Now(),
-	})
-	assert.Equal("INSERT INTO Users (Username, Password, Expires, CreatedAt) VALUES (?, SHA1(?), NOW() + INTERVAL 1 YEAR, NOW())", wrapper.Query())
-}
-
-func TestOnDuplicateInsert(t *testing.T) {
-	assert := assert.New(t)
-	lastInsertID := "ID"
-	wrapper.Table("Users").OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert(map[string]interface{}{
-		"Username":  "YamiOdymel",
-		"Password":  "test",
-		"UpdatedAt": wrapper.Now(),
-	})
-	assert.Equal("INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID), UpdatedAt = VALUE(UpdatedAt)", wrapper.Query())
-}
-
-func TestUpdate(t *testing.T) {
-	assert := assert.New(t)
-	wrapper.Table("Users").Where("Username", "YamiOdymel").Update(map[string]interface{}{
-		"Username": "Karisu",
+	err := rw.Table("Users").Where("Username", "YamiOdymel").Update(map[string]interface{}{
+		"Username": "Davai",
 		"Password": "123456",
 	})
-	assert.Equal("UPDATE Users SET Username = ?, Password = ? WHERE Username = ?", wrapper.Query())
+	assert.NoError(err)
+	assert.Equal("UPDATE Users SET Username = ?, Password = ? WHERE Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestLimitUpdate(t *testing.T) {
+func TestRealLimitUpdate(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Limit(10).Update(map[string]interface{}{
-		"Username": "Karisu",
+	err := rw.Table("Users").Limit(1).Update(map[string]interface{}{
+		"Username": "PiuPiu",
 		"Password": "123456",
 	})
-	assert.Equal("UPDATE Users SET Username = ?, Password = ? LIMIT 10", wrapper.Query())
+	assert.NoError(err)
+	assert.Equal("UPDATE Users SET Username = ?, Password = ? LIMIT 1", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestGet(t *testing.T) {
+func TestRealGet(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Get()
-	assert.Equal("SELECT * FROM Users", wrapper.Query())
+	var u []user
+	err := rw.Table("Users").Bind(&u).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users", rw.Query)
+	assert.Equal(4, rw.Count)
+	assert.Len(u, 4)
 }
 
-func TestLimitGet(t *testing.T) {
+func TestRealLimitGet(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Limit(10).Get()
-	assert.Equal("SELECT * FROM Users LIMIT 10", wrapper.Query())
+	var u []user
+	err := rw.Table("Users").Limit(2).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users LIMIT 2", rw.Query)
+	assert.Equal(2, rw.Count)
+	assert.Len(u, 2)
 }
 
-func TestGetColumns(t *testing.T) {
+func TestRealGetColumns(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Get("Username", "Nickname")
-	assert.Equal("SELECT Username, Nickname FROM Users", wrapper.Query())
+	var u []user
+	err := rw.Table("Users").Get("Username", "Age")
+	assert.NoError(err)
+	assert.Equal("SELECT Username, Age FROM Users", rw.Query)
+	assert.Equal(4, rw.Count)
+	assert.Len(u, 4)
 
-	wrapper.Table("Users").Get("COUNT(*) AS Count")
-	assert.Equal("SELECT COUNT(*) AS Count FROM Users", wrapper.Query())
+	var c int
+	err = rw.Table("Users").Bind(&c).Get("COUNT(*) AS Count")
+	assert.NoError(err)
+	assert.Equal("SELECT COUNT(*) AS Count FROM Users", rw.Query)
+	assert.Equal(1, rw.Count)
+	assert.Equal(4, c)
 }
 
-func TestGetOne(t *testing.T) {
+func TestRealGetOne(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", 1).GetOne()
-	assert.Equal("SELECT * FROM Users WHERE ID = ?", wrapper.Query())
 
-	wrapper.Table("Users").GetOne("SUM(ID)", "COUNT(*) AS Count")
-	assert.Equal("SELECT SUM(ID), COUNT(*) AS Count FROM Users", wrapper.Query())
+	var u user
+	err := rw.Table("Users").Bind(&u).Where("Username", "YamiOdymel").GetOne()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = ?", rw.Query)
+	assert.Equal(u.Age, 32)
+	assert.Equal(u.Password, 32)
+	assert.Equal(u.Username, "YamiOdymel")
+
+	var m map[string]interface{}
+	err = rw.Table("Users").Bind(&m).GetOne("SUM(Username) AS Sum", "COUNT(*) AS Count")
+	// rw.Table("Users").Bind(&sum, &cnt).GetOne("SUM(Username) AS Sum", "COUNT(*) AS Count")
+	assert.NoError(err)
+	assert.Equal("SELECT SUM(Username) AS Sum, COUNT(*) AS Count FROM Users", rw.Query)
+	assert.Equal(2018, m["Sum"])
+	assert.Equal(4, m["Count"])
 }
 
-func TestGetValue(t *testing.T) {
+func TestRealGetValue(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").GetValue("Username")
-	assert.Equal("SELECT Username AS Value FROM Users", wrapper.Query())
+	var u []string
+	err := rw.Table("Users").Bind(&u).GetValue("Username")
+	assert.NoError(err)
+	assert.Equal("SELECT Username AS Value FROM Users", rw.Query)
+	assert.Len(u, 4)
 
-	wrapper.Table("Users").Limit(5).GetValue("Username")
-	assert.Equal("SELECT Username AS Value FROM Users LIMIT 5", wrapper.Query())
+	err = rw.Table("Users").Bind(&u).Limit(2).GetValue("Username")
+	assert.NoError(err)
+	assert.Equal("SELECT Username AS Value FROM Users LIMIT 2", rw.Query)
+	assert.Len(u, 2)
+	assert.Equal(2, rw.Count)
 
-	wrapper.Table("Users").GetValue("COUNT(*)")
-	assert.Equal("SELECT COUNT(*) AS Value FROM Users", wrapper.Query())
+	var c int
+	err = rw.Table("Users").Bind(&c).GetValue("COUNT(*)")
+	assert.NoError(err)
+	assert.Equal("SELECT COUNT(*) AS Value FROM Users", rw.Query)
+	assert.Equal(1, rw.Count)
+	assert.Equal(4, c)
 }
 
-func TestPaginate(t *testing.T) {
+func TestRealPaginate(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.PageLimit = 20
-	wrapper.Table("Users").Paginate(2)
-	assert.Equal("SELECT * FROM Users LIMIT 20, 20", wrapper.Query())
+	rw.PageLimit = 2
+	err := rw.Table("Users").Paginate(1)
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users LIMIT 0, 2", rw.Query)
+	assert.Equal(2, rw.Count)
+
+	err = rw.Table("Users").Paginate(2)
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users LIMIT 2, 2", rw.Query)
+	assert.Equal(2, rw.Count)
 }
 
-func TestRawQuery(t *testing.T) {
+func TestRealRawQuery(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.RawQuery("SELECT * FROM Users WHERE ID >= ?", 10)
-	assert.Equal("SELECT * FROM Users WHERE ID >= ?", wrapper.Query())
+	var u []user
+	err := rw.Bind(&u).RawQuery("SELECT * FROM Users WHERE Age >= ?", 80)
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username >= ?", rw.Query)
+	assert.Equal(3, rw.Count)
+	assert.Len(u, 3)
 }
 
-func TestRawQueryOne(t *testing.T) {
+func TestRealRawQueryOne(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
-	assert.Equal("SELECT * FROM Users WHERE ID = ?", wrapper.Query())
+	var u user
+	err := rw.RawQueryOne("SELECT * FROM Users WHERE Username = ?", "YamiOdymel")
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
+	assert.Equal("YamiOdymel", u.Username)
 }
 
-func TestRawQueryValue(t *testing.T) {
+func TestRealRawQueryValue(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.RawQueryValue("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
-	assert.Equal("SELECT Password FROM Users WHERE ID = ? LIMIT 1", wrapper.Query())
+	var p string
+	err := rw.Bind(&p).RawQueryValue("SELECT Password FROM Users WHERE Username = ? LIMIT 1", "YamiOdymel")
+	assert.NoError(err)
+	assert.Equal("SELECT Password FROM Users WHERE Username = ? LIMIT 1", rw.Query)
+	assert.Equal(1, rw.Count)
+	assert.Equal("davai", p)
+
+	var ps []string
+	err = rw.Bind(&p).RawQueryValue("SELECT Password FROM Users")
+	assert.NoError(err)
+	assert.Equal("SELECT Password FROM Users LIMIT 1", rw.Query)
+	assert.Equal(4, rw.Count)
+	assert.Len(ps, 4)
 }
 
-func TestWhere(t *testing.T) {
+func TestRealWhere(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", 1).Where("Username", "admin").Get()
-	assert.Equal("SELECT * FROM Users WHERE ID = ? AND Username = ?", wrapper.Query())
+	err := rw.Table("Users").Where("Username", "YamiOdymel").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestWhereHaving(t *testing.T) {
+func TestRealWhereHaving(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", 1).Having("Username", "admin").Get()
-	assert.Equal("SELECT * FROM Users WHERE ID = ? HAVING Username = ?", wrapper.Query())
+	err := rw.Table("Users").Having("Username", "YamiOdymel").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users HAVING Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestWhereColumns(t *testing.T) {
+func TestRealWhereColumns(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("LastLogin = CreatedAt").Get()
-	assert.Equal("SELECT * FROM Users WHERE LastLogin = CreatedAt", wrapper.Query())
+	err := rw.Table("Users").Where("Username = Password").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = Password", rw.Query)
+	assert.Equal(0, rw.Count)
 }
 
-func TestWhereOperator(t *testing.T) {
+func TestRealWhereOperator(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", ">=", 50).Get()
-	assert.Equal("SELECT * FROM Users WHERE ID >= ?", wrapper.Query())
+	err := rw.Table("Users").Where("Age", "<=", 80).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Age <= ?", rw.Query)
+	assert.Equal(3, rw.Count)
 }
 
-func TestWhereBetween(t *testing.T) {
+func TestRealWhereBetween(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", "BETWEEN", 0, 20).Get()
-	assert.Equal("SELECT * FROM Users WHERE ID BETWEEN ? AND ?", wrapper.Query())
+	err := rw.Table("Users").Where("Age", "BETWEEN", 0, 80).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Age BETWEEN ? AND ?", rw.Query)
+	assert.Equal(3, rw.Count)
 
-	wrapper.Table("Users").Where("ID", "NOT BETWEEN", 0, 20).Get()
-	assert.Equal("SELECT * FROM Users WHERE ID NOT BETWEEN ? AND ?", wrapper.Query())
+	err = rw.Table("Users").Where("Age", "NOT BETWEEN", 0, 80).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Age NOT BETWEEN ? AND ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestWhereIn(t *testing.T) {
+func TestRealWhereIn(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", "IN", 1, 5, 27, -1, "d").Get()
-	assert.Equal("SELECT * FROM Users WHERE ID IN (?, ?, ?, ?, ?)", wrapper.Query())
+	err := rw.Table("Users").Where("Username", "IN", "YamiOdymel", "Karisu", 27, -1, "d").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username IN (?, ?, ?, ?, ?)", rw.Query)
+	assert.Equal(2, rw.Count)
 
-	wrapper.Table("Users").Where("ID", "NOT IN", 1, 5, 27, -1, "d").Get()
-	assert.Equal("SELECT * FROM Users WHERE ID NOT IN (?, ?, ?, ?, ?)", wrapper.Query())
+	err = rw.Table("Users").Where("Username", "NOT IN", 1, 5, 27, -1, "d").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username NOT IN (?, ?, ?, ?, ?)", rw.Query)
+	assert.Equal(5, rw.Count)
 }
 
-func TestOrWhere(t *testing.T) {
+func TestRealOrWhere(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("FirstName", "John").OrWhere("FirstName", "Peter").Get()
-	assert.Equal("SELECT * FROM Users WHERE FirstName = ? OR FirstName = ?", wrapper.Query())
+	err := rw.Table("Users").Where("Username", "Dave").OrWhere("Username", "YamiOdymel").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = ? OR Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 
-	wrapper.Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
-	assert.Equal("SELECT * FROM Users WHERE A = B OR (A = C OR A = D)", wrapper.Query())
+	err = rw.Table("Users").Where("Username = ?", 123456).OrWhere("(Username = ? OR Username = ?)", "xxx", "YamiOdymel").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = ? OR (Username = ? OR Username = ?)", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestWhereNull(t *testing.T) {
+func TestRealWhereNull(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("LastName", "IS", nil).Get()
-	assert.Equal("SELECT * FROM Users WHERE LastName IS NULL", wrapper.Query())
+	err := rw.Table("Users").Where("Username", "IS", nil).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username IS NULL", rw.Query)
+	assert.Equal(0, rw.Count)
 
-	wrapper.Table("Users").Where("LastName", "IS NOT", nil).Get()
-	assert.Equal("SELECT * FROM Users WHERE LastName IS NOT NULL", wrapper.Query())
+	err = rw.Table("Users").Where("Username", "IS NOT", nil).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username IS NOT NULL", rw.Query)
+	assert.Equal(5, rw.Count)
 }
 
-func TestTimestampDate(t *testing.T) {
-	assert := assert.New(t)
-	ts := wrapper.Timestamp
-	wrapper.Table("Users").Where("CreatedAt", ts.IsDate("2017-07-13")).Get()
-	assert.Equal("SELECT * FROM Users WHERE DATE(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsYear(2017)).Get()
-	assert.Equal("SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsMonth(1)).Get()
-	assert.Equal("SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-	wrapper.Table("Users").Where("CreatedAt", ts.IsMonth("January")).Get()
-	assert.Equal("SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsDay(16)).Get()
-	assert.Equal("SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsWeekday(5)).Get()
-	wrapper.Table("Users").Where("CreatedAt", ts.IsWeekday("Friday")).Get()
-	assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
+func TestRealTimestampDate(t *testing.T) {
+	//assert := assert.New(t)
+	//ts := rw.Timestamp
+	//err := rw.Table("Users").Where("Age", ts.IsDate("2017-07-13")).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE DATE(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsYear(2017)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE YEAR(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsMonth(1)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsMonth("January")).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE MONTH(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsDay(16)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE DAY(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsWeekday(5)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsWeekday("Friday")).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
 }
 
-func TestTimestampTime(t *testing.T) {
-	assert := assert.New(t)
-	ts := wrapper.Timestamp
-	wrapper.Table("Users").Where("CreatedAt", ts.IsHour(18)).Get()
-	assert.Equal("SELECT * FROM Users WHERE HOUR(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsMinute(25)).Get()
-	assert.Equal("SELECT * FROM Users WHERE MINUTE(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsSecond(16)).Get()
-	assert.Equal("SELECT * FROM Users WHERE SECOND(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
-
-	wrapper.Table("Users").Where("CreatedAt", ts.IsWeekday(5)).Get()
-	assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", wrapper.Query())
+func TestRealTimestampTime(t *testing.T) {
+	//assert := assert.New(t)
+	//ts := rw.Timestamp
+	//err := rw.Table("Users").Where("CreatedAt", ts.IsHour(18)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE HOUR(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsMinute(25)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE MINUTE(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsSecond(16)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE SECOND(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
+	//
+	//err = rw.Table("Users").Where("CreatedAt", ts.IsWeekday(5)).Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE WEEKDAY(FROM_UNIXTIME(CreatedAt)) = ?", rw.Query)
 }
 
-func TestRawWhere(t *testing.T) {
+func TestRealRawWhere(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID != CompanyID").Where("DATE(CreatedAt) = DATE(LastLogin)").Get()
-	assert.Equal("SELECT * FROM Users WHERE ID != CompanyID AND DATE(CreatedAt) = DATE(LastLogin)", wrapper.Query())
+	err := rw.Table("Users").Where("Username != Password").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username != Password", rw.Query)
+	assert.Equal(5, rw.Count)
 }
 
-func TestRawWhereParams(t *testing.T) {
+func TestRealRawWhereParams(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
-	assert.Equal("SELECT * FROM Users WHERE (ID = ? OR ID = ?) AND Login = ?", wrapper.Query())
+	err := rw.Table("Users").Where("(Age >= ? OR Age <= ?)", 0, 90).Where("Username", "YamiOdymel").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE (Age >= ? OR Age <= ?) AND Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestDelete(t *testing.T) {
+func TestRealDelete(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").Where("ID", 1).Delete()
-	assert.Equal("DELETE FROM Users WHERE ID = ?", wrapper.Query())
+	err := rw.Table("Users").Where("Username", "Shirone").Delete()
+	assert.NoError(err)
+	assert.Equal("DELETE FROM Users WHERE Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestOrderBy(t *testing.T) {
+func TestRealOrderBy(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").OrderBy("ID", "ASC").OrderBy("Login", "DESC").OrderBy("RAND()").Get()
-	assert.Equal("SELECT * FROM Users ORDER BY ID ASC, Login DESC, RAND()", wrapper.Query())
+	err := rw.Table("Users").OrderBy("Age", "DESC").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users ORDER BY Age DESC", rw.Query)
+	assert.Equal(4, rw.Count)
 }
 
-func TestOrderByField(t *testing.T) {
+func TestRealOrderByField(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").OrderBy("UserGroup", "ASC", "SuperUser", "Admin", "Users").Get()
-	assert.Equal("SELECT * FROM Users ORDER BY FIELD (UserGroup, ?, ?, ?) ASC", wrapper.Query())
+	err := rw.Table("Users").OrderBy("Username", "DESC", "YamiOdymel", "Karisu", "Dave").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users ORDER BY FIELD (Username, ?, ?, ?) DESC", rw.Query)
+	assert.Equal(2, rw.Count)
 }
 
-func TestGroupBy(t *testing.T) {
+func TestRealGroupBy(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.Table("Users").GroupBy("Name").Get()
-	assert.Equal("SELECT * FROM Users GROUP BY Name", wrapper.Query())
-	wrapper.Table("Users").GroupBy("Name", "ID").Get()
-	assert.Equal("SELECT * FROM Users GROUP BY Name, ID", wrapper.Query())
+	err := rw.Table("Users").GroupBy("Username").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users GROUP BY Username", rw.Query)
+	assert.Equal(4, rw.Count)
+
+	err = rw.Table("Users").GroupBy("Username", "Age").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users GROUP BY Username, Age", rw.Query)
+	assert.Equal(4, rw.Count)
 }
 
-func TestJoin(t *testing.T) {
+func TestRealJoin(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.
-		Table("Products").
-		LeftJoin("Users", "Products.TenantID = Users.TenantID").
-		Where("Users.ID", 6).
-		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", wrapper.Query())
-	wrapper.
-		Table("Products").
-		LeftJoin("Users", "Products.TenantID = Users.TenantID").
-		RightJoin("Posts", "Products.TenantID = Posts.TenantID").
-		Where("Users.ID", 6).
-		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID) RIGHT JOIN Posts ON (Products.TenantID = Posts.TenantID) WHERE Users.ID = ?", wrapper.Query())
+	err := rw.
+		Table("Users").
+		LeftJoin("Posts", "Posts.Username = Users.Username").
+		Where("Users.Username", "YamiOdymel").
+		Get("Users.Age", "Posts.Title")
+	assert.NoError(err)
+	assert.Equal("SELECT Users.Age, Posts.Title FROM Posts LEFT JOIN Users ON (Posts.Username = Users.Username) WHERE Users.Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
+
+	err = rw.
+		Table("Users").
+		LeftJoin("Posts", "Posts.Username = Users.Username").
+		RightJoin("Products", "Products.Username = Users.Username").
+		Where("Users.Username", "YamiOdymel").
+		Get("Users.Age", "Posts.Title")
+	assert.NoError(err)
+	assert.Equal("SELECT Users.Age, Posts.Title FROM Posts LEFT JOIN Users ON (Posts.Username = Users.Username) RIGHT JOIN Products ON (Products.Username = Users.Username) WHERE Users.Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestJoinWhere(t *testing.T) {
+func TestRealJoinWhere(t *testing.T) {
 	assert := assert.New(t)
-	wrapper.
-		Table("Products").
-		LeftJoin("Users", "Products.TenantID = Users.TenantID").
-		JoinOrWhere("Users", "Users.TenantID", 5).
-		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)", wrapper.Query())
-	wrapper.
-		Table("Products").
-		LeftJoin("Users", "Products.TenantID = Users.TenantID").
-		JoinWhere("Users", "Users.Username", "Wow").
-		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID AND Users.Username = ?)", wrapper.Query())
-	wrapper.
-		Table("Products").
-		LeftJoin("Users", "Products.TenantID = Users.TenantID").
-		RightJoin("Posts", "Products.TenantID = Posts.TenantID").
-		JoinWhere("Posts", "Posts.Username", "Wow").
-		JoinWhere("Users", "Users.Username", "Wow").
-		Get("Users.Name", "Products.ProductName")
-	assert.Equal("SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID AND Users.Username = ?) RIGHT JOIN Posts ON (Products.TenantID = Posts.TenantID AND Posts.Username = ?)", wrapper.Query())
+	err := rw.
+		Table("Users").
+		LeftJoin("Posts", "Posts.Username = Users.Username").
+		JoinWhere("Posts", "Posts.ID", 0).
+		Where("Users.Username", "YamiOdymel").
+		Get("Users.Age", "Posts.Title")
+	assert.NoError(err)
+	assert.Equal("SELECT Users.Age, Posts.Title FROM Posts LEFT JOIN Users ON (Posts.Username = Users.Username AND Posts.ID = ?) WHERE Users.Username = ?", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestSubQueryGet(t *testing.T) {
+func TestRealSubQueryGet(t *testing.T) {
 	assert := assert.New(t)
-	subQuery := wrapper.SubQuery()
-	subQuery.Table("Products").Where("Quantity", ">", 2).Get("UserID")
-	wrapper.Table("Users").Where("ID", "IN", subQuery).Get()
-	assert.Equal("SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)", wrapper.Query())
+	subQuery := rw.SubQuery()
+	subQuery.Table("Products").Get("Username")
+	err := rw.Table("Users").Where("Username", "IN", subQuery).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username IN (SELECT Username FROM Products)", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestSubQueryInsert(t *testing.T) {
+func TestRealSubQueryInsert(t *testing.T) {
 	assert := assert.New(t)
-	subQuery := wrapper.SubQuery()
-	subQuery.Table("Users").Where("ID", 6).GetOne("Name")
-	wrapper.Table("Products").Insert(map[string]interface{}{
-		"ProductName": "測試商品",
-		"UserID":      subQuery,
-		"LastUpdated": wrapper.Now(),
+	subQuery := rw.SubQuery()
+	subQuery.Table("Users").Where("Username", "YamiOdymel").GetOne("Username")
+	err := rw.Table("Posts").Insert(map[string]interface{}{
+		"Title":    "測試商品",
+		"Username": subQuery,
 	})
-	assert.Equal("INSERT INTO Products (ProductName, UserID, LastUpdated) VALUES (?, (SELECT Name FROM Users WHERE ID = ?), NOW())", wrapper.Query())
+	assert.NoError(err)
+	assert.Equal("INSERT INTO Posts (Title, Username) VALUES (?, (SELECT Username FROM Users WHERE Username = ?))", rw.Query)
+	assert.Equal(1, rw.Count)
 }
 
-func TestSubQueryJoin(t *testing.T) {
-	assert := assert.New(t)
-	subQuery := wrapper.SubQuery("Users")
-	subQuery.Table("Users").Where("Active", 1).Get()
-	wrapper.
-		Table("Products").
-		LeftJoin(subQuery, "Products.UserID = Users.ID").
-		Get("Users.Username", "Products.ProductName")
-	assert.Equal("SELECT Users.Username, Products.ProductName FROM Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON (Products.UserID = Users.ID)", wrapper.Query())
+func TestRealSubQueryJoin(t *testing.T) {
+	//assert := assert.New(t)
+	//subQuery := rw.SubQuery("Users")
+	//subQuery.Table("Users").Where("Active", 1).Get()
+	//err := rw.
+	//	Table("Products").
+	//	LeftJoin(subQuery, "Products.UserID = Users.ID").
+	//	Get("Users.Username", "Products.ProductName")
+	//assert.NoError(err)
+	//assert.Equal("SELECT Users.Username, Products.ProductName FROM Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON //(Products.UserID = Users.ID)", rw.Query)
 }
 
-func TestSubQueryExist(t *testing.T) {
-	assert := assert.New(t)
-	subQuery := wrapper.SubQuery("Users")
-	subQuery.Table("Users").Where("Company", "測試公司").Get("UserID")
-	wrapper.Table("Products").Where(subQuery, "EXISTS").Get()
-	assert.Equal("SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)", wrapper.Query())
+func TestRealSubQueryExist(t *testing.T) {
+	//assert := assert.New(t)
+	//subQuery := rw.SubQuery("Users")
+	//subQuery.Table("Users").Where("Company", "測試公司").Get("UserID")
+	//err := rw.Table("Products").Where(subQuery, "EXISTS").Get()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)", rw.Query)
 }
 
-func TestHas(t *testing.T) {
-	assert := assert.New(t)
-	wrapper.Table("Users").Where("Username", "yamiodymel").Where("Password", "123456").Has()
-	assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ?", wrapper.Query())
+func TestRealHas(t *testing.T) {
+	//assert := assert.New(t)
+	//has, err := rw.Table("Users").Where("Username", "yamiodymel").Where("Password", "123456").Has()
+	//assert.NoError(err)
+	//assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ?", rw.Query)
+	//assert.True(has)
 }

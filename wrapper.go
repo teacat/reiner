@@ -665,7 +665,7 @@ func (w *Wrapper) WithTotalCount() *Wrapper {
 func (w *Wrapper) Insert(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	res, err := w.executeQuery()
-	if err != nil {
+	if err != nil || !w.executable {
 		return
 	}
 	id, err := res.LastInsertId()
@@ -680,7 +680,7 @@ func (w *Wrapper) Insert(data interface{}) (err error) {
 func (w *Wrapper) InsertMulti(data interface{}) (err error) {
 	w.query = w.buildInsert("INSERT", data)
 	res, err := w.executeQuery()
-	if err != nil {
+	if err != nil || !w.executable {
 		return
 	}
 	id, err := res.LastInsertId()
