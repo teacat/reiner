@@ -3,6 +3,7 @@ package reiner
 import (
 	"database/sql"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -13,9 +14,6 @@ import (
 const (
 //Err
 )
-
-// TODO: TRACES
-//
 
 // function represents a database function like `SHA(?)` or `NOW()`.
 type function struct {
@@ -47,7 +45,8 @@ type join struct {
 type Trace struct {
 	Query    string
 	Duration time.Duration
-	Stacks   []string
+	Stacks   []map[string]interface{}
+	Error    error
 }
 
 // Wrapper represents a database query wrapper, which contains the database connection.
@@ -100,7 +99,7 @@ func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{executable: true, db: db, Timestamp: &Timestamp{}}
 }
 
-// clean cleans the last executed result.
+// cleanAfter cleans the last executed result after the new query was executed.
 func (w *Wrapper) cleanAfter() {
 	w.queryOptions = []string{}
 	w.tableName = []string{}
@@ -115,6 +114,7 @@ func (w *Wrapper) cleanAfter() {
 	w.destination = nil
 }
 
+// cleanBefore cleans the last executed result before the new query was executed.
 func (w *Wrapper) cleanBefore() {
 	w.LastInsertID = 0
 	w.LastResult = nil
@@ -125,6 +125,29 @@ func (w *Wrapper) cleanBefore() {
 //=======================================================
 // Save Functions
 //=======================================================
+
+// saveTrace gets the callers and calculates the execution time then save the tracing information.
+func (w *Wrapper) saveTrace(err error, query string, startedAt time.Time) {
+	var stacks []map[string]interface{}
+	for skip := 0; ; skip++ {
+		pc, file, line, ok := runtime.Caller(skip)
+		if !ok {
+			break
+		}
+		stacks = append(stacks, map[string]interface{}{
+			"Skip": skip,
+			"PC":   pc,
+			"File": file,
+			"Line": line,
+		})
+	}
+	w.Traces = append(w.Traces, Trace{
+		Query:    query,
+		Duration: time.Since(startedAt),
+		Stacks:   stacks,
+		Error:    err,
+	})
+}
 
 // saveJoin saves the table joining information.
 func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
@@ -541,6 +564,102 @@ func (w *Wrapper) buildJoin() (query string) {
 }
 
 //=======================================================
+// Execution.
+//=======================================================
+
+// runQuery runs the query with `Query`.
+func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
+	w.cleanBefore()
+	w.buildQuery()
+	w.LastQuery = w.query
+	w.LastParams = w.params
+	// Calculate the execution time.
+	var start time.Time
+	if w.tracing {
+		start = time.Now()
+	}
+	// Execute the query if the wrapper is executable.
+	if w.executable {
+		var stmt *sql.Stmt
+		var count int
+
+		stmt, err = w.db.Prepare(w.query)
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
+		rows, err = stmt.Query(w.params...)
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
+		count, err = load(rows, w.destination)
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
+		w.count = count
+	}
+	if w.tracing {
+		w.saveTrace(err, w.query, start)
+	}
+	w.cleanAfter()
+	return
+}
+
+// executeQuery executes the query with `Exec`.
+func (w *Wrapper) executeQuery() (res sql.Result, err error) {
+	w.cleanBefore()
+	w.buildQuery()
+	w.LastQuery = w.query
+	w.LastParams = w.params
+	// Calculate the execution time.
+	var start time.Time
+	if w.tracing {
+		start = time.Now()
+	}
+	// Execute the query if the wrapper is executable.
+	if w.executable {
+		var stmt *sql.Stmt
+		var count int64
+		stmt, err = w.db.Prepare(w.query)
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
+		res, err = stmt.Exec(w.params...)
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
+		w.LastResult = res
+		count, err = res.RowsAffected()
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
+		w.count = int(count)
+	}
+	if w.tracing {
+		w.saveTrace(err, w.query, start)
+	}
+	w.cleanAfter()
+	return
+}
+
+//=======================================================
 // Exported Functions
 //=======================================================
 
@@ -553,61 +672,6 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 //=======================================================
 // Select Functions
 //=======================================================
-
-func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
-	w.cleanBefore()
-	w.buildQuery()
-	w.LastQuery = w.query
-	w.LastParams = w.params
-	// Execute the query if the wrapper is executable.
-	if w.executable {
-		var stmt *sql.Stmt
-		var count int
-		stmt, err = w.db.Prepare(w.query)
-		if err != nil {
-			return
-		}
-		rows, err = stmt.Query(w.params...)
-		if err != nil {
-			return
-		}
-		count, err = load(rows, w.destination)
-		if err != nil {
-			return
-		}
-		w.count = count
-	}
-	w.cleanAfter()
-	return
-}
-
-func (w *Wrapper) executeQuery() (res sql.Result, err error) {
-	w.cleanBefore()
-	w.buildQuery()
-	w.LastQuery = w.query
-	w.LastParams = w.params
-	// Execute the query if the wrapper is executable.
-	if w.executable {
-		var stmt *sql.Stmt
-		var count int64
-		stmt, err = w.db.Prepare(w.query)
-		if err != nil {
-			return
-		}
-		res, err = stmt.Exec(w.params...)
-		if err != nil {
-			return
-		}
-		w.LastResult = res
-		count, err = res.RowsAffected()
-		if err != nil {
-			return
-		}
-		w.count = int(count)
-	}
-	w.cleanAfter()
-	return
-}
 
 // Get gets the specified columns of the rows from the specifed database table.
 func (w *Wrapper) Get(columns ...string) (err error) {
@@ -863,13 +927,11 @@ func (w *Wrapper) Connect() (err error) {
 
 // Begin starts a transcation.
 func (w *Wrapper) Begin() (tx *Wrapper, err error) {
-
 	return w, nil
 }
 
 // Rollback rolls the changes back to where the transaction started.
 func (w *Wrapper) Rollback() bool {
-
 	return false
 }
 

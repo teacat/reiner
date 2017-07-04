@@ -95,6 +95,7 @@ func main() {
 		* [最後執行的 SQL 指令](#最後執行的-sql-指令)
 		* [結果／影響的行數](#結果影響的行數)
 		* [最後插入的編號](#最後插入的編號)
+		* [總筆數](#總筆數)
 	* [交易函式](#交易函式)
 	* [鎖定表格](#鎖定表格)
 	* [指令關鍵字](#指令關鍵字)
@@ -364,8 +365,8 @@ db.Bind(&u).RawQuery("SELECT * FROM Users WHERE ID = ? LIMIT 1", 10)
 透過 `RawQuery` 就像 `Get` ㄧ樣萬用，你能直接取得單個欄位得值，而不是一個陣列或切片。
 
 ```go
-var id int
-db.Bind(&id).RawQuery("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
+var pwd string
+db.Bind(&pwd).RawQuery("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
 ```
 
 ### 單值多行
@@ -764,9 +765,11 @@ for ... {
 
 ### 總筆數
 
+如果你想取得這個指令總共能夠取得多少筆資料，透過 `WithTotalCount` 就能夠啟用總筆數查詢，這可能會稍微降低一點資料庫效能。
+
 ```go
 db.Table("Users").WithTotalCount().Get()
-db.TotalCount
+fmt.Println(db.TotalCount)
 ```
 
 ## 交易函式
@@ -838,11 +841,16 @@ db.Table("Users").SetQueryOption("LOW_PRIORITY", "IGNORE").Insert(data)
 
 ## 效能追蹤
 
+這會降低執行效能，但透過追蹤功能能夠有效地得知每個指令所花費的執行時間和建置指令，並且取得相關執行檔案路徑與行號。
+
 ```go
 db.SetTrace(true)
 db.Table("Users").Get()
-db.Table("Users").Get()
-fmt.Printf("%+v", db.Traces)
+fmt.Printf("%+v", db.Traces[0])
+
+//[{Query:SELECT * FROM Users Duration:808.698µs Stacks:[map
+//[File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go Line:559 Skip:0 PC:19399228] map[Line:666 Skip:1 PC:19405153 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go] map[Skip:2 PC:19407043 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go Line:705] map[Line:74 Skip:3 PC:19548011 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper_test.go] map[PC:17610310 //File:/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go Line:657 Skip:4] map
+//[File:/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s Line:2197 Skip:5 PC:17143345]] Error:<nil>}]
 ```
 
 # 表格建構函式

@@ -13,15 +13,15 @@ import (
 // https://github.com/bgaifullin/dbr
 // https://github.com/bgaifullin/dbr/blob/master/load.go
 var (
-	ErrNotFound           = errors.New("dbr: not found")
-	ErrNotSupported       = errors.New("dbr: not supported")
-	ErrTableNotSpecified  = errors.New("dbr: table not specified")
-	ErrColumnNotSpecified = errors.New("dbr: column not specified")
-	ErrInvalidPointer     = errors.New("dbr: attempt to load into an invalid pointer")
-	ErrPlaceholderCount   = errors.New("dbr: wrong placeholder count")
-	ErrInvalidSliceLength = errors.New("dbr: length of slice is 0. length must be >= 1")
-	ErrCantConvertToTime  = errors.New("dbr: can't convert to time.Time")
-	ErrInvalidTimestring  = errors.New("dbr: invalid time string")
+	ErrNotFound           = errors.New("Reiner: not found")
+	ErrNotSupported       = errors.New("Reiner: not supported")
+	ErrTableNotSpecified  = errors.New("Reiner: table not specified")
+	ErrColumnNotSpecified = errors.New("Reiner: column not specified")
+	ErrInvalidPointer     = errors.New("Reiner: attempt to load into an invalid pointer")
+	ErrPlaceholderCount   = errors.New("Reiner: wrong placeholder count")
+	ErrInvalidSliceLength = errors.New("Reiner: length of slice is 0. length must be >= 1")
+	ErrCantConvertToTime  = errors.New("Reiner: can't convert to time.Time")
+	ErrInvalidTimestring  = errors.New("Reiner: invalid time string")
 )
 
 // Load loads any value from sql.Rows
