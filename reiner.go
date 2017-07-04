@@ -5,7 +5,8 @@ package reiner
 //     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
 // Check https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html for more information.
 func New(dataSourceNames ...interface{}) (*Wrapper, error) {
-	var masters, slaves []string
+	var slaves []string
+	var master string
 
 	switch len(dataSourceNames) {
 	// Query builder mode.
@@ -13,17 +14,10 @@ func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 		return &Wrapper{executable: false, Timestamp: &Timestamp{}}, nil
 	// One master only.
 	case 1:
-		masters = append(masters, dataSourceNames[0].(string))
+		master = dataSourceNames[0].(string)
 	// Master(s) and the slave(s).
 	case 2:
-		switch v := dataSourceNames[0].(type) {
-		// Multiple masters.
-		case []string:
-			masters = v
-		// Single master.
-		case string:
-			masters = append(masters, v)
-		}
+		master = dataSourceNames[0].(string)
 		switch v := dataSourceNames[1].(type) {
 		// Multiple slaves.
 		case []string:
@@ -33,7 +27,7 @@ func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 			slaves = append(slaves, v)
 		}
 	}
-	d, err := newDatabase(masters, slaves)
+	d, err := newDatabase(master, slaves)
 	if err != nil {
 		return &Wrapper{}, err
 	}

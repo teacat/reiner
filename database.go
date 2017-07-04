@@ -39,7 +39,7 @@ func openDatabase(dataSourceName string) (*sql.DB, error) {
 func newDatabase(master string, slaves []string) (*DB, error) {
 	d := &DB{}
 	// Create the main connection if there's only one master an no slaves.
-	if len(master) == 1 && len(slaves) == 0 {
+	if len(slaves) == 0 {
 		db, err := openDatabase(master)
 		if err != nil {
 			return d, err
@@ -87,7 +87,7 @@ func (d *DB) getSlave() (db *sql.DB) {
 
 // getDB gets the database connection based on the query, used for the read/write splitting.
 func (d *DB) getDB(query ...string) (db *sql.DB) {
-	if len(query) == 0 || d.hasSlave {
+	if len(query) == 0 || !d.hasSlave {
 		db = d.master.db
 		return
 	}
