@@ -601,11 +601,25 @@ func TestRealTx(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(rw.db.master.tx)
 
+	tx2, err := rw.Begin()
+	assert.NoError(err)
+	assert.Nil(rw.db.master.tx)
+
 	err = tx.Table("Users").Insert(map[string]interface{}{
 		"Username": "Petrarca",
 		"Password": "yamiodymel",
 		"Age":      123456,
 	})
+	assert.NoError(err)
+
+	err = tx2.Table("Users").Insert(map[string]interface{}{
+		"Username": "Kadeon",
+		"Password": "MoonMoon",
+		"Age":      123456,
+	})
+	assert.NoError(err)
+
+	err = tx.Commit()
 	assert.NoError(err)
 
 	err = rw.Table("Users").Insert(map[string]interface{}{
@@ -623,6 +637,10 @@ func TestRealTx(t *testing.T) {
 	assert.Equal(0, rw.Count())
 
 	err = rw.Table("Users").Where("Username", "NotInTransaction").Limit(1).Get()
+	assert.NoError(err)
+	assert.Equal(1, rw.Count())
+
+	err = rw.Table("Users").Where("Username", "Kadeon").Limit(1).Get()
 	assert.NoError(err)
 	assert.Equal(1, rw.Count())
 }

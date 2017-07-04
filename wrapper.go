@@ -990,33 +990,15 @@ func (w *Wrapper) Connect() (err error) {
 
 // Begin starts a transcation.
 func (w *Wrapper) Begin() (*Wrapper, error) {
-	masterDSN := w.db.master.dataSourceName
-	db, err := sql.Open("mysql", masterDSN)
-	if err != nil {
-		return w, err
-	}
-	err = db.Ping()
-	if err != nil {
-		return w, err
-	}
-	tx, err := db.Begin()
-	if err != nil {
-		return w, err
-	}
 	anotherDB := *w.db
-	m := *w.db.master
-	anotherDB.master = &m
+	tx, err := anotherDB.Begin()
+	if err != nil {
+		return w, err
+	}
+	anotherMaster := *w.db.master
+	anotherDB.master = &anotherMaster
 	anotherDB.master.tx = tx
-
-	//anotherDB := &DB{
-	//	master: &connection{
-	//		tx:             tx,
-	//		dataSourceName: masterDSN,
-	//	},
-	//}
-	anotherWrapper := w.cloning(false, &anotherDB)
-	anotherWrapper.db = &anotherDB
-	return anotherWrapper, nil
+	return w.cloning(false, &anotherDB), nil
 	/*
 		newDB := *w.db
 		tx, err := newDB.Begin()
