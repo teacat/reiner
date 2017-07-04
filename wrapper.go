@@ -999,32 +999,6 @@ func (w *Wrapper) Begin() (*Wrapper, error) {
 	anotherDB.master = &anotherMaster
 	anotherDB.master.tx = tx
 	return w.cloning(false, &anotherDB), nil
-	/*
-		newDB := *w.db
-		tx, err := newDB.Begin()
-		if err != nil {
-			return w, err
-		}
-		newDB.master.tx = tx
-		return w.cloning(false, &newDB), nil
-	*/
-	/*
-		anotherWrapper := w.Clone()
-		db, err := sql.Open("mysql", anotherWrapper.db.master.dataSourceName)
-		if err != nil {
-			return w, err
-		}
-		err = db.Ping()
-		if err != nil {
-			return w, err
-		}
-		tx, err := db.Begin()
-		if err != nil {
-			return w, err
-		}
-		anotherWrapper.db.master.tx = tx
-		return anotherWrapper, nil
-	*/
 }
 
 // Rollback rolls the changes back to where the transaction started.
