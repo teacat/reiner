@@ -563,30 +563,32 @@ func TestRealSubQueryInsert(t *testing.T) {
 }
 
 func TestRealSubQueryJoin(t *testing.T) {
-	//assert := assert.New(t)
-	//subQuery := rw.SubQuery("Users")
-	//subQuery.Table("Users").Where("Active", 1).Get()
-	//err := rw.
-	//	Table("Products").
-	//	LeftJoin(subQuery, "Products.UserID = Users.ID").
-	//	Get("Users.Username", "Products.ProductName")
-	//assert.NoError(err)
-	//assert.Equal("SELECT Users.Username, Products.ProductName FROM Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON //(Products.UserID = Users.ID)", rw.Query())
+	assert := assert.New(t)
+	subQuery := rw.SubQuery("Users")
+	subQuery.Table("Users").Where("Username", "YamiOdymel").Get()
+	err := rw.
+		Table("Products").
+		LeftJoin(subQuery, "Products.Username = Users.Username").
+		Get("Users.Username", "Products.PostID")
+	assert.NoError(err)
+	assert.Equal("SELECT Users.Username, Products.PostID FROM Products LEFT JOIN (SELECT * FROM Users WHERE Username = ?) AS Users ON (Products.Username = Users.Username)", rw.Query())
+	assert.Equal(1, rw.Count())
 }
 
 func TestRealSubQueryExist(t *testing.T) {
-	//assert := assert.New(t)
-	//subQuery := rw.SubQuery("Users")
-	//subQuery.Table("Users").Where("Company", "測試公司").Get("UserID")
-	//err := rw.Table("Products").Where(subQuery, "EXISTS").Get()
-	//assert.NoError(err)
-	//assert.Equal("SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)", rw.Query())
+	assert := assert.New(t)
+	subQuery := rw.SubQuery("Users")
+	subQuery.Table("Users").Where("Username", "YamiOdymel").Get("Username")
+	err := rw.Table("Products").Where(subQuery, "EXISTS").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Products WHERE EXISTS (SELECT Username FROM Users WHERE Username = ?)", rw.Query())
+	assert.Equal(1, rw.Count())
 }
 
 func TestRealHas(t *testing.T) {
-	//assert := assert.New(t)
-	//has, err := rw.Table("Users").Where("Username", "yamiodymel").Where("Password", "123456").Has()
-	//assert.NoError(err)
-	//assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ?", rw.Query())
-	//assert.True(has)
+	assert := assert.New(t)
+	has, err := rw.Table("Users").Where("Username", "yamiodymel").Where("Password", "123456").Has()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ? LIMIT 1", rw.Query())
+	assert.True(has)
 }

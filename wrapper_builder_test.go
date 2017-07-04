@@ -375,5 +375,5 @@ func TestSubQueryExist(t *testing.T) {
 func TestHas(t *testing.T) {
 	assert := assert.New(t)
 	wrapper.Table("Users").Where("Username", "yamiodymel").Where("Password", "123456").Has()
-	assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ?", wrapper.Query())
+	assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ? LIMIT 1", wrapper.Query())
 }

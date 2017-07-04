@@ -14,6 +14,9 @@ const (
 //Err
 )
 
+// TODO: TRACES
+//
+
 // function represents a database function like `SHA(?)` or `NOW()`.
 type function struct {
 	query  string
