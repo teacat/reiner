@@ -23,8 +23,8 @@ var (
 	ErrNoTable = errors.New("reiner: No table was specified")
 )
 
-// function represents a database function like `SHA(?)` or `NOW()`.
-type function struct {
+// Function represents a database function like `SHA(?)` or `NOW()`.
+type Function struct {
 	query  string
 	values []interface{}
 }
@@ -276,7 +276,7 @@ func (w *Wrapper) bindParam(data interface{}, parentheses ...bool) (param string
 		if len(v.Params()) > 0 {
 			w.params = append(w.params, v.Params()...)
 		}
-	case function:
+	case Function:
 		if len(v.values) > 0 {
 			w.params = append(w.params, v.values...)
 		}
@@ -301,7 +301,7 @@ func (w *Wrapper) paramToQuery(data interface{}, parentheses ...bool) (param str
 		} else {
 			param = fmt.Sprintf("(%s)", v.query)
 		}
-	case function:
+	case Function:
 		param = v.query
 	case nil:
 		param = "NULL"
@@ -1022,8 +1022,8 @@ func (w *Wrapper) Count() (count int) {
 }
 
 // Func returns a database function, so it won't be treated like a normal data value.
-func (w *Wrapper) Func(query string, data ...interface{}) function {
-	return function{
+func (w *Wrapper) Func(query string, data ...interface{}) Function {
+	return Function{
 		query:  query,
 		values: data,
 	}
@@ -1032,7 +1032,7 @@ func (w *Wrapper) Func(query string, data ...interface{}) function {
 // Now returns a database function based on the `INTERVAL`.
 // The formats can be like `+1Y`, `-2M`, it's possible to chain the units with `Now("+1Y", "-2M")`.
 // Here're the supported units: `Y`(Year), `M`(Month), `D`(Day), `W`(Week), `h`(Hour), `m`(Minute), `s`(Second).
-func (w *Wrapper) Now(formats ...string) function {
+func (w *Wrapper) Now(formats ...string) Function {
 	query := "NOW() "
 	unitMap := map[string]string{
 		"Y": "YEAR",
