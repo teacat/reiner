@@ -209,13 +209,13 @@ func (m *Migration) Column(name string) *Migration {
 	return m
 }
 
-//
+// Charset sets thecharset of the table.
 func (m *Migration) Charset(charset string) *Migration {
 	m.table.charset = charset
 	return m
 }
 
-//
+// Collation sets the collation of the table.
 func (m *Migration) Collation(collation string) *Migration {
 	m.table.collation = collation
 	return m

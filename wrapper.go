@@ -2,6 +2,7 @@ package reiner
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -11,8 +12,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const (
-//Err
+var (
+	// ErrInvalidPointer occurred when the pointer of the destination is invalid.
+	ErrInvalidPointer = errors.New("Reiner: attempt to load into an invalid pointer")
 )
 
 // function represents a database function like `SHA(?)` or `NOW()`.

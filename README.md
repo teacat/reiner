@@ -12,6 +12,7 @@
 * SQL 指令建構函式。
 * 資料庫表格建構協助函式。
 * 支援子指令（Sub Query）。
+* 支援多樣的結果物件綁定（如：建構體切片）。
 * 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
 * 透過預置聲明（[Prepared Statement](https://en.wikipedia.org/wiki/Prepared_statement)），99.9% 避免 SQL 注入攻擊。
 
