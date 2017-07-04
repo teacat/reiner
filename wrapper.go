@@ -14,13 +14,13 @@ import (
 
 var (
 	// ErrInvalidPointer occurred when the pointer of the destination is invalid.
-	ErrInvalidPointer = errors.New("Reiner: The destination of the result is an invalid pointer.")
+	ErrInvalidPointer = errors.New("reiner: The destination of the result is an invalid pointer")
 	// ErrIncorrectDataType occurred when the insert, update data is not a `map[string]interface` type.
-	ErrIncorrectDataType = errors.New("Reiner: The data type must be a `map[string]interface`.")
+	ErrIncorrectDataType = errors.New("reiner: The data type must be a `map[string]interface`")
 	// ErrUnbegunTransaction occurred when the transation function was called before calling `Begin()`.
-	ErrUnbegunTransaction = errors.New("Reiner: Calling the transaction function without `Begin()`.")
+	ErrUnbegunTransaction = errors.New("reiner: Calling the transaction function without `Begin()`")
 	// ErrNoTable occurred when the table wasn't specified yet.
-	ErrNoTable = errors.New("Reiner: No table was specified.")
+	ErrNoTable = errors.New("reiner: No table was specified")
 )
 
 // function represents a database function like `SHA(?)` or `NOW()`.

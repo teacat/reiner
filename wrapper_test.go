@@ -593,6 +593,27 @@ func TestRealHas(t *testing.T) {
 	assert.True(has)
 }
 
+func TestRealGoroutine(t *testing.T) {
+	var err error
+	assert := assert.New(t)
+	done := make(chan bool)
+	for i := 0; i < 1000; i++ {
+		go func(i int) {
+			errAssert := rw.Copy().Table("Users").Insert(map[string]interface{}{
+				"Username": i,
+				"Password": 12345,
+				"Age":      12345,
+			})
+			if errAssert != nil {
+				err = errAssert
+			}
+			done <- true
+		}(i)
+	}
+	<-done
+	assert.NoError(err)
+}
+
 func TestRealTx(t *testing.T) {
 	assert := assert.New(t)
 
