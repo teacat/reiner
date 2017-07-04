@@ -220,7 +220,7 @@ err := db.Table("Users").OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert
 	"Password":  "test",
 	"UpdatedAt": db.Now(),
 })
-// 等效於：INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = VALUE(UpdatedAt)
+// 等效於：INSERT INTO Users (Username, Password, UpdatedAt) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE UpdatedAt = VALUES(UpdatedAt)
 ```
 
 ### 多筆資料
@@ -294,26 +294,37 @@ db.Table("Users").Get("COUNT(*) AS Count")
 
 ### 單行資料
 
-預設來說 `Get` 會回傳一個切片或是陣列，這令你需要透過迴圈逐一取得資料，但某些情況下你很確信你僅要取得一筆資料的話，可以嘗試 `GetOne`。這能將資料直接映射到單個建構體上而避免你需要透過迴圈處理資料的麻煩。
+`Get` 是 Reiner 中唯一取得資料的方式，除了將結果映射到一個切片或是陣列，還能夠映射到建構體、字串。當透過 `map` 當作映射對象的時候，請注意資料庫並不會自動辨別 `int`、`string` 等資料型態，反倒有可能會是 `int64`、`[]uint8{[]byte}`，因此使用 `map` 時請多加注意在型態轉換上的部分。
 
 ```go
-db.Table("Users").Where("ID", 1).GetOne()
+var u User
+db.Bind(&u).Table("Users").Where("ID", 1).Get()
 // 等效於：SELECT * FROM Users WHERE ID = ?
 
-db.Table("Users").GetOne("SUM(ID)", "COUNT(*) AS Count")
+var d map[string]interface{}
+db.Bind(&d).Table("Users").Get("SUM(ID) AS Sum", "COUNT(*) AS Count")
 // 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM Users
+
+fmt.Println(d["Sum"])
+fmt.Println(d["Count"])
 ```
 
 ### 取得單值
 
-這就像 `GetOne`，但 `GetValue` 取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
+`Get` 也能取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
-db.Table("Users").GetValue("Username")
-// 也能搭配 Limit。
-db.Table("Users").Limit(5).GetValue("Username")
+// 取得多個 `Username` 資料。
+var us []string
+db.Bind(&u).Table("Users").Get("Username")
+
+// 也能搭配 Limit 取得單筆資料。
+var u string
+db.Bind(&u).Table("Users").Limit(1).Get("Username")
+
 // 或者是函式。
-db.Table("Users").GetValue("COUNT(*)")
+var i int
+db.Bind(&i).Table("Users").Get("COUNT(*)")
 ```
 
 ### 分頁功能
@@ -324,7 +335,7 @@ db.Table("Users").GetValue("COUNT(*)")
 page := 1
 db.PageLimit = 10
 db.Table("Users").Paginate(page)
-// 等效於：SELECT * FROM Users LIMIT 0, 10
+// 等效於：SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 10
 
 fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
 ```
@@ -344,23 +355,26 @@ db.RawQuery("SELECT * FROM Users WHERE ID >= ?", 10)
 僅選擇單筆資料的生指令函式，這意味著你能夠將取得的資料直接映射到一個建構體上。
 
 ```go
-db.RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
+var u User
+db.Bind(&u).RawQuery("SELECT * FROM Users WHERE ID = ? LIMIT 1", 10)
 ```
 
 ### 取得單值
 
-透過 `RawQueryValue` 可以直接取得單個欄位得值，而不是一個陣列或切片。
+透過 `RawQuery` 就像 `Get` ㄧ樣萬用，你能直接取得單個欄位得值，而不是一個陣列或切片。
 
 ```go
-db.RawQueryValue("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
+var id int
+db.Bind(&id).RawQuery("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
 ```
 
 ### 單值多行
 
-透過 `RawQueryValue` 能夠取得單一欄位的值，當有多筆結果的時候會取得一個值陣列。
+`RawQuery` 除了能夠取得單一欄位的值，還可以取得一個值陣列。
 
 ```go
-db.RawQueryValue("SELECT Username FROM Users LIMIT 10")
+var us []string
+db.Bind(&us).RawQuery("SELECT Username FROM Users LIMIT 10")
 ```
 
 ### 進階方式
@@ -632,7 +646,7 @@ db.Table("Users").Where("ID", "IN", subQuery).Get()
 
 ```go
 subQuery := db.SubQuery()
-subQuery.Table("Users").Where("ID", 6).GetOne("Name")
+subQuery.Table("Users").Where("ID", 6).Get("Name")
 
 db.Table("Products").Insert(map[string]interface{}{
 	"ProductName": "測試商品",
