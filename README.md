@@ -870,16 +870,6 @@ fmt.Printf("%+v", db.Traces[0])
 //[File:/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s Line:2197 Skip:5 PC:17143345]] Error:<nil>}]
 ```
 
-## 中介函式
-
-中介函式能夠讓你插入一個函式到 Reiner 的任何執行之中，這令你可以監聽、紀錄或者決定是否要執行接下來的資料庫指令。
-
-```go
-db.Use(func (c *reiner.Context) {
-	c.Next()
-})
-```
-
 # 表格建構函式
 
 Reiner 除了基本的資料庫函式可供使用外，還能夠建立一個表格並且規劃其索引、外鍵、型態。
