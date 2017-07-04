@@ -990,13 +990,54 @@ func (w *Wrapper) Connect() (err error) {
 
 // Begin starts a transcation.
 func (w *Wrapper) Begin() (*Wrapper, error) {
-	newDB := *w.db
-	tx, err := newDB.Begin()
+	masterDSN := w.db.master.dataSourceName
+	db, err := sql.Open("mysql", masterDSN)
 	if err != nil {
 		return w, err
 	}
-	newDB.master.tx = tx
-	return w.cloning(false, &newDB), nil
+	err = db.Ping()
+	if err != nil {
+		return w, err
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return w, err
+	}
+	anotherDB := &DB{
+		master: &connection{
+			tx:             tx,
+			dataSourceName: masterDSN,
+		},
+	}
+	anotherWrapper := w.cloning(false, anotherDB)
+	anotherWrapper.db = anotherDB
+	return anotherWrapper, nil
+	/*
+		newDB := *w.db
+		tx, err := newDB.Begin()
+		if err != nil {
+			return w, err
+		}
+		newDB.master.tx = tx
+		return w.cloning(false, &newDB), nil
+	*/
+	/*
+		anotherWrapper := w.Clone()
+		db, err := sql.Open("mysql", anotherWrapper.db.master.dataSourceName)
+		if err != nil {
+			return w, err
+		}
+		err = db.Ping()
+		if err != nil {
+			return w, err
+		}
+		tx, err := db.Begin()
+		if err != nil {
+			return w, err
+		}
+		anotherWrapper.db.master.tx = tx
+		return anotherWrapper, nil
+	*/
 }
 
 // Rollback rolls the changes back to where the transaction started.

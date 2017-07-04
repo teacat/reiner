@@ -592,3 +592,37 @@ func TestRealHas(t *testing.T) {
 	assert.Equal("SELECT * FROM Users WHERE Username = ? AND Password = ? LIMIT 1", rw.Query())
 	assert.True(has)
 }
+
+func TestRealTx(t *testing.T) {
+	assert := assert.New(t)
+
+	//
+	tx, err := rw.Begin()
+	assert.NoError(err)
+	assert.Nil(rw.db.master.tx)
+
+	err = tx.Table("Users").Insert(map[string]interface{}{
+		"Username": "Petrarca",
+		"Password": "yamiodymel",
+		"Age":      123456,
+	})
+	assert.NoError(err)
+
+	err = rw.Table("Users").Insert(map[string]interface{}{
+		"Username": "NotInTransaction",
+		"Password": "HelloWorld",
+		"Age":      123456,
+	})
+	assert.NoError(err)
+
+	err = tx.Rollback()
+	assert.NoError(err)
+
+	err = rw.Table("Users").Where("Username", "Petrarca").Limit(1).Get()
+	assert.NoError(err)
+	assert.Equal(0, rw.Count())
+
+	err = rw.Table("Users").Where("Username", "NotInTransaction").Limit(1).Get()
+	assert.NoError(err)
+	assert.Equal(1, rw.Count())
+}

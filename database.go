@@ -112,7 +112,12 @@ func (d *DB) Rollback() error {
 	if d.master.tx == nil {
 		return ErrUnbegunTransaction
 	}
-	return d.master.tx.Rollback()
+	err := d.master.tx.Rollback()
+	if err != nil {
+		return err
+	}
+	d.master.tx = nil
+	return nil
 }
 
 // Commit commits the transaction.
@@ -120,7 +125,12 @@ func (d *DB) Commit() error {
 	if d.master.tx == nil {
 		return ErrUnbegunTransaction
 	}
-	return d.master.tx.Commit()
+	err := d.master.tx.Commit()
+	if err != nil {
+		return err
+	}
+	d.master.tx = nil
+	return nil
 }
 
 // Ping pings all the connections, includes the slave connections.
@@ -174,20 +184,24 @@ func (d *DB) Connect() error {
 
 // Prepare prepares the query.
 func (d *DB) Prepare(query string) (*sql.Stmt, error) {
+	if d.master.tx != nil {
+		return d.master.tx.Prepare(query)
+	}
 	return d.getDB(query).Prepare(query)
 }
 
 // Exec executes the queries and returns the result, not the rows.
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	if d.master.tx != nil {
+		return d.master.tx.Exec(query, args...)
+	}
 	return d.getDB(query).Exec(query, args...)
 }
 
 // Query executes the SQL queries.
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	if d.master.tx != nil {
+		return d.master.tx.Query(query, args...)
+	}
 	return d.getDB(query).Query(query, args...)
-}
-
-// QueryRow executes the query which has only one row as the result.
-func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
-	return d.getDB(query).QueryRow(query, args...)
 }
