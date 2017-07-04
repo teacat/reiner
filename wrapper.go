@@ -910,16 +910,19 @@ func (w *Wrapper) Has() (has bool, err error) {
 
 // Disconnect disconnects the current database conection.
 func (w *Wrapper) Disconnect() (err error) {
+	err = w.db.Disconnect()
 	return
 }
 
 // Ping pings the database to make sure it's working.
 func (w *Wrapper) Ping() (err error) {
+	err = w.db.Ping()
 	return
 }
 
 // Connect reconnects to the database after the connection has disconnected.
 func (w *Wrapper) Connect() (err error) {
+	err = w.db.Connect()
 	return
 }
 

@@ -16,13 +16,10 @@ type connection struct {
 // DB represents the main database with the connections,
 // a database can have a lot of the connections.
 type DB struct {
-	readConnections    []*connection
-	writeConnections   []*connection
-	mainConnection     *connection
-	isSingleConnection bool
-	checkInterval      int
-	lastReadIndex      int
-	lastWriteIndex     int
+	slaves         []*connection
+	master         *connection
+	hasSlave       bool
+	lastSlaveIndex int
 }
 
 // openDatabase opens a single connection.
@@ -39,40 +36,28 @@ func openDatabase(dataSourceName string) (*sql.DB, error) {
 
 // newDatabase creates the new connections if there're multiple masters or the slaves.
 // It opens a single main connection if there's only one master and no slaves.
-func newDatabase(masters []string, slaves []string) (*DB, error) {
+func newDatabase(master string, slaves []string) (*DB, error) {
 	d := &DB{}
 	// Create the main connection if there's only one master an no slaves.
-	if len(masters) == 1 && len(slaves) == 0 {
-		db, err := openDatabase(masters[0])
+	if len(master) == 1 && len(slaves) == 0 {
+		db, err := openDatabase(master)
 		if err != nil {
 			return d, err
 		}
-		d.isSingleConnection = true
-		d.mainConnection = &connection{
+		d.master = &connection{
 			db:             db,
-			dataSourceName: masters[0],
+			dataSourceName: master,
 		}
 		return d, nil
 	}
-
-	// Connect to the master databases.
-	for _, v := range masters {
-		db, err := openDatabase(v)
-		if err != nil {
-			return d, err
-		}
-		d.writeConnections = append(d.writeConnections, &connection{
-			db:             db,
-			dataSourceName: v,
-		})
-	}
+	d.hasSlave = true
 	// Connect to the slave databases.
 	for _, v := range slaves {
 		db, err := openDatabase(v)
 		if err != nil {
 			return d, err
 		}
-		d.readConnections = append(d.readConnections, &connection{
+		d.slaves = append(d.slaves, &connection{
 			db:             db,
 			dataSourceName: v,
 		})
@@ -91,42 +76,82 @@ func (d *DB) roundRobin(pool []*connection, currentIndex int) (index int) {
 	return
 }
 
-// getReadConnetion gets a available read connection.
-func (d *DB) getReadConnetion() (db *sql.DB) {
-	index := d.roundRobin(d.readConnections, d.lastReadIndex)
-	db = d.readConnections[index].db
+// getSlave gets a available slave connection.
+func (d *DB) getSlave() (db *sql.DB) {
+	index := d.roundRobin(d.slaves, d.lastSlaveIndex)
+	db = d.slaves[index].db
 	// Set the last index.
-	d.lastReadIndex = index
-	return
-}
-
-// getWriteConnection gets a available write connection.
-func (d *DB) getWriteConnetion() (db *sql.DB) {
-	index := d.roundRobin(d.writeConnections, d.lastWriteIndex)
-	db = d.writeConnections[index].db
-	// Set the last index.
-	d.lastWriteIndex = index
+	d.lastSlaveIndex = index
 	return
 }
 
 // getDB gets the database connection based on the query, used for the read/write splitting.
 func (d *DB) getDB(query ...string) (db *sql.DB) {
-	if len(query) == 0 || d.isSingleConnection {
-		db = d.mainConnection.db
+	if len(query) == 0 || d.hasSlave {
+		db = d.master.db
 		return
 	}
 
-	firstAction := strings.Split(query[0], " ")[0]
-	isWrite := firstAction == "INSERT" || firstAction == "CREATE"
-	if isWrite {
-		db = d.getWriteConnetion()
-	} else {
-		db = d.getReadConnetion()
+	action := strings.Split(query[0], " ")[0]
+	switch action {
+	case "INSERT", "CREATE", "REPLACE", "UPDATE", "DELETE":
+		db = d.master.db
+	default:
+		db = d.getSlave()
 	}
 	return
 }
 
-//
+// Ping pings all the connections, includes the slave connections.
+func (d *DB) Ping() error {
+	var err error
+	err = d.master.db.Ping()
+	if err != nil {
+		return err
+	}
+	for _, v := range d.slaves {
+		err = v.db.Ping()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Disconnect disconnects all the connections, includes the slave connections.
+func (d *DB) Disconnect() error {
+	var err error
+	err = d.master.db.Close()
+	if err != nil {
+		return err
+	}
+	for _, v := range d.slaves {
+		err = v.db.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Connect reconnects the database connections, includes the slave connections.
+func (d *DB) Connect() error {
+	db, err := sql.Open("mysql", d.master.dataSourceName)
+	if err != nil {
+		return err
+	}
+	d.master.db = db
+	for k, v := range d.slaves {
+		db, err := sql.Open("mysql", v.dataSourceName)
+		if err != nil {
+			return err
+		}
+		d.slaves[k].db = db
+	}
+	return nil
+}
+
+// Prepare prepares the query.
 func (d *DB) Prepare(query string) (*sql.Stmt, error) {
 	return d.getDB(query).Prepare(query)
 }
