@@ -1003,14 +1003,19 @@ func (w *Wrapper) Begin() (*Wrapper, error) {
 	if err != nil {
 		return w, err
 	}
-	anotherDB := &DB{
-		master: &connection{
-			tx:             tx,
-			dataSourceName: masterDSN,
-		},
-	}
-	anotherWrapper := w.cloning(false, anotherDB)
-	anotherWrapper.db = anotherDB
+	anotherDB := *w.db
+	m := *w.db.master
+	anotherDB.master = &m
+	anotherDB.master.tx = tx
+
+	//anotherDB := &DB{
+	//	master: &connection{
+	//		tx:             tx,
+	//		dataSourceName: masterDSN,
+	//	},
+	//}
+	anotherWrapper := w.cloning(false, &anotherDB)
+	anotherWrapper.db = &anotherDB
 	return anotherWrapper, nil
 	/*
 		newDB := *w.db
