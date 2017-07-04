@@ -8,6 +8,7 @@ import (
 // connection represents a single database connection.
 type connection struct {
 	db             *sql.DB
+	tx             *sql.Tx
 	lastCheck      int
 	isHealth       bool
 	dataSourceName string
@@ -91,15 +92,35 @@ func (d *DB) getDB(query ...string) (db *sql.DB) {
 		db = d.master.db
 		return
 	}
-
 	action := strings.Split(query[0], " ")[0]
 	switch action {
-	case "INSERT", "CREATE", "REPLACE", "UPDATE", "DELETE":
-		db = d.master.db
-	default:
+	case "SELECT":
 		db = d.getSlave()
+	default:
+		db = d.master.db
 	}
 	return
+}
+
+// Begin begins the transaction of the current database connection.
+func (d *DB) Begin() (*sql.Tx, error) {
+	return d.master.db.Begin()
+}
+
+// Rollback rollbacks the transaction.
+func (d *DB) Rollback() error {
+	if d.master.tx == nil {
+		return ErrUnbegunTransaction
+	}
+	return d.master.tx.Rollback()
+}
+
+// Commit commits the transaction.
+func (d *DB) Commit() error {
+	if d.master.tx == nil {
+		return ErrUnbegunTransaction
+	}
+	return d.master.tx.Commit()
 }
 
 // Ping pings all the connections, includes the slave connections.

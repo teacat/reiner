@@ -43,8 +43,6 @@ func TestRealRealMain(t *testing.T) {
 		Charset("utf8").
 		Create()
 	assert.NoError(err)
-
-	rw.SetTrace(true)
 }
 
 type user struct {

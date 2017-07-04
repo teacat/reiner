@@ -11,6 +11,7 @@
 * 容易理解與記住、且使用方式十分簡單。
 * SQL 指令建構函式。
 * 資料庫表格建構協助函式。
+* 可串連的使用方式。
 * 支援子指令（Sub Query）。
 * 支援多樣的結果物件綁定（如：建構體切片）。
 * 可手動操作的交易機制（Transaction）和回溯（Rollback）功能。
@@ -32,7 +33,8 @@ func main() {
 	// 透過 Copy() 建立新的 Reiner 複製體，
 	// 這能避免兩個 Goroutine 編輯相同的 Reiner 進而確保執行緒（或 Goroutine）安全性。
 	go doSomething(db.Copy())
-	go doSomething(db.Copy())
+	// Clone() 也是相同用法，但是先前的條件、資料表格名稱會重設。
+	go doSomething(db.Clone())
 }
 ```
 
@@ -93,6 +95,7 @@ func main() {
 	* [是否擁有該筆資料](#是否擁有該筆資料)
 	* [輔助函式](#輔助函式)
 		* [資料庫連線](#資料庫連線)
+		* [複製](#複製)
 		* [最後執行的 SQL 指令](#最後執行的-sql-指令)
 		* [結果／影響的行數](#結果影響的行數)
 		* [最後插入的編號](#最後插入的編號)
@@ -717,6 +720,19 @@ if err := db.Ping(); err != nil {
 }
 ```
 
+### 複製
+
+如果要將 Reiner 傳遞到另一個 Goroutine，你必須複製目前的 Reiner，否則會因為多執行緒問題而起衝突。透過 `Copy` 複製另一個和現有資料庫設置一模一樣的 Reiner，這會保存所有目前的條件、表格名稱、加入表格等設置。若你希望複製一個相同資料庫連線，但重設條件設置、表格名稱，請使用 `Clone`。
+
+```
+db.Where("Username", "YamiOdymel")
+
+// anotherDB 和 db 有相同的條件資料。
+anotherDB := db.Copy()
+// newDB 並沒有 db 的條件資料。
+newDB := db.Clone()
+```
+
 ### 最後執行的 SQL 指令
 
 取得最後一次所執行的 SQL 指令，這能夠用來記錄你所執行的所有動作。
@@ -852,6 +868,16 @@ fmt.Printf("%+v", db.Traces[0])
 //[{Query:SELECT * FROM Users Duration:808.698µs Stacks:[map
 //[File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go Line:559 Skip:0 PC:19399228] map[Line:666 Skip:1 PC:19405153 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go] map[Skip:2 PC:19407043 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go Line:705] map[Line:74 Skip:3 PC:19548011 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper_test.go] map[PC:17610310 //File:/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go Line:657 Skip:4] map
 //[File:/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s Line:2197 Skip:5 PC:17143345]] Error:<nil>}]
+```
+
+## 中介函式
+
+中介函式能夠讓你插入一個函式到 Reiner 的任何執行之中，這令你可以監聽、紀錄或者決定是否要執行接下來的資料庫指令。
+
+```go
+db.Use(func (c *reiner.Context) {
+	c.Next()
+})
 ```
 
 # 表格建構函式

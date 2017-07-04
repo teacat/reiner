@@ -14,7 +14,13 @@ import (
 
 var (
 	// ErrInvalidPointer occurred when the pointer of the destination is invalid.
-	ErrInvalidPointer = errors.New("Reiner: attempt to load into an invalid pointer")
+	ErrInvalidPointer = errors.New("Reiner: The destination of the result is an invalid pointer.")
+	// ErrIncorrectDataType occurred when the insert, update data is not a `map[string]interface` type.
+	ErrIncorrectDataType = errors.New("Reiner: The data type must be a `map[string]interface`.")
+	// ErrUnbegunTransaction occurred when the transation function was called before calling `Begin()`.
+	ErrUnbegunTransaction = errors.New("Reiner: Calling the transaction function without `Begin()`.")
+	// ErrNoTable occurred when the table wasn't specified yet.
+	ErrNoTable = errors.New("Reiner: No table was specified.")
 )
 
 // function represents a database function like `SHA(?)` or `NOW()`.
@@ -99,6 +105,44 @@ type Wrapper struct {
 // newWrapper creates a new database function wrapper by the passed database connection.
 func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{executable: true, db: db, Timestamp: &Timestamp{}}
+}
+
+// cloning clones the database wrapper.
+func (w *Wrapper) cloning(deepCopy bool, database ...*DB) (clonedWrapper *Wrapper) {
+	db := w.db
+	if len(database) > 0 {
+		db = database[0]
+	}
+	if !deepCopy {
+		clonedWrapper = &Wrapper{
+			db:         db,
+			executable: true,
+			Timestamp:  &Timestamp{},
+		}
+	} else {
+		clonedWrapper = &Wrapper{
+			db:                 db,
+			executable:         true,
+			Timestamp:          &Timestamp{},
+			alias:              w.alias,
+			destination:        w.destination,
+			tableName:          w.tableName,
+			conditions:         w.conditions,
+			havingConditions:   w.havingConditions,
+			queryOptions:       w.queryOptions,
+			joins:              w.joins,
+			onDuplicateColumns: w.onDuplicateColumns,
+			lastInsertIDColumn: w.lastInsertIDColumn,
+			limit:              w.limit,
+			orders:             w.orders,
+			groupBy:            w.groupBy,
+			lockMethod:         w.lockMethod,
+			tracing:            w.tracing,
+			query:              w.query,
+			params:             w.params,
+		}
+	}
+	return
 }
 
 // cleanAfter cleans the last executed result after the new query was executed.
@@ -599,6 +643,13 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 			}
 			return
 		}
+		err = stmt.Close()
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
 		count, err = load(rows, w.destination)
 		if err != nil {
 			if w.tracing {
@@ -653,6 +704,13 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 			return
 		}
 		w.count = int(count)
+		err = stmt.Close()
+		if err != nil {
+			if w.tracing {
+				w.saveTrace(err, w.query, start)
+			}
+			return
+		}
 	}
 	if w.tracing {
 		w.saveTrace(err, w.query, start)
@@ -931,18 +989,24 @@ func (w *Wrapper) Connect() (err error) {
 //=======================================================
 
 // Begin starts a transcation.
-func (w *Wrapper) Begin() (tx *Wrapper, err error) {
-	return w, nil
+func (w *Wrapper) Begin() (*Wrapper, error) {
+	newDB := *w.db
+	tx, err := newDB.Begin()
+	if err != nil {
+		return w, err
+	}
+	newDB.master.tx = tx
+	return w.cloning(false, &newDB), nil
 }
 
 // Rollback rolls the changes back to where the transaction started.
-func (w *Wrapper) Rollback() bool {
-	return false
+func (w *Wrapper) Rollback() error {
+	return w.db.Rollback()
 }
 
 // Commit commits the current transaction, so the changes will be saved into the database permanently.
 func (w *Wrapper) Commit() error {
-	return nil
+	return w.db.Commit()
 }
 
 //=======================================================
@@ -1026,38 +1090,14 @@ func (w *Wrapper) SetTrace(status bool) *Wrapper {
 // Object Functions
 //=======================================================
 
-// Copy returns a new database wrapper based on the current configurations. It's useful when you're trying to pass the database wrapper to the goroutines to make sure it's thread safe.
-func (w *Wrapper) Copy(deepCopy bool) (copiedWrapper *Wrapper) {
-	if !deepCopy {
-		copiedWrapper = &Wrapper{
-			db:         w.db,
-			executable: true,
-			Timestamp:  &Timestamp{},
-		}
-	} else {
-		copiedWrapper = &Wrapper{
-			db:                 w.db,
-			executable:         true,
-			Timestamp:          &Timestamp{},
-			alias:              w.alias,
-			destination:        w.destination,
-			tableName:          w.tableName,
-			conditions:         w.conditions,
-			havingConditions:   w.havingConditions,
-			queryOptions:       w.queryOptions,
-			joins:              w.joins,
-			onDuplicateColumns: w.onDuplicateColumns,
-			lastInsertIDColumn: w.lastInsertIDColumn,
-			limit:              w.limit,
-			orders:             w.orders,
-			groupBy:            w.groupBy,
-			lockMethod:         w.lockMethod,
-			tracing:            w.tracing,
-			query:              w.query,
-			params:             w.params,
-		}
-	}
-	return
+// Clone clones the current database wrapper without the same settings.
+func (w *Wrapper) Clone() *Wrapper {
+	return w.cloning(false)
+}
+
+// Copy copies the current database wrapper with the same settings.
+func (w *Wrapper) Copy() *Wrapper {
+	return w.cloning(true)
 }
 
 // Bind binds the destination of the result.
