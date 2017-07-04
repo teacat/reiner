@@ -619,7 +619,7 @@ func TestRealTx(t *testing.T) {
 	})
 	assert.NoError(err)
 
-	err = tx.Commit()
+	err = tx2.Commit()
 	assert.NoError(err)
 
 	err = rw.Table("Users").Insert(map[string]interface{}{
