@@ -265,11 +265,15 @@ func TestRealPaginate(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 2", rw.Query())
 	assert.Equal(2, rw.Count())
+	assert.Equal(4, rw.TotalCount)
+	assert.Equal(2, rw.TotalPage)
 
 	err = rw.Table("Users").Paginate(2)
 	assert.NoError(err)
 	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 2, 2", rw.Query())
 	assert.Equal(2, rw.Count())
+	assert.Equal(4, rw.TotalCount)
+	assert.Equal(2, rw.TotalPage)
 }
 
 func TestRealRawQuery(t *testing.T) {
@@ -597,7 +601,7 @@ func TestRealGoroutine(t *testing.T) {
 	var err error
 	assert := assert.New(t)
 	done := make(chan bool)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 30; i++ {
 		go func(i int) {
 			errAssert := rw.Copy().Table("Users").Insert(map[string]interface{}{
 				"Username": i,

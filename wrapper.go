@@ -162,6 +162,8 @@ func (w *Wrapper) cleanAfter() {
 
 // cleanBefore cleans the last executed result before the new query was executed.
 func (w *Wrapper) cleanBefore() {
+	w.TotalCount = 0
+	w.TotalPage = 0
 	w.LastInsertID = 0
 	w.LastResult = nil
 	w.LastParams = []interface{}{}
@@ -643,6 +645,28 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 			}
 			return
 		}
+		// Get the TotalCount.
+		for _, v := range w.queryOptions {
+			if v == "SQL_CALC_FOUND_ROWS" {
+				var r *sql.Rows
+				r, err = w.db.Query("SELECT FOUND_ROWS()")
+				if err != nil {
+					if w.tracing {
+						w.saveTrace(err, w.query, start)
+					}
+					return
+				}
+				for r.Next() {
+					var totalCount int
+					r.Scan(&totalCount)
+					if rows.Err() != nil {
+						err = rows.Err()
+						return
+					}
+					w.TotalCount = totalCount
+				}
+			}
+		}
 		err = stmt.Close()
 		if err != nil {
 			if w.tracing {
@@ -650,6 +674,7 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 			}
 			return
 		}
+
 		count, err = load(rows, w.destination)
 		if err != nil {
 			if w.tracing {
