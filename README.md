@@ -2,7 +2,7 @@
 
 一個由 [Golang](https://golang.org/) 撰寫且比起部分 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 還要讚的 [MySQL](https://www.mysql.com/) 指令包覆函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 [Golang](https://golang.org/) 而已（但還是多了些功能）。
 
-#  這是什麼？
+# 這是什麼？
 
 萊納是一個由 [Golang](https://golang.org/) 撰寫的 [MySQL](https://www.mysql.com/) 的指令包覆函式庫（不是 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84)，永遠也不會是），幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
 
@@ -36,6 +36,32 @@ func main() {
 	// Clone() 也是相同用法，但是先前的條件、資料表格名稱會重設。
 	go doSomething(db.Clone())
 }
+```
+
+# 效能如何？
+
+這裡有份簡略化的[效能測試報表](https://github.com/TeaMeow/Reiner-SQL-Benchmark)。目前仍會持續優化並且增加快取以避免重複建置相同指令而費時。
+
+```
+測試規格：
+1.7 GHz Intel Core i7 (4650U)
+8 GB 1600 MHz DDR3
+
+插入：Dbr > SQL > SQLx > Xorm > Reiner > Gorm
+BenchmarkReinerInsert-4             3000            571298 ns/op            1719 B/op         49 allocs/op
+BenchmarkSQLInsert-4                3000            429340 ns/op             901 B/op         17 allocs/op
+BenchmarkDbrInsert-4                5000            413442 ns/op            2210 B/op         37 allocs/op
+BenchmarkSQLxInsert-4               3000            444055 ns/op             902 B/op         17 allocs/op
+BenchmarkGormInsert-4               2000            776838 ns/op            5319 B/op        101 allocs/op
+BenchmarkXormInsert-4               3000            562341 ns/op            2921 B/op         64 allocs/op
+
+選擇 100 筆資料：SQL > SQLx > Dbr > Reiner > Gorm > Xorm
+BenchmarkReinerSelect100-4          2000            659189 ns/op           42907 B/op       1155 allocs/op
+BenchmarkSQLSelect100-4             5000            336121 ns/op           28864 B/op        723 allocs/op
+BenchmarkDbrSelect100-4             3000            529430 ns/op           87496 B/op       1638 allocs/op
+BenchmarkSQLxSelect100-4            3000            376810 ns/op           32368 B/op        829 allocs/op
+BenchmarkGormSelect100-4            2000            726107 ns/op          209236 B/op       3870 allocs/op
+BenchmarkXormSelect100-4            2000            868688 ns/op          103358 B/op       4583 allocs/op
 ```
 
 # 索引
