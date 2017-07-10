@@ -560,7 +560,7 @@ db.Table("Users").Where("CreatedAt", t.IsWeekday("Friday")).Get()
 確定是否為特定時間。
 
 ```go
-t := db.Timestamp()
+t := db.Timestamp
 
 db.Table("Users").Where("CreatedAt", t.IsHour(18)).Get()
 // 等效於：SELECT * FROM Users WHERE HOUR(FROM_UNIXTIME(CreatedAt)) = ?
@@ -704,7 +704,7 @@ subQuery.Table("Users").Where("Active", 1).Get()
 
 db.Table("Products")
 db.LeftJoin(subQuery, "Products.UserID = U.ID")
-db.Get("U.Username", "Products.ProductName")
+db.Get("Users.Username", "Products.ProductName")
 // 等效於：SELECT Users.Username, Products.ProductName FROM Products AS Products LEFT JOIN (SELECT * FROM Users WHERE Active = ?) AS Users ON Products.UserID = Users.ID
 ```
 
