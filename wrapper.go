@@ -176,6 +176,10 @@ func (w *Wrapper) cleanBefore() {
 
 // saveTrace gets the callers and calculates the execution time then save the tracing information.
 func (w *Wrapper) saveTrace(err error, query string, startedAt time.Time) {
+	if !w.tracing {
+		return
+	}
+
 	var stacks []map[string]interface{}
 	for skip := 0; ; skip++ {
 		pc, file, line, ok := runtime.Caller(skip)
@@ -621,72 +625,116 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 	w.buildQuery()
 	w.LastQuery = w.query
 	w.LastParams = w.params
+
 	// Calculate the execution time.
 	var start time.Time
 	if w.tracing {
 		start = time.Now()
 	}
+
 	// Execute the query if the wrapper is executable.
 	if w.executable {
 		var stmt *sql.Stmt
 		var count int
+		var tx *sql.Tx
 
-		stmt, err = w.db.Prepare(w.query)
-		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
-			return
-		}
-		rows, err = stmt.Query(w.params...)
-		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
-			return
-		}
-		// Get the TotalCount.
+		// Using a transaction if there's `SQL_CALC_FOUND_ROWS` in the query option,
+		// because it requires the same connection.
 		for _, v := range w.queryOptions {
 			if v == "SQL_CALC_FOUND_ROWS" {
-				var r *sql.Rows
-				r, err = w.db.Query("SELECT FOUND_ROWS()")
+				// Start the transaction.
+				tx, err = w.db.Begin()
 				if err != nil {
-					if w.tracing {
-						w.saveTrace(err, w.query, start)
-					}
+					w.saveTrace(err, w.query, start)
+					w.cleanAfter()
 					return
 				}
-				for r.Next() {
+				// Prepare the query.
+				stmt, err = tx.Prepare(w.query)
+				if err != nil {
+					w.saveTrace(err, w.query, start)
+					w.cleanAfter()
+					return
+				}
+				// Execute the query.
+				rows, err = stmt.Query(w.params...)
+				if err != nil {
+					w.saveTrace(err, w.query, start)
+					w.cleanAfter()
+					return
+				}
+				// Loads the results to the destination.
+				// This also closes the `rows` so it won't trigger the `busy buffer` error.
+				count, err = load(rows, w.destination)
+				if err != nil {
+					w.saveTrace(err, w.query, start)
+					w.cleanAfter()
+					return
+				}
+				// Save the count.
+				w.count = count
+
+				// Select the `FOUND_ROWS` to get the total count.
+				rows, err = tx.Query("SELECT FOUND_ROWS()")
+				if err != nil {
+					w.saveTrace(err, w.query, start)
+					w.cleanAfter()
+					return
+				}
+				// Scan the result to get the total count.
+				for rows.Next() {
 					var totalCount int
-					r.Scan(&totalCount)
+					rows.Scan(&totalCount)
 					if rows.Err() != nil {
 						err = rows.Err()
+						w.saveTrace(err, w.query, start)
+						w.cleanAfter()
 						return
 					}
 					w.TotalCount = totalCount
 				}
+				// Close the whole statement.
+				err = stmt.Close()
+				if err != nil {
+					w.saveTrace(err, w.query, start)
+					w.cleanAfter()
+					return
+				}
+				w.saveTrace(err, w.query, start)
+				w.cleanAfter()
+				return
 			}
+		}
+
+		// If there're no `SQL_CALC_FOUND_ROWS` setted,
+		// we use the normal connection pool.
+		stmt, err = w.db.Prepare(w.query)
+		if err != nil {
+			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
+			return
+		}
+		rows, err = stmt.Query(w.params...)
+		if err != nil {
+			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
+			return
 		}
 		err = stmt.Close()
 		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
+			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
 			return
 		}
-
 		count, err = load(rows, w.destination)
 		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
+			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
 			return
 		}
 		w.count = count
 	}
-	if w.tracing {
-		w.saveTrace(err, w.query, start)
-	}
+	w.saveTrace(err, w.query, start)
 	w.cleanAfter()
 	return
 }
@@ -708,38 +756,28 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 		var count int64
 		stmt, err = w.db.Prepare(w.query)
 		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
+			w.saveTrace(err, w.query, start)
 			return
 		}
 		res, err = stmt.Exec(w.params...)
 		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
+			w.saveTrace(err, w.query, start)
 			return
 		}
 		w.LastResult = res
 		count, err = res.RowsAffected()
 		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
+			w.saveTrace(err, w.query, start)
 			return
 		}
 		w.count = int(count)
 		err = stmt.Close()
 		if err != nil {
-			if w.tracing {
-				w.saveTrace(err, w.query, start)
-			}
+			w.saveTrace(err, w.query, start)
 			return
 		}
 	}
-	if w.tracing {
-		w.saveTrace(err, w.query, start)
-	}
+	w.saveTrace(err, w.query, start)
 	w.cleanAfter()
 	return
 }
@@ -760,6 +798,18 @@ func (w *Wrapper) Table(tableName ...string) *Wrapper {
 
 // Get gets the specified columns of the rows from the specifed database table.
 func (w *Wrapper) Get(columns ...string) (err error) {
+	w.query = w.buildSelect(columns...)
+	_, err = w.runQuery()
+	if err != nil {
+		return
+	}
+	return
+}
+
+// GetOne gets the specified columns with the only one row from the specifed database table,
+// It's an alias for `.Limit(1).Get()`.
+func (w *Wrapper) GetOne(columns ...string) (err error) {
+	w.Limit(1)
 	w.query = w.buildSelect(columns...)
 	_, err = w.runQuery()
 	if err != nil {

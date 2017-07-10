@@ -181,6 +181,16 @@ func TestRealLimitGet(t *testing.T) {
 	assert.Len(u, 2)
 }
 
+func TestRealLimitGetOne(t *testing.T) {
+	assert := assert.New(t)
+	var u user
+	err := rw.Table("Users").Bind(&u).GetOne()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users LIMIT 1", rw.Query())
+	assert.Equal(1, rw.Count())
+	assert.Equal(u.Username, "Karisu")
+}
+
 func TestRealGetColumns(t *testing.T) {
 	assert := assert.New(t)
 	var u []user
@@ -260,8 +270,15 @@ func TestRealGetValue(t *testing.T) {
 
 func TestRealPaginate(t *testing.T) {
 	assert := assert.New(t)
+
+	err := rw.Table("Users").WithTotalCount().Get()
+	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users", rw.Query())
+	assert.Equal(4, rw.Count())
+	assert.Equal(4, rw.TotalCount)
+
 	rw.PageLimit = 2
-	err := rw.Table("Users").Paginate(1)
+	err = rw.Table("Users").Paginate(1)
+
 	assert.NoError(err)
 	assert.Equal("SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 2", rw.Query())
 	assert.Equal(2, rw.Count())

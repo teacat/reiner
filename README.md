@@ -311,6 +311,13 @@ db.Table("Users").Limit(10).Get()
 // 等效於：SELECT * FROM Users LIMIT 10
 ```
 
+你亦能透過 `GetOne` 直接套用 `Limit(1)`。
+
+```go
+db.Table("Users").GetOne()
+// 等效於：SELECT * FROM Users LIMIT 1
+```
+
 ### 指定欄位
 
 在 `Get` 中傳遞欄位名稱作為參數，多個欄位由逗點區分，亦能是函式。
@@ -325,7 +332,7 @@ db.Table("Users").Get("COUNT(*) AS Count")
 
 ### 單行資料
 
-`Get` 是 Reiner 中唯一取得資料的方式，除了將結果映射到一個切片或是陣列，還能夠映射到建構體、字串。當透過 `map` 當作映射對象的時候，請注意資料庫並不會自動辨別 `int`、`string` 等資料型態，反倒有可能會是 `int64`、`[]uint8{[]byte}`，因此使用 `map` 時請多加注意在型態轉換上的部分。
+`Get` 是 Reiner 中唯一取得資料的方式，除了將結果映射到一個切片或是陣列，還能夠映射到建構體、字串。當透過 `map[string]interface{}` 當作映射對象的時候，請注意資料庫並不會自動辨別 `int`、`string` 等資料型態，反倒有可能會是 `int64`、`[]uint8{[]byte}`，因此使用 `map` 時請多加注意在型態轉換上的部分。
 
 ```go
 var u User
@@ -750,7 +757,7 @@ if err := db.Ping(); err != nil {
 
 如果要將 Reiner 傳遞到另一個 Goroutine，你必須複製目前的 Reiner，否則會因為多執行緒問題而起衝突。透過 `Copy` 複製另一個和現有資料庫設置一模一樣的 Reiner，這會保存所有目前的條件、表格名稱、加入表格等設置。若你希望複製一個相同資料庫連線，但重設條件設置、表格名稱，請使用 `Clone`。
 
-```
+```go
 db.Where("Username", "YamiOdymel")
 
 // anotherDB 和 db 有相同的條件資料。

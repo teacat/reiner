@@ -115,6 +115,9 @@ func TestGetOne(t *testing.T) {
 	wrapper.Table("Users").Where("ID", 1).Get()
 	assert.Equal("SELECT * FROM Users WHERE ID = ?", wrapper.Query())
 
+	wrapper.Table("Users").GetOne()
+	assert.Equal("SELECT * FROM Users LIMIT 1", wrapper.Query())
+
 	wrapper.Table("Users").Get("SUM(ID)", "COUNT(*) AS Count")
 	assert.Equal("SELECT SUM(ID), COUNT(*) AS Count FROM Users", wrapper.Query())
 }

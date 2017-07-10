@@ -40,7 +40,6 @@ func (kv *kvScanner) Scan(v interface{}) error {
 }
 
 func load(rows *sql.Rows, value interface{}) (int, error) {
-	defer rows.Close()
 	if value == nil {
 		count := 0
 		for rows.Next() {
@@ -96,6 +95,11 @@ func load(rows *sql.Rows, value interface{}) (int, error) {
 		} else {
 			break
 		}
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return 0, err
 	}
 	return count, nil
 }
