@@ -393,7 +393,9 @@ db.Bind(&i).Table("Users").Get("COUNT(*)")
 分頁就像是取得資料ㄧ樣，但更擅長用於多筆資料、不會一次顯示完畢的內容。Reiner 能夠幫你自動處理換頁功能，讓你不需要自行計算換頁時的筆數應該從何開始。為此，你需要定義兩個變數，一個是目前的頁數，另一個是單頁能有幾筆資料。
 
 ```go
+// 目前的頁數。
 page := 1
+// 設置一頁最多能有幾筆資料。
 db.PageLimit = 10
 db.Table("Users").Paginate(page)
 // 等效於：SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 10
