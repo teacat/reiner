@@ -17,7 +17,7 @@ func TestRealRealMain(t *testing.T) {
 
 	migration = rw.Migration()
 
-	err = migration.Drop("Users", "Posts", "Products")
+	err = migration.Drop("Users", "Posts", "Products", "NullAllowed")
 	assert.NoError(err)
 
 	err = migration.Table("Users").
@@ -40,6 +40,13 @@ func TestRealRealMain(t *testing.T) {
 		Column("ID").Int(32).Primary().
 		Column("Username").Varchar(32).
 		Column("PostID").Int(32).
+		Charset("utf8").
+		Create()
+	assert.NoError(err)
+
+	err = migration.Table("NullAllowed").
+		Column("ID").Int(32).Primary().
+		Column("Username").Varchar(32).Nullable().
 		Charset("utf8").
 		Create()
 	assert.NoError(err)
@@ -685,4 +692,41 @@ func TestRealTx(t *testing.T) {
 	err = rw.Table("Users").Where("Username", "Kadeon").Limit(1).Get()
 	assert.NoError(err)
 	assert.Equal(1, rw.Count())
+}
+
+func TestRealNull(t *testing.T) {
+	assert := assert.New(t)
+	err := rw.Table("NullAllowed").Insert(map[string]interface{}{
+		"ID": 123123,
+	})
+	assert.NoError(err)
+
+	var n struct {
+		ID       int
+		Username string
+	}
+	err = rw.Table("NullAllowed").Bind(&n).Get()
+	assert.Error(err)
+	assert.Equal("SELECT * FROM NullAllowed", rw.Query())
+
+	var np struct {
+		ID       int
+		Username *string
+	}
+	err = rw.Table("NullAllowed").Bind(&np).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM NullAllowed", rw.Query())
+	//assert.Nil(n.Username)
+	assert.Equal("", n.Username)
+
+	err = rw.Table("NullAllowed").Insert(map[string]interface{}{
+		"ID":       456456,
+		"Username": "Wow",
+	})
+	assert.NoError(err)
+
+	err = rw.Table("NullAllowed").Bind(&np).Where("Username", "Wow").Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM NullAllowed WHERE Username = ?", rw.Query())
+	assert.Equal("Wow", *np.Username)
 }
