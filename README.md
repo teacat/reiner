@@ -742,7 +742,9 @@ Reiner 有提供一些輔助用的函式協助你除錯、紀錄，或者更加�
 透過 Disconnect 結束一段連線。
 
 ```go
-db.Disconnect()
+if err := db.Disconnect(); err != nil {
+	panic(err)
+}
 ```
 
 你也能在資料庫發生錯誤、連線遺失時透過 `Connect` 來重新手動連線。
