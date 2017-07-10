@@ -68,6 +68,7 @@ BenchmarkXormSelect100-4            2000            868688 ns/op          103358
 
 * [安裝方式](#安裝方式)
 * [命名建議](#命名建議)
+* [NULL 值](#null-值)
 * [使用方式](#使用方式)
     * [資料庫連線](#資料庫連線)
     	* [水平擴展（讀／寫分離）](#水平擴展讀寫分離)
@@ -143,6 +144,28 @@ $ go get github.com/TeaMeow/Reiner
 # 命名建議
 
 在 Reiner 中為了配合 [Golang](https://golang.org/) 程式命名規範，我們建議你將所有事情以[駝峰式大小寫](https://zh.wikipedia.org/zh-tw/%E9%A7%9D%E5%B3%B0%E5%BC%8F%E5%A4%A7%E5%B0%8F%E5%AF%AB)命名，因為這能夠確保兩邊的風格相同。事實上，甚至連資料庫內的表格名稱、欄位名稱都該這麼做。當遇上 `ip`、`id`、`url` 時，請遵循 Golang 的命名方式皆以大寫使用，如 `AddrIP`、`UserID`、`PhotoURL`，而不是 `AddrIp`、`UserId`、`PhotoUrl`。
+
+# NULL 值
+
+在 Golang 裏處理資料庫的 NULL 值向來都不是很方便，因此不建議允許資料庫中可有 NULL 欄位。基於 Reiner 底層的 [`go-sql-driver/mysql`](https://github.com/go-sql-driver/mysql) 因素，Reiner 並不會將接收到的 NULL 值轉換成指定型態的零值（Zero Value），這意味著當你從資料庫中取得一個可能為 NULL 值的字串，你必須透過 `*string` 或者 `sql.NullString` 而非普通的 `string` 型態（會發生 Scan 錯誤），實際用法像這樣。
+
+```go
+type User struct {
+	Username string
+	Nickname sql.NullString
+	Age 	 sql.NullInt64
+}
+
+// 然後綁定這個建構體到資料庫結果。
+var u User
+db.Table("Users").Bind(&u).GetOne()
+
+// 輸出取得的結果。
+if !u.Nickname.Valid() {
+	panic("Nickname 的內容是 NULL！不可饒恕！")
+}
+fmt.Println(u.Nickname.Value)
+```
 
 # 使用方式
 

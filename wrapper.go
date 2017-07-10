@@ -745,11 +745,13 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 	w.buildQuery()
 	w.LastQuery = w.query
 	w.LastParams = w.params
+
 	// Calculate the execution time.
 	var start time.Time
 	if w.tracing {
 		start = time.Now()
 	}
+
 	// Execute the query if the wrapper is executable.
 	if w.executable {
 		var stmt *sql.Stmt
@@ -757,23 +759,27 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 		stmt, err = w.db.Prepare(w.query)
 		if err != nil {
 			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
 			return
 		}
 		res, err = stmt.Exec(w.params...)
 		if err != nil {
 			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
 			return
 		}
 		w.LastResult = res
 		count, err = res.RowsAffected()
 		if err != nil {
 			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
 			return
 		}
 		w.count = int(count)
 		err = stmt.Close()
 		if err != nil {
 			w.saveTrace(err, w.query, start)
+			w.cleanAfter()
 			return
 		}
 	}

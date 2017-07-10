@@ -1,6 +1,7 @@
 package reiner
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -729,4 +730,16 @@ func TestRealNull(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM NullAllowed WHERE Username = ?", rw.Query())
 	assert.Equal("Wow", *np.Username)
+
+	var nn struct {
+		ID       int
+		Username sql.NullString
+	}
+	nn.ID = 789789
+
+	err = rw.Table("NullAllowed").Insert(map[string]interface{}{
+		"ID":       nn.ID,
+		"Username": nn.Username,
+	})
+	assert.NoError(err)
 }
