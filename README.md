@@ -230,7 +230,7 @@ err := db.Bind(&user).Table("Users").Get()
 透過 Reiner 你可以很輕鬆地透過建構體或是 map 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
 
 ```go
-err := db.Table("Users").Insert(map[string]string{
+err := db.Table("Users").Insert(map[string]interface{}{
 	"Username": "YamiOdymel",
 	"Password": "test",
 })
@@ -242,7 +242,7 @@ err := db.Table("Users").Insert(map[string]string{
 覆蓋的用法與插入相同，當有同筆資料時會先進行刪除，然後再插入一筆新的，這對有外鍵的表格來說十分危險。
 
 ```go
-err := db.Table("Users").Replace(map[string]string{
+err := db.Table("Users").Replace(map[string]interface{}{
 	"Username": "YamiOdymel",
 	"Password": "test",
 })
@@ -282,7 +282,7 @@ err := db.Table("Users").OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert
 Reiner 允許你透過 `InsertMulti` 同時間插入多筆資料（單指令插入多筆資料），這省去了透過迴圈不斷執行單筆插入的困擾，這種方式亦大幅度提升了效能。
 
 ```go
-data := []map[string]string{
+data := []map[string]interface{}{
 	{
 		"Username": "YamiOdymel",
 		"Password": "test",
@@ -300,7 +300,7 @@ db.Table("Users").InsertMulti(data)
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
 
 ```go
-db.Table("Users").Where("Username", "YamiOdymel").Update(map[string]string{
+db.Table("Users").Where("Username", "YamiOdymel").Update(map[string]interface{}{
 	"Username": "Karisu",
 	"Password": "123456",
 })
@@ -318,7 +318,7 @@ db.Table("Users").Limit(10).Update(data)
 
 ## 選擇與取得
 
-最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。如果你想要取得 `rows.Next` 來掃描每一行的結果，Reiner 提供了 `LastRows` 即為最後一次的 `*sql.rows` 資料。
+最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。
 
 ```go
 err := db.Table("Users").Get()
