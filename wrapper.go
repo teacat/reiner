@@ -104,7 +104,7 @@ type Wrapper struct {
 
 // newWrapper creates a new database function wrapper by the passed database connection.
 func newWrapper(db *DB) *Wrapper {
-	return &Wrapper{executable: true, db: db, Timestamp: &Timestamp{}}
+	return &Wrapper{executable: true, db: db, Timestamp: &Timestamp{}, joins: make(map[string]*join)}
 }
 
 // cloning clones the database wrapper.
@@ -118,6 +118,7 @@ func (w *Wrapper) cloning(deepCopy bool, database ...*DB) (clonedWrapper *Wrappe
 			db:         db,
 			executable: true,
 			Timestamp:  &Timestamp{},
+			joins:      make(map[string]*join),
 		}
 	} else {
 		clonedWrapper = &Wrapper{
