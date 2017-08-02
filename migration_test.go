@@ -114,6 +114,14 @@ func TestMigrationDefault(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_default_timestamp_table` (`test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=INNODB", migration.LastQuery)
 	err = migration.
+		Table("test_on_update_timestamp_table").
+		Column("test").
+		Timestamp().
+		Default("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP").
+		Create()
+	assert.NoError(err)
+	assert.Equal("CREATE TABLE IF NOT EXISTS `test_on_update_timestamp_table` (`test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=INNODB", migration.LastQuery)
+	err = migration.
 		Table("test_default_timestamp_table").
 		Column("test").
 		Timestamp().
