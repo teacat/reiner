@@ -509,6 +509,11 @@ func TestRealOrderBy(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users ORDER BY Age DESC", rw.Query())
 	assert.Equal(3, rw.Count())
+
+	err = rw.Table("Users").OrderBy("Age", "DESC").Limit(0, 12).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users ORDER BY Age DESC LIMIT 0, 12", rw.Query())
+	assert.Equal(3, rw.Count())
 }
 
 func TestRealOrderByField(t *testing.T) {
@@ -529,6 +534,11 @@ func TestRealGroupBy(t *testing.T) {
 	err = rw.Table("Users").GroupBy("Username", "Age").Get()
 	assert.NoError(err)
 	assert.Equal("SELECT * FROM Users GROUP BY Username, Age", rw.Query())
+	assert.Equal(3, rw.Count())
+
+	err = rw.Table("Users").GroupBy("Username").Limit(0, 12).Get()
+	assert.NoError(err)
+	assert.Equal("SELECT * FROM Users GROUP BY Username LIMIT 0, 12", rw.Query())
 	assert.Equal(3, rw.Count())
 }
 

@@ -519,7 +519,7 @@ func (w *Wrapper) buildOrderBy() (query string) {
 			query += fmt.Sprintf("FIELD (%s, %s) %s, ", v.column, w.bindParams(v.args[1:]), v.args[0])
 		}
 	}
-	query = trim(query)
+	query = trim(query) + " "
 	return
 }
 
@@ -532,7 +532,7 @@ func (w *Wrapper) buildGroupBy() (query string) {
 	for _, v := range w.groupBy {
 		query += fmt.Sprintf("%s, ", v)
 	}
-	query = trim(query)
+	query = trim(query) + " "
 	return
 }
 
