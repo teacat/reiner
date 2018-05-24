@@ -1,0 +1,17 @@
+language: go
+
+go:
+  - "1.8"
+  - "1.9"
+  - "1.10.x"
+  - master
+
+services:
+  - mysql
+
+before_install:
+  - mysql -e 'CREATE DATABASE test;'
+
+script:
+  - go get ./...
+  - go test ./...
