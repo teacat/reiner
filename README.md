@@ -1,4 +1,4 @@
-# Reiner [![GoDoc](https://godoc.org/github.com/TeaMeow/Reiner?status.svg)](https://godoc.org/github.com/TeaMeow/Reiner)
+# Reiner [![GoDoc](https://godoc.org/github.com/teacat/reiner?status.svg)](https://godoc.org/github.com/teacat/reiner) [![Coverage Status](https://coveralls.io/repos/github/teacat/reiner/badge.svg?branch=master)](https://coveralls.io/github/teacat/reiner?branch=master) [![Build Status](https://travis-ci.org/teacat/reiner.svg?branch=master)](https://travis-ci.org/teacat/reiner) [![Go Report Card](https://goreportcard.com/badge/github.com/teacat/reiner)](https://goreportcard.com/report/github.com/teacat/reiner)
 
 一個由 [Golang](https://golang.org/) 撰寫且比起部分 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 還要讚的 [MySQL](https://www.mysql.com/) 指令包覆函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 [Golang](https://golang.org/) 而已（但還是多了些功能）。
 
@@ -40,7 +40,7 @@ func main() {
 
 # 效能如何？
 
-這裡有份簡略化的[效能測試報表](https://github.com/TeaMeow/Reiner-SQL-Benchmark)。目前仍會持續優化並且增加快取以避免重複建置相同指令而費時。
+這裡有份簡略化的[效能測試報表](https://github.com/teacat/reiner-benchmark)。目前仍會持續優化並且增加快取以避免重複建置相同指令而費時。
 
 ```
 測試規格：
@@ -138,7 +138,7 @@ BenchmarkXormSelect100-4            2000            868688 ns/op          103358
 打開終端機並且透過 `go get` 安裝此套件即可。
 
 ```bash
-$ go get github.com/TeaMeow/Reiner
+$ go get github.com/teacat/reiner
 ```
 
 # 命名建議
@@ -176,7 +176,7 @@ Reiner 的使用方式十分直覺與簡易，類似基本的 SQL 指令集但�
 首先你需要透過函式來將 Reiner 連上資料庫，如此一來才能夠初始化包覆函式庫與相關的資料庫表格建構函式。一個最基本的單資料庫連線，讀寫都將透過此連線，連線字串共用於其它套件是基於 DSN（[Data Source Name](https://en.wikipedia.org/wiki/Data_source_name)）。
 
 ```go
-import "github.com/TeaMeow/Reiner"
+import "github.com/teacat/reiner"
 
 db, err := reiner.New("root:root@/test?charset=utf8")
 if err != nil {
@@ -189,7 +189,7 @@ if err != nil {
 這種方式可以有好幾個主要資料庫、副從資料庫，這意味著寫入時都會流向到主要資料庫，而讀取時都會向副從資料庫請求。這很適合用在大型結構還有水平擴展上。當你有多個資料庫來源時，Reiner 會逐一遞詢每個資料庫來源，英文稱其為 [Round Robin](https://zh.wikipedia.org/zh-tw/%E5%BE%AA%E7%92%B0%E5%88%B6)，也就是每個資料庫都會輪流呼叫而避免單個資料庫負荷過重，也不會有隨機呼叫的事情發生。
 
 ```go
-import "github.com/TeaMeow/Reiner"
+import "github.com/teacat/reiner"
 
 db, err := reiner.New("root:root@/master?charset=utf8", []string{
 	"root:root@/slave?charset=utf8",
@@ -926,7 +926,7 @@ db.Table("Users").Get()
 fmt.Printf("%+v", db.Traces[0])
 
 //[{Query:SELECT * FROM Users Duration:808.698µs Stacks:[map
-//[File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go Line:559 Skip:0 PC:19399228] map[Line:666 Skip:1 PC:19405153 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go] map[Skip:2 PC:19407043 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper.go Line:705] map[Line:74 Skip:3 PC:19548011 //File:/Users/YamiOdymel/go/src/github.com/TeaMeow/Reiner/wrapper_test.go] map[PC:17610310 //File:/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go Line:657 Skip:4] map
+//[File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper.go Line:559 Skip:0 PC:19399228] map[Line:666 Skip:1 PC:19405153 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper.go] map[Skip:2 PC:19407043 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper.go Line:705] map[Line:74 Skip:3 PC:19548011 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper_test.go] map[PC:17610310 //File:/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go Line:657 Skip:4] map
 //[File:/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s Line:2197 Skip:5 PC:17143345]] Error:<nil>}]
 ```
 
