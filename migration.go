@@ -5,85 +5,182 @@ import (
 	"strings"
 )
 
+// CollationType 是資料表的字符校對格式。
+type CollationType string
+
+// CharsetType 是資料表的字符集格式。
+type CharsetType string
+
+// EngineType 是資料表的引擎格式。
+type EngineType string
+
 const (
-	// CharsetBig5 是用於資料庫表格的 `big5_chinese_ci` 字符集。
-	CharsetBig5 = "big5_chinese_ci"
-	// CharsetDEC8 是用於資料庫表格的 `dec8_swedish_ci` 字符集。
-	CharsetDEC8 = "dec8_swedish_ci"
-	// CharsetCP850 是用於資料庫表格的 `cp850_general_ci` 字符集。
-	CharsetCP850 = "cp850_general_ci"
-	// CharsetHP8 是用於資料庫表格的 `hp8_english_ci` 字符集。
-	CharsetHP8 = "hp8_english_ci"
-	// CharsetKOI8R 是用於資料庫表格的 `koi8r_general_ci` 字符集。
-	CharsetKOI8R = "koi8r_general_ci"
-	// CharsetLatin1 是用於資料庫表格的 `latin1_swedish_ci` 字符集。
-	CharsetLatin1 = "latin1_swedish_ci"
-	// CharsetLatin2 是用於資料庫表格的 `latin2_general_ci` 字符集。
-	CharsetLatin2 = "latin2_general_ci"
-	// CharsetSwe7 是用於資料庫表格的 `swe7_swedish_ci` 字符集。
-	CharsetSwe7 = "swe7_swedish_ci"
-	// CharsetASCII 是用於資料庫表格的 `ascii_general_ci` 字符集。
-	CharsetASCII = "ascii_general_ci"
-	// CharsetUJIS 是用於資料庫表格的 `ujis_japanese_ci` 字符集。
-	CharsetUJIS = "ujis_japanese_ci"
-	// CharsetSJIS 是用於資料庫表格的 `sjis_japanese_ci` 字符集。
-	CharsetSJIS = "sjis_japanese_ci"
-	// CharsetHebrew 是用於資料庫表格的 `hebrew_general_ci` 字符集。
-	CharsetHebrew = "hebrew_general_ci"
-	// CharsetTIS620 是用於資料庫表格的 `tis620_thai_ci` 字符集。
-	CharsetTIS620 = "tis620_thai_ci"
-	// CharsetEUCKR 是用於資料庫表格的 `euckr_korean_ci` 字符集。
-	CharsetEUCKR = "euckr_korean_ci"
-	// CharsetKOI8U 是用於資料庫表格的 `koi8u_general_ci` 字符集。
-	CharsetKOI8U = "koi8u_general_ci"
-	// CharsetGB2312 是用於資料庫表格的 `gb2312_chinese_ci` 字符集。
-	CharsetGB2312 = "gb2312_chinese_ci"
-	// CharsetGreek 是用於資料庫表格的 `greek_general_ci` 字符集。
-	CharsetGreek = "greek_general_ci"
-	// CharsetCP1250 是用於資料庫表格的 `cp1250_general_ci` 字符集。
-	CharsetCP1250 = "cp1250_general_ci"
-	// CharsetGBK 是用於資料庫表格的 `gbk_chinese_ci` 字符集。
-	CharsetGBK = "gbk_chinese_ci"
-	// CharsetLatin5 是用於資料庫表格的 `latin5_turkish_ci` 字符集。
-	CharsetLatin5 = "latin5_turkish_ci"
-	// CharsetARMSCII8 是用於資料庫表格的 `armscii8_general_ci` 字符集。
-	CharsetARMSCII8 = "armscii8_general_ci"
-	// CharsetUTF8 是用於資料庫表格的 `utf8_general_ci` 字符集。
-	CharsetUTF8 = "utf8_general_ci"
-	// CharsetUCS2 是用於資料庫表格的 `ucs2_general_ci` 字符集。
-	CharsetUCS2 = "ucs2_general_ci"
-	// CharsetCP866 是用於資料庫表格的 `cp866_general_ci` 字符集。
-	CharsetCP866 = "cp866_general_ci"
-	// CharsetKeybcs2 是用於資料庫表格的 `keybcs2_general_ci` 字符集。
-	CharsetKeybcs2 = "keybcs2_general_ci"
-	// CharsetMacCE 是用於資料庫表格的 `macce_general_ci` 字符集。
-	CharsetMacCE = "macce_general_ci"
-	// CharsetMacRoman 是用於資料庫表格的 `macroman_general_ci` 字符集。
-	CharsetMacRoman = "macroman_general_ci"
-	// CharsetCP852 是用於資料庫表格的 `cp852_general_ci` 字符集。
-	CharsetCP852 = "cp852_general_ci"
-	// CharsetLatin7 是用於資料庫表格的 `latin7_general_ci` 字符集。
-	CharsetLatin7 = "latin7_general_ci"
-	// CharsetUTF8MB4 是用於資料庫表格的 `utf8mb4_general_ci` 字符集。
-	CharsetUTF8MB4 = "utf8mb4_general_ci"
-	// CharsetCP1251 是用於資料庫表格的 `cp1251_general_ci` 字符集。
-	CharsetCP1251 = "cp1251_general_ci"
-	// CharsetUTF16 是用於資料庫表格的 `utf16_general_ci` 字符集。
-	CharsetUTF16 = "utf16_general_ci"
-	// CharsetCP1256 是用於資料庫表格的 `cp1256_general_ci` 字符集。
-	CharsetCP1256 = "cp1256_general_ci"
-	// CharsetCP1257 是用於資料庫表格的 `cp1257_general_ci` 字符集。
-	CharsetCP1257 = "cp1257_general_ci"
-	// CharsetUTF32 是用於資料庫表格的 `utf32_general_ci` 字符集。
-	CharsetUTF32 = "utf32_general_ci"
+	// EngineInnoDB 是用於資料庫表格的 `InnoDB` 引擎格式。
+	EngineInnoDB EngineType = "innodb"
+	// EngineMyISAM 是用於資料庫表格的 `MyISAM` 引擎格式。
+	EngineMyISAM EngineType = "myisam"
+)
+
+const (
+	// CollationBig5 是用於資料庫表格的 `big5_chinese_ci` 字符校對格式。
+	CollationBig5 CollationType = "big5_chinese_ci"
+	// CollationDEC8 是用於資料庫表格的 `dec8_swedish_ci` 字符校對格式。
+	CollationDEC8 CollationType = "dec8_swedish_ci"
+	// CollationCP850 是用於資料庫表格的 `cp850_general_ci` 字符校對格式。
+	CollationCP850 CollationType = "cp850_general_ci"
+	// CollationHP8 是用於資料庫表格的 `hp8_english_ci` 字符校對格式。
+	CollationHP8 CollationType = "hp8_english_ci"
+	// CollationKOI8R 是用於資料庫表格的 `koi8r_general_ci` 字符校對格式。
+	CollationKOI8R CollationType = "koi8r_general_ci"
+	// CollationLatin1 是用於資料庫表格的 `latin1_swedish_ci` 字符校對格式。
+	CollationLatin1 CollationType = "latin1_swedish_ci"
+	// CollationLatin2 是用於資料庫表格的 `latin2_general_ci` 字符校對格式。
+	CollationLatin2 CollationType = "latin2_general_ci"
+	// CollationSwe7 是用於資料庫表格的 `swe7_swedish_ci` 字符校對格式。
+	CollationSwe7 CollationType = "swe7_swedish_ci"
+	// CollationASCII 是用於資料庫表格的 `ascii_general_ci` 字符校對格式。
+	CollationASCII CollationType = "ascii_general_ci"
+	// CollationUJIS 是用於資料庫表格的 `ujis_japanese_ci` 字符校對格式。
+	CollationUJIS CollationType = "ujis_japanese_ci"
+	// CollationSJIS 是用於資料庫表格的 `sjis_japanese_ci` 字符校對格式。
+	CollationSJIS CollationType = "sjis_japanese_ci"
+	// CollationHebrew 是用於資料庫表格的 `hebrew_general_ci` 字符校對格式。
+	CollationHebrew CollationType = "hebrew_general_ci"
+	// CollationTIS620 是用於資料庫表格的 `tis620_thai_ci` 字符校對格式。
+	CollationTIS620 CollationType = "tis620_thai_ci"
+	// CollationEUCKR 是用於資料庫表格的 `euckr_korean_ci` 字符校對格式。
+	CollationEUCKR CollationType = "euckr_korean_ci"
+	// CollationKOI8U 是用於資料庫表格的 `koi8u_general_ci` 字符校對格式。
+	CollationKOI8U CollationType = "koi8u_general_ci"
+	// CollationGB2312 是用於資料庫表格的 `gb2312_chinese_ci` 字符校對格式。
+	CollationGB2312 CollationType = "gb2312_chinese_ci"
+	// CollationGreek 是用於資料庫表格的 `greek_general_ci` 字符校對格式。
+	CollationGreek CollationType = "greek_general_ci"
+	// CollationCP1250 是用於資料庫表格的 `cp1250_general_ci` 字符校對格式。
+	CollationCP1250 CollationType = "cp1250_general_ci"
+	// CollationGBK 是用於資料庫表格的 `gbk_chinese_ci` 字符校對格式。
+	CollationGBK CollationType = "gbk_chinese_ci"
+	// CollationLatin5 是用於資料庫表格的 `latin5_turkish_ci` 字符校對格式。
+	CollationLatin5 CollationType = "latin5_turkish_ci"
+	// CollationARMSCII8 是用於資料庫表格的 `armscii8_general_ci` 字符校對格式。
+	CollationARMSCII8 CollationType = "armscii8_general_ci"
+	// CollationUTF8 是用於資料庫表格的 `utf8_general_ci` 字符校對格式。
+	CollationUTF8 CollationType = "utf8_general_ci"
+	// CollationUCS2 是用於資料庫表格的 `ucs2_general_ci` 字符校對格式。
+	CollationUCS2 CollationType = "ucs2_general_ci"
+	// CollationCP866 是用於資料庫表格的 `cp866_general_ci` 字符校對格式。
+	CollationCP866 CollationType = "cp866_general_ci"
+	// CollationKeybcs2 是用於資料庫表格的 `keybcs2_general_ci` 字符校對格式。
+	CollationKeybcs2 CollationType = "keybcs2_general_ci"
+	// CollationMacCE 是用於資料庫表格的 `macce_general_ci` 字符校對格式。
+	CollationMacCE CollationType = "macce_general_ci"
+	// CollationMacRoman 是用於資料庫表格的 `macroman_general_ci` 字符校對格式。
+	CollationMacRoman CollationType = "macroman_general_ci"
+	// CollationCP852 是用於資料庫表格的 `cp852_general_ci` 字符校對格式。
+	CollationCP852 CollationType = "cp852_general_ci"
+	// CollationLatin7 是用於資料庫表格的 `latin7_general_ci` 字符校對格式。
+	CollationLatin7 CollationType = "latin7_general_ci"
+	// CollationUTF8MB4 是用於資料庫表格的 `utf8mb4_general_ci` 字符校對格式。
+	CollationUTF8MB4 CollationType = "utf8mb4_general_ci"
+	// CollationCP1251 是用於資料庫表格的 `cp1251_general_ci` 字符校對格式。
+	CollationCP1251 CollationType = "cp1251_general_ci"
+	// CollationUTF16 是用於資料庫表格的 `utf16_general_ci` 字符校對格式。
+	CollationUTF16 CollationType = "utf16_general_ci"
+	// CollationCP1256 是用於資料庫表格的 `cp1256_general_ci` 字符校對格式。
+	CollationCP1256 CollationType = "cp1256_general_ci"
+	// CollationCP1257 是用於資料庫表格的 `cp1257_general_ci` 字符校對格式。
+	CollationCP1257 CollationType = "cp1257_general_ci"
+	// CollationUTF32 是用於資料庫表格的 `utf32_general_ci` 字符校對格式。
+	CollationUTF32 CollationType = "utf32_general_ci"
+	// CollationBinary 是用於資料庫表格的 `binary` 字符校對格式。
+	CollationBinary CollationType = "binary"
+	// CollationGEOSTD8 是用於資料庫表格的 `geostd8_general_ci` 字符校對格式。
+	CollationGEOSTD8 CollationType = "geostd8_general_ci"
+	// CollationCP932 是用於資料庫表格的 `cp932_japanese_ci` 字符校對格式。
+	CollationCP932 CollationType = "cp932_japanese_ci"
+	// CollationEUCJPMS 是用於資料庫表格的 `eucjpms_japanese_ci` 字符校對格式。
+	CollationEUCJPMS CollationType = "eucjpms_japanese_ci"
+)
+
+const (
+	// CharsetBig5 是用於資料庫表格的 `big5` 字符集。
+	CharsetBig5 CharsetType = "big5"
+	// CharsetDEC8 是用於資料庫表格的 `dec8` 字符集。
+	CharsetDEC8 CharsetType = "dec8"
+	// CharsetCP850 是用於資料庫表格的 `cp850` 字符集。
+	CharsetCP850 CharsetType = "cp850"
+	// CharsetHP8 是用於資料庫表格的 `hp8` 字符集。
+	CharsetHP8 CharsetType = "hp8"
+	// CharsetKOI8R 是用於資料庫表格的 `koi8r` 字符集。
+	CharsetKOI8R CharsetType = "koi8r"
+	// CharsetLatin1 是用於資料庫表格的 `latin1` 字符集。
+	CharsetLatin1 CharsetType = "latin1"
+	// CharsetLatin2 是用於資料庫表格的 `latin2` 字符集。
+	CharsetLatin2 CharsetType = "latin2"
+	// CharsetSwe7 是用於資料庫表格的 `swe7` 字符集。
+	CharsetSwe7 CharsetType = "swe7"
+	// CharsetASCII 是用於資料庫表格的 `ascii` 字符集。
+	CharsetASCII CharsetType = "ascii"
+	// CharsetUJIS 是用於資料庫表格的 `ujis` 字符集。
+	CharsetUJIS CharsetType = "ujis"
+	// CharsetSJIS 是用於資料庫表格的 `sjis` 字符集。
+	CharsetSJIS CharsetType = "sjis"
+	// CharsetHebrew 是用於資料庫表格的 `hebrew` 字符集。
+	CharsetHebrew CharsetType = "hebrew"
+	// CharsetTIS620 是用於資料庫表格的 `tis620` 字符集。
+	CharsetTIS620 CharsetType = "tis620"
+	// CharsetEUCKR 是用於資料庫表格的 `euckr` 字符集。
+	CharsetEUCKR CharsetType = "euckr"
+	// CharsetKOI8U 是用於資料庫表格的 `koi8u` 字符集。
+	CharsetKOI8U CharsetType = "koi8u"
+	// CharsetGB2312 是用於資料庫表格的 `gb2312` 字符集。
+	CharsetGB2312 CharsetType = "gb2312"
+	// CharsetGreek 是用於資料庫表格的 `greek` 字符集。
+	CharsetGreek CharsetType = "greek"
+	// CharsetCP1250 是用於資料庫表格的 `cp1250` 字符集。
+	CharsetCP1250 CharsetType = "cp1250"
+	// CharsetGBK 是用於資料庫表格的 `gbk` 字符集。
+	CharsetGBK CharsetType = "gbk"
+	// CharsetLatin5 是用於資料庫表格的 `latin5` 字符集。
+	CharsetLatin5 CharsetType = "latin5"
+	// CharsetARMSCII8 是用於資料庫表格的 `armscii8` 字符集。
+	CharsetARMSCII8 CharsetType = "armscii8"
+	// CharsetUTF8 是用於資料庫表格的 `utf8` 字符集。
+	CharsetUTF8 CharsetType = "utf8"
+	// CharsetUCS2 是用於資料庫表格的 `ucs2` 字符集。
+	CharsetUCS2 CharsetType = "ucs2"
+	// CharsetCP866 是用於資料庫表格的 `cp866` 字符集。
+	CharsetCP866 CharsetType = "cp866"
+	// CharsetKeybcs2 是用於資料庫表格的 `keybcs2` 字符集。
+	CharsetKeybcs2 CharsetType = "keybcs2"
+	// CharsetMacCE 是用於資料庫表格的 `macce` 字符集。
+	CharsetMacCE CharsetType = "macce"
+	// CharsetMacRoman 是用於資料庫表格的 `macroman` 字符集。
+	CharsetMacRoman CharsetType = "macroman"
+	// CharsetCP852 是用於資料庫表格的 `cp852` 字符集。
+	CharsetCP852 CharsetType = "cp852"
+	// CharsetLatin7 是用於資料庫表格的 `latin7` 字符集。
+	CharsetLatin7 CharsetType = "latin7"
+	// CharsetUTF8MB4 是用於資料庫表格的 `utf8mb4` 字符集。
+	CharsetUTF8MB4 CharsetType = "utf8mb4"
+	// CharsetCP1251 是用於資料庫表格的 `cp1251` 字符集。
+	CharsetCP1251 CharsetType = "cp1251"
+	// CharsetUTF16 是用於資料庫表格的 `utf16` 字符集。
+	CharsetUTF16 CharsetType = "utf16"
+	// CharsetCP1256 是用於資料庫表格的 `cp1256` 字符集。
+	CharsetCP1256 CharsetType = "cp1256"
+	// CharsetCP1257 是用於資料庫表格的 `cp1257` 字符集。
+	CharsetCP1257 CharsetType = "cp1257"
+	// CharsetUTF32 是用於資料庫表格的 `utf32` 字符集。
+	CharsetUTF32 CharsetType = "utf32"
 	// CharsetBinary 是用於資料庫表格的 `binary` 字符集。
-	CharsetBinary = "binary"
-	// CharsetGEOSTD8 是用於資料庫表格的 `geostd8_general_ci` 字符集。
-	CharsetGEOSTD8 = "geostd8_general_ci"
-	// CharsetCP932 是用於資料庫表格的 `cp932_japanese_ci` 字符集。
-	CharsetCP932 = "cp932_japanese_ci"
-	// CharsetEUCJPMS 是用於資料庫表格的 `eucjpms_japanese_ci` 字符集。
-	CharsetEUCJPMS = "eucjpms_japanese_ci"
+	CharsetBinary CharsetType = "binary"
+	// CharsetGEOSTD8 是用於資料庫表格的 `geostd8` 字符集。
+	CharsetGEOSTD8 CharsetType = "geostd8"
+	// CharsetCP932 是用於資料庫表格的 `cp932` 字符集。
+	CharsetCP932 CharsetType = "cp932"
+	// CharsetEUCJPMS 是用於資料庫表格的 `eucjpms` 字符集。
+	CharsetEUCJPMS CharsetType = "eucjpms"
 )
 
 // Migration 是一個資料庫表格的遷移系統。
@@ -100,13 +197,13 @@ type Migration struct {
 type table struct {
 	name        string
 	comment     string
-	charset     string
-	collation   string
+	charset     CharsetType
+	collation   CollationType
 	primaryKeys []key
 	indexKeys   []key
 	uniqueKeys  []key
 	foreignKeys []key
-	engineType  string
+	engineType  EngineType
 }
 
 // column 是單個欄位與其資訊。
@@ -291,34 +388,28 @@ func (m *Migration) Column(name string) *Migration {
 }
 
 // Charset 會設置資料表格的字符集。
-func (m *Migration) Charset(charset string) *Migration {
+func (m *Migration) Charset(charset CharsetType) *Migration {
 	m.table.charset = charset
 	return m
 }
 
-// Collation sets the collation of the table.
-func (m *Migration) Collation(collation string) *Migration {
+// Collation 會設置資料表格的字符校對格式。
+func (m *Migration) Collation(collation CollationType) *Migration {
 	m.table.collation = collation
 	return m
 }
 
-// InnoDB sets the engine type of the table as InnoDB.
-func (m *Migration) InnoDB() *Migration {
-	m.table.engineType = "innodb"
+// Engine 能夠設置資料表的引擎種類。
+func (m *Migration) Engine(engine EngineType) *Migration {
+	m.table.engineType = engine
 	return m
 }
 
-// MyISAM sets the engine type of the table as MyISAM.
-func (m *Migration) MyISAM() *Migration {
-	m.table.engineType = "myisam"
-	return m
-}
-
-// Primary makes a column as a primary key when there're no arguments.
+// Primary 會在沒有參數的情況下將某個欄位設定為主鍵。
 //     .Column("id").Primary()
-// It groups columns as a primary key group when the argument is a string slice.
+// 當傳入的參數是一個字串切片時，會將這些欄位名稱作為主鍵群組。
 //     .Primary([]string{"id", "username"})
-// It creates a naming primary key group when the first argument is a string, and the second argument is a string slice.
+// 當第一個參數是字串，第二個則是字串切片時則會建立一個命名的主鍵群組。
 //     .Primary("pk_group", []string{"id", "username"})
 func (m *Migration) Primary(args ...interface{}) *Migration {
 	switch len(args) {
@@ -342,11 +433,11 @@ func (m *Migration) Primary(args ...interface{}) *Migration {
 	return m
 }
 
-// Unique makes a column as an unique key when there're no arguments.
-//     .Column().Unique()
-// It groups the columns as an single unique key group when the argument is a string slice.
+// Unique 會在沒有參數的情況下將某個欄位設定為不重覆鍵。
+//     .Column("id").Unique()
+// 當傳入的參數是一個字串切片時，會將這些欄位名稱作為不重覆鍵群組。
 //     .Unique([]string{"id", "username"})
-// It creates a naming unique key group when the first argument is a string, and the second argument is a string slice.
+// 當第一個參數是字串，第二個則是字串切片時則會建立一個命名的不重覆鍵群組。
 //     .Unique("uk_group", []string{"id", "username"})
 func (m *Migration) Unique(args ...interface{}) *Migration {
 	switch len(args) {
@@ -370,24 +461,24 @@ func (m *Migration) Unique(args ...interface{}) *Migration {
 	return m
 }
 
-// Index makes a column as an index when there're no arguments.
+// Index 會在沒有參數的情況下將某個欄位設定為索引。
 //     .Column("id").Index()
-// It groups columns as an index when the argument is a string slice.
+// 當傳入的參數是一個字串切片時，會將這些欄位名稱作為索引群組。
 //     .Index([]string{"id", "username"})
-// It creates a naming index when the first argument is a string, and the second argument is a string slice.
+// 當第一個參數是字串，第二個則是字串切片時則會建立一個命名的索引群組。
 //     .Index("ik_group", []string{"id", "username"})
 func (m *Migration) Index(args ...interface{}) *Migration {
 	switch len(args) {
 	// Index()
 	case 0:
-		// Create an anonymous index group and put the latest column into the group.
+		// 建立一個匿名的索引群組並將最後一個新增的欄位放入群組裡。
 		m.table.indexKeys = append(m.table.indexKeys, key{
 			columns: []string{m.columns[len(m.columns)-1].name},
 		})
 
 	// Index([]string{"column1", "column2"})
 	case 1:
-		// Create the groups for each of the index.
+		// 替每個欄位各建立一個以該欄位為名的群組。
 		for _, v := range args[0].([]string) {
 			m.table.indexKeys = append(m.table.indexKeys, key{
 				name:    v,
@@ -405,30 +496,30 @@ func (m *Migration) Index(args ...interface{}) *Migration {
 	return m
 }
 
-// OnUpdate decides what to do to the foreign key parent when updating the child, for example: `NO ACTION`, `SET NULL`, etc.
+// OnUpdate 能夠決定外鍵資料變更時，相關欄位該做什麼處置（例如：`NO ACTION`、`SET NULL`、等）。
 func (m *Migration) OnUpdate(action string) *Migration {
 	m.table.foreignKeys[len(m.table.foreignKeys)-1].onUpdate = action
 	return m
 }
 
-// OnDelete decides what to do to the foreign key parent when deleting the child, for example: `NO ACTION`, `SET NULL`, etc.
+// OnDelete 能夠決定外鍵資料被刪除時，相關欄位該做什麼處置（例如：`NO ACTION`、`SET NULL`、等）。
 func (m *Migration) OnDelete(action string) *Migration {
 	m.table.foreignKeys[len(m.table.foreignKeys)-1].onDelete = action
 	return m
 }
 
-// Foreign sets the latest column as a foreign key, or creates an anonymous/naming foreign key group.
-// To make the last column as a foreign key, try the following code:
+// Foreign 會將最後一個欄位設置為外鍵，或者是建立一個匿名／命名群組。
+// 欲將最後一個欄位設置為外鍵欄位可以這麼做：
 //     Columns("id").Foreign("users.id")
-// To create an anonymous foreign key group:
+// 欲建立一個匿名的外鍵群組則是像這樣：
 //     .Foreign([]string{"id", "username"}, []string{"users.id", "users.username"})
-// To create a naming foreign key group, here's how you do it:
+// 而一個命名的外鍵群組，第一個參數則是群組的名稱，其他參數與匿名群組無異。
 //     .Foreign("fk_group", []string{"id", "username"}, []string{"users.id", "users.username"})
 func (m *Migration) Foreign(args ...interface{}) *Migration {
 	switch len(args) {
 	// Foreign("users.id")
 	case 1:
-		// Split the string by the dot to get the target table from the `table.column` format.
+		// 透過分割字串中的 `.` 點號來分析 `資料表.欄位` 格式並取得資料表與欄位名稱。
 		targetTable := strings.Split(args[0].(string), ".")[0]
 
 		// Scan the current table foreign keys, to find if there's an exist target table or not.
@@ -471,75 +562,72 @@ func (m *Migration) Foreign(args ...interface{}) *Migration {
 	return m
 }
 
-// Nullable allows the latest column to be nullable.
+// Nullable 會將最後一個欄位設置為允許空值。
 func (m *Migration) Nullable() *Migration {
 	m.columns[len(m.columns)-1].defaultValue = nil
 	m.columns[len(m.columns)-1].nullable = true
 	return m
 }
 
-// Unsigned allows the latest column to be unsigned.
+// Unsigned 會將最後一個欄位設置為非負數欄位。
 func (m *Migration) Unsigned() *Migration {
 	m.columns[len(m.columns)-1].unsigned = true
 	return m
 }
 
-// Comment leaves the comment to the latest column.
+// Comment 能夠替最後一個欄位設置說明。
 func (m *Migration) Comment(text string) *Migration {
 	m.columns[len(m.columns)-1].comment = text
 	return m
 }
 
-// Default sets the default value for the latest column,
-// it colud be nil, string or int and `CURRENT_TIMESTAMP` or `NOW()`.
+// Default 能夠替最後一個欄位設置預設值，可以是 nil、字串、正整數或者 `CURRENT_TIMESTAMP` 和 `NOW()`。
 func (m *Migration) Default(value interface{}) *Migration {
 	m.columns[len(m.columns)-1].defaultValue = value
 	return m
 }
 
-// AutoIncrement auto increments the latest column.
+// AutoIncrement 會將最後一個欄位設置為自動遞增，這僅能用於正整數欄位上。
 func (m *Migration) AutoIncrement() *Migration {
 	m.columns[len(m.columns)-1].autoIncrement = true
 	return m
 }
 
-// Table prepares the table to create.
+// Table 會準備一個資料表格供後續建立。
 func (m *Migration) Table(tableName string, comment ...string) *Migration {
-	// Set the table name.
+	// 設置表格名稱。
 	m.table.name = tableName
-	// And set the table comment if there's one.
+	// 如果有指定表格備註的話就將其保存。
 	if len(comment) != 0 {
 		m.table.comment = comment[0]
 	}
 	return m
 }
 
-// Create builds the query and execute it to create the table with the columns.
+// Create 會執行先前的所有設置並且建立出一個相對應資料表格與其中的所有欄位。
 func (m *Migration) Create() (err error) {
-	// Build the main query.
+	// 建置出主要的 SQL 執行指令。
 	query := m.tableBuilder()
-	// Execute the main query to create the table and the columns.
+	// 執行指令來建立相關的資料表格與欄位。
 	_, err = m.connection.Exec(query)
-	// Save the last executed query.
+	// 保存最後一次所執行的 SQL 指令。
 	m.LastQuery = query
-	// Clean the current table, columns data.
+	// 清除資料、欄位來重新開始一個資料表格遷移系統。
 	m.clean()
-
 	return
 }
 
-// Drop drops the specified tables.
+// Drop 會移除指定的資料表格。
 func (m *Migration) Drop(tableNames ...string) error {
-	// Drop each of the table.
+	// 遍歷資料表名稱切片來移除指定的資料表格。
 	for _, name := range tableNames {
-		// Build the query and execute to drop the table.
+		// 建立 SQL 執行指令來準備移除指定資料表格。
 		query := fmt.Sprintf("DROP TABLE `%s`", name)
 		_, err := m.connection.Exec(query)
-		// Save the last executed query.
+		// 保存最後一次執行的 SQL 指令。
 		m.LastQuery = query
-		// Clean the current table, columns data.
+		// 清除資料、欄位來重新開始一個資料表格遷移系統。
 		m.clean()
-		// Return the error if any.
 		if err != nil {
 			return err
 		}
@@ -547,29 +635,29 @@ func (m *Migration) Drop(tableNames ...string) error {
 	return nil
 }
 
-// setColumnType sets the data type and the length of the latest column.
+// setColumnType 會替最後一個欄位設置其資料型態與長度。
 func (m *Migration) setColumnType(dataType string, arg ...interface{}) *Migration {
 	m.columns[len(m.columns)-1].dataType = dataType
-	// Store the length if any.
+	// 如果有指定長度的話就將其保存。
 	if len(arg) == 1 {
 		m.columns[len(m.columns)-1].length = arg[0]
 	}
 	return m
 }
 
-// tableBuilder builds the main table query.
+// tableBuilder 會建置出主要的資料表格 SQL 執行指令。
 func (m *Migration) tableBuilder() (query string) {
 	var contentQuery string
-	// Build the queries.
+	// 建立出不同的 SQL 執行指令。
 	columnQuery := m.columnBuilder()
 	foreignQuery := m.indexBuilder("FOREIGN KEY")
 	primaryQuery := m.indexBuilder("PRIMARY KEY")
 	uniqueQuery := m.indexBuilder("UNIQUE KEY")
 	indexQuery := m.indexBuilder("INDEX")
-	// The main query.
+	// 主要的開頭 SQL 執行指令。
 	query = fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%s` ", m.table.name)
 
-	// Columns, keys.
+	// 湊合欄位和主鍵、索引的 SQL 執行指令。
 	if columnQuery != "" {
 		contentQuery += fmt.Sprintf("%s, ", columnQuery)
 	}
@@ -589,30 +677,30 @@ func (m *Migration) tableBuilder() (query string) {
 		query += fmt.Sprintf("(%s) ", trim(contentQuery))
 	}
 
-	// Engine type.
+	// 引擎種類。
 	engineType := m.table.engineType
 	if engineType == "" {
-		engineType = "innodb"
+		engineType = EngineInnoDB
 	}
-	query += fmt.Sprintf("ENGINE=%s, ", strings.ToUpper(engineType))
-	// Charset.
+	query += fmt.Sprintf("ENGINE=%s, ", strings.ToUpper(string(engineType)))
+	// 字符集。
 	if m.table.charset != "" {
 		query += fmt.Sprintf("DEFAULT CHARSET=%s, ", m.table.charset)
 	}
-	// Collation.
+	// 校對字符格式。
 	if m.table.collation != "" {
 		query += fmt.Sprintf("COLLATE=%s, ", m.table.collation)
 	}
-	// Comment.
+	// 備註。
 	if m.table.comment != "" {
 		query += fmt.Sprintf("COMMENT='%s', ", m.table.comment)
 	}
-	// Remove the unnecessary comma and the space.
+	// 移除結尾多餘的逗號與空白。
 	query = trim(query)
 	return
 }
 
-// clean cleans the previous table information.
+// clean 會清空上個遷移資料。
 func (m *Migration) clean() {
 	m.table.comment = ""
 	m.table.engineType = ""
