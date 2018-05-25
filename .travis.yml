@@ -19,8 +19,8 @@ addons:
 
 before_install:
   - mysql -e 'CREATE DATABASE test;'
+  #- sudo mysql_upgrade
   - sudo mysql -e "use mysql; update user set authentication_string=PASSWORD('root') where User='root'; update user set plugin='mysql_native_password';FLUSH PRIVILEGES;"
-  - sudo mysql_upgrade
   - sudo service mysql restart
 
 script:
