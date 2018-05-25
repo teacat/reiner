@@ -5,17 +5,98 @@ import (
 	"strings"
 )
 
-// Migration represents a table migration.
+const (
+	// CharsetBig5 是用於資料庫表格的 `big5_chinese_ci` 字符集。
+	CharsetBig5 = "big5_chinese_ci"
+	// CharsetDEC8 是用於資料庫表格的 `dec8_swedish_ci` 字符集。
+	CharsetDEC8 = "dec8_swedish_ci"
+	// CharsetCP850 是用於資料庫表格的 `cp850_general_ci` 字符集。
+	CharsetCP850 = "cp850_general_ci"
+	// CharsetHP8 是用於資料庫表格的 `hp8_english_ci` 字符集。
+	CharsetHP8 = "hp8_english_ci"
+	// CharsetKOI8R 是用於資料庫表格的 `koi8r_general_ci` 字符集。
+	CharsetKOI8R = "koi8r_general_ci"
+	// CharsetLatin1 是用於資料庫表格的 `latin1_swedish_ci` 字符集。
+	CharsetLatin1 = "latin1_swedish_ci"
+	// CharsetLatin2 是用於資料庫表格的 `latin2_general_ci` 字符集。
+	CharsetLatin2 = "latin2_general_ci"
+	// CharsetSwe7 是用於資料庫表格的 `swe7_swedish_ci` 字符集。
+	CharsetSwe7 = "swe7_swedish_ci"
+	// CharsetASCII 是用於資料庫表格的 `ascii_general_ci` 字符集。
+	CharsetASCII = "ascii_general_ci"
+	// CharsetUJIS 是用於資料庫表格的 `ujis_japanese_ci` 字符集。
+	CharsetUJIS = "ujis_japanese_ci"
+	// CharsetSJIS 是用於資料庫表格的 `sjis_japanese_ci` 字符集。
+	CharsetSJIS = "sjis_japanese_ci"
+	// CharsetHebrew 是用於資料庫表格的 `hebrew_general_ci` 字符集。
+	CharsetHebrew = "hebrew_general_ci"
+	// CharsetTIS620 是用於資料庫表格的 `tis620_thai_ci` 字符集。
+	CharsetTIS620 = "tis620_thai_ci"
+	// CharsetEUCKR 是用於資料庫表格的 `euckr_korean_ci` 字符集。
+	CharsetEUCKR = "euckr_korean_ci"
+	// CharsetKOI8U 是用於資料庫表格的 `koi8u_general_ci` 字符集。
+	CharsetKOI8U = "koi8u_general_ci"
+	// CharsetGB2312 是用於資料庫表格的 `gb2312_chinese_ci` 字符集。
+	CharsetGB2312 = "gb2312_chinese_ci"
+	// CharsetGreek 是用於資料庫表格的 `greek_general_ci` 字符集。
+	CharsetGreek = "greek_general_ci"
+	// CharsetCP1250 是用於資料庫表格的 `cp1250_general_ci` 字符集。
+	CharsetCP1250 = "cp1250_general_ci"
+	// CharsetGBK 是用於資料庫表格的 `gbk_chinese_ci` 字符集。
+	CharsetGBK = "gbk_chinese_ci"
+	// CharsetLatin5 是用於資料庫表格的 `latin5_turkish_ci` 字符集。
+	CharsetLatin5 = "latin5_turkish_ci"
+	// CharsetARMSCII8 是用於資料庫表格的 `armscii8_general_ci` 字符集。
+	CharsetARMSCII8 = "armscii8_general_ci"
+	// CharsetUTF8 是用於資料庫表格的 `utf8_general_ci` 字符集。
+	CharsetUTF8 = "utf8_general_ci"
+	// CharsetUCS2 是用於資料庫表格的 `ucs2_general_ci` 字符集。
+	CharsetUCS2 = "ucs2_general_ci"
+	// CharsetCP866 是用於資料庫表格的 `cp866_general_ci` 字符集。
+	CharsetCP866 = "cp866_general_ci"
+	// CharsetKeybcs2 是用於資料庫表格的 `keybcs2_general_ci` 字符集。
+	CharsetKeybcs2 = "keybcs2_general_ci"
+	// CharsetMacCE 是用於資料庫表格的 `macce_general_ci` 字符集。
+	CharsetMacCE = "macce_general_ci"
+	// CharsetMacRoman 是用於資料庫表格的 `macroman_general_ci` 字符集。
+	CharsetMacRoman = "macroman_general_ci"
+	// CharsetCP852 是用於資料庫表格的 `cp852_general_ci` 字符集。
+	CharsetCP852 = "cp852_general_ci"
+	// CharsetLatin7 是用於資料庫表格的 `latin7_general_ci` 字符集。
+	CharsetLatin7 = "latin7_general_ci"
+	// CharsetUTF8MB4 是用於資料庫表格的 `utf8mb4_general_ci` 字符集。
+	CharsetUTF8MB4 = "utf8mb4_general_ci"
+	// CharsetCP1251 是用於資料庫表格的 `cp1251_general_ci` 字符集。
+	CharsetCP1251 = "cp1251_general_ci"
+	// CharsetUTF16 是用於資料庫表格的 `utf16_general_ci` 字符集。
+	CharsetUTF16 = "utf16_general_ci"
+	// CharsetCP1256 是用於資料庫表格的 `cp1256_general_ci` 字符集。
+	CharsetCP1256 = "cp1256_general_ci"
+	// CharsetCP1257 是用於資料庫表格的 `cp1257_general_ci` 字符集。
+	CharsetCP1257 = "cp1257_general_ci"
+	// CharsetUTF32 是用於資料庫表格的 `utf32_general_ci` 字符集。
+	CharsetUTF32 = "utf32_general_ci"
+	// CharsetBinary 是用於資料庫表格的 `binary` 字符集。
+	CharsetBinary = "binary"
+	// CharsetGEOSTD8 是用於資料庫表格的 `geostd8_general_ci` 字符集。
+	CharsetGEOSTD8 = "geostd8_general_ci"
+	// CharsetCP932 是用於資料庫表格的 `cp932_japanese_ci` 字符集。
+	CharsetCP932 = "cp932_japanese_ci"
+	// CharsetEUCJPMS 是用於資料庫表格的 `eucjpms_japanese_ci` 字符集。
+	CharsetEUCJPMS = "eucjpms_japanese_ci"
+)
+
+// Migration 是一個資料庫表格的遷移系統。
 type Migration struct {
 	connection *DB
 	table      table
 	columns    []column
 
-	// LasyQuery is last executed query.
+	// LasyQuery 是最後一次所執行的 SQL 指令。
 	LastQuery string
 }
 
-// table contains the information of the current table.
+// table 是一個資料表格與其資訊。
 type table struct {
 	name        string
 	comment     string
@@ -28,7 +109,7 @@ type table struct {
 	engineType  string
 }
 
-// column contains the information of a single column.
+// column 是單個欄位與其資訊。
 type column struct {
 	name          string
 	dataType      string
@@ -44,7 +125,7 @@ type column struct {
 	extras        bool
 }
 
-// key represents an index information.
+// key 是一個索引的資料。
 type key struct {
 	name          string
 	columns       []string
@@ -53,163 +134,163 @@ type key struct {
 	onDelete      string
 }
 
-// newMigration creates a new table migration by the passed database connection.
+// newMigration 會基於傳入的資料庫連線來建立一個新的資料表格遷移系統。
 func newMigration(db *DB) *Migration {
 	return &Migration{connection: db}
 }
 
-// TinyInt sets the data type of the latest column as `tinyint`.
+// TinyInt 會將最後一個欲建立的欄位資料型態設置為 `tinyint`。
 func (m *Migration) TinyInt(length int) *Migration {
 	return m.setColumnType("tinyint", length)
 }
 
-// SmallInt sets the data type of the latest column as `smallint`.
+// SmallInt 會將最後一個欲建立的欄位資料型態設置為 `smallint`。
 func (m *Migration) SmallInt(length int) *Migration {
 	return m.setColumnType("smallint", length)
 }
 
-// MediumInt sets the data type of the latest column as `mediumint`.
+// MediumInt 會將最後一個欲建立的欄位資料型態設置為 `mediumint`。
 func (m *Migration) MediumInt(length int) *Migration {
 	return m.setColumnType("mediumint", length)
 }
 
-// Int sets the data type of the latest column as `int`.
+// Int 會將最後一個欲建立的欄位資料型態設置為 `int`。
 func (m *Migration) Int(length int) *Migration {
 	return m.setColumnType("int", length)
 }
 
-// BigInt sets the data type of the latest column as `bigint`.
+// BigInt 會將最後一個欲建立的欄位資料型態設置為 `bigint`。
 func (m *Migration) BigInt(length int) *Migration {
 	return m.setColumnType("bigint", length)
 }
 
-// Char sets the data type of the latest column as `char`.
+// Char 會將最後一個欲建立的欄位資料型態設置為 `char`。
 func (m *Migration) Char(length int) *Migration {
 	return m.setColumnType("char", length)
 }
 
-// Varchar sets the data type of the latest column as `varchar`.
+// Varchar 會將最後一個欲建立的欄位資料型態設置為 `varchar`。
 func (m *Migration) Varchar(length int) *Migration {
 	return m.setColumnType("varchar", length)
 }
 
-// TinyText sets the data type of the latest column as `tinytext`.
+// TinyText 會將最後一個欲建立的欄位資料型態設置為 `tinytext`。
 func (m *Migration) TinyText() *Migration {
 	return m.setColumnType("tinytext")
 }
 
-// Text sets the data type of the latest column as `text`.
+// Text 會將最後一個欲建立的欄位資料型態設置為 `text`。
 func (m *Migration) Text() *Migration {
 	return m.setColumnType("text")
 }
 
-// MediumText sets the data type of the latest column as `mediumtext`.
+// MediumText 會將最後一個欲建立的欄位資料型態設置為 `mediumtext`。
 func (m *Migration) MediumText() *Migration {
 	return m.setColumnType("mediumtext")
 }
 
-// LongText sets the data type of the latest column as `longtext`.
+// LongText 會將最後一個欲建立的欄位資料型態設置為 `longtext`。
 func (m *Migration) LongText() *Migration {
 	return m.setColumnType("longtext")
 }
 
-// Binary sets the data type of the latest column as `binary`.
+// Binary 會將最後一個欲建立的欄位資料型態設置為 `binary`。
 func (m *Migration) Binary(length int) *Migration {
 	return m.setColumnType("binary", length)
 }
 
-// VarBinary sets the data type of the latest column as `varbinary`.
+// VarBinary 會將最後一個欲建立的欄位資料型態設置為 `varbinary`。
 func (m *Migration) VarBinary(length int) *Migration {
 	return m.setColumnType("varbinary", length)
 }
 
-// Bit sets the data type of the latest column as `bit`.
+// Bit 會將最後一個欲建立的欄位資料型態設置為 `bit`。
 func (m *Migration) Bit(length int) *Migration {
 	return m.setColumnType("bit", length)
 }
 
-// TinyBlob sets the data type of the latest column as `tinyblob`.
+// TinyBlob 會將最後一個欲建立的欄位資料型態設置為 `tinyblob`。
 func (m *Migration) TinyBlob() *Migration {
 	return m.setColumnType("tinyblob")
 }
 
-// Blob sets the data type of the latest column as `blob`.
+// Blob 會將最後一個欲建立的欄位資料型態設置為 `blob`。
 func (m *Migration) Blob() *Migration {
 	return m.setColumnType("blob")
 }
 
-// MediumBlob sets the data type of the latest column as `mediumblob`.
+// MediumBlob 會將最後一個欲建立的欄位資料型態設置為 `mediumblob`。
 func (m *Migration) MediumBlob() *Migration {
 	return m.setColumnType("mediumblob")
 }
 
-// LongBlob sets the data type of the latest column as `longblob`.
+// LongBlob 會將最後一個欲建立的欄位資料型態設置為 `longblob`。
 func (m *Migration) LongBlob() *Migration {
 	return m.setColumnType("longblob")
 }
 
-// Date sets the data type of the latest column as `date`.
+// Date 會將最後一個欲建立的欄位資料型態設置為 `date`。
 func (m *Migration) Date() *Migration {
 	return m.setColumnType("date")
 }
 
-// DateTime sets the data type of the latest column as `datetime`.
+// DateTime 會將最後一個欲建立的欄位資料型態設置為 `datetime`。
 func (m *Migration) DateTime() *Migration {
 	return m.setColumnType("dateTime")
 }
 
-// Time sets the data type of the latest column as `time`.
+// Time 會將最後一個欲建立的欄位資料型態設置為 `time`。
 func (m *Migration) Time() *Migration {
 	return m.setColumnType("time")
 }
 
-// Timestamp sets the data type of the latest column as `timestamp`.
+// Timestamp 會將最後一個欲建立的欄位資料型態設置為 `timestamp`。
 func (m *Migration) Timestamp() *Migration {
 	return m.setColumnType("timestamp")
 }
 
-// Year sets the data type of the latest column as `year`.
+// Year 會將最後一個欲建立的欄位資料型態設置為 `year`。
 func (m *Migration) Year() *Migration {
 	return m.setColumnType("year")
 }
 
-// Double sets the data type of the latest column as `double`.
+// Double 會將最後一個欲建立的欄位資料型態設置為 `double`。
 func (m *Migration) Double(length ...int) *Migration {
 	return m.setColumnType("double", length)
 }
 
-// Decimal sets the data type of the latest column as `decimal`.
+// Decimal 會將最後一個欲建立的欄位資料型態設置為 `decimal`。
 //     .Decimal(2, 1)
 func (m *Migration) Decimal(length ...int) *Migration {
 	return m.setColumnType("decimal", length)
 }
 
-// Float sets the data type of the latest column as `float`.
+// Float 會將最後一個欲建立的欄位資料型態設置為 `float`。
 //     .Float(2, 1)
 //     .Float(1)
 func (m *Migration) Float(length ...int) *Migration {
 	return m.setColumnType("float", length)
 }
 
-// Enum sets the data type of the latest column as `enum`.
+// Enum 會將最後一個欲建立的欄位資料型態設置為 `enum`。
 //     .Enum(1, 2, "A", "B")
 func (m *Migration) Enum(types ...interface{}) *Migration {
 	return m.setColumnType("enum", types)
 }
 
-// Set sets the data type of the latest column as `set`.
+// Set 會將最後一個欲建立的欄位資料型態設置為 `set`。
 //     .Set(1, 2, "A", "B")
 func (m *Migration) Set(types ...interface{}) *Migration {
 	return m.setColumnType("set", types)
 }
 
-// Column creates a new column.
+// Column 會建立一個新的欄位。
 func (m *Migration) Column(name string) *Migration {
 	m.columns = append(m.columns, column{name: name, defaultValue: false})
 	return m
 }
 
-// Charset sets thecharset of the table.
+// Charset 會設置資料表格的字符集。
 func (m *Migration) Charset(charset string) *Migration {
 	m.table.charset = charset
 	return m

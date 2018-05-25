@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// connection represents a single database connection.
+// connection 重現了一個資料庫的連線。
 type connection struct {
 	db             *sql.DB
 	tx             *sql.Tx
@@ -14,8 +14,7 @@ type connection struct {
 	dataSourceName string
 }
 
-// DB represents the main database with the connections,
-// a database can have a lot of the connections.
+// DB 是一個擁有許多連線的資料庫來源。
 type DB struct {
 	slaves         []*connection
 	master         *connection
@@ -23,7 +22,7 @@ type DB struct {
 	lastSlaveIndex int
 }
 
-// openDatabase opens a single connection.
+// openDatabase 會開啟一個新的資料庫連線。
 func openDatabase(dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
@@ -35,11 +34,11 @@ func openDatabase(dataSourceName string) (*sql.DB, error) {
 	return db, nil
 }
 
-// newDatabase creates the new connections if there're multiple masters or the slaves.
-// It opens a single main connection if there's only one master and no slaves.
+// newDatabase 會建立一個新的資料庫，當有主從來源時會替這個資料庫建立多個連線。
+// 如果僅有單個主要來源的話則會建立一個最主要的連線。
 func newDatabase(master string, slaves []string) (*DB, error) {
 	d := &DB{}
-	// Create the main connection if there's only one master an no slaves.
+	// 如果沒有主從來源就建立一個最主要的連線。
 	if len(slaves) == 0 {
 		db, err := openDatabase(master)
 		if err != nil {
@@ -52,7 +51,7 @@ func newDatabase(master string, slaves []string) (*DB, error) {
 		return d, nil
 	}
 	d.hasSlave = true
-	// Connect to the slave databases.
+	// 連線到 Slave 資料庫。
 	for _, v := range slaves {
 		db, err := openDatabase(v)
 		if err != nil {
@@ -66,8 +65,8 @@ func newDatabase(master string, slaves []string) (*DB, error) {
 	return d, nil
 }
 
-// roundRobin picks the next connection to prevent keep using the same connection.
-// It works like a simple load balancer.
+// roundRobin 會輪詢資料庫連線來避免不斷地呼叫同個資料庫連線。
+// 簡單來說就是個簡易型的負載平衡器。
 func (d *DB) roundRobin(pool []*connection, currentIndex int) (index int) {
 	length := len(pool) - 1
 	index = currentIndex + 1
@@ -77,7 +76,7 @@ func (d *DB) roundRobin(pool []*connection, currentIndex int) (index int) {
 	return
 }
 
-// getSlave gets a available slave connection.
+// getSlave 會取得一個可用的 Slave 資料庫連線。
 func (d *DB) getSlave() (db *sql.DB) {
 	index := d.roundRobin(d.slaves, d.lastSlaveIndex)
 	db = d.slaves[index].db
@@ -86,7 +85,8 @@ func (d *DB) getSlave() (db *sql.DB) {
 	return
 }
 
-// getDB gets the database connection based on the query, used for the read/write splitting.
+// getDB 會基於 SQL 查詢指令來取得一個適用的資料庫連線，這會被用在讀／寫區分的資料庫上。
+// BUG(r): Reimplemented needed.
 func (d *DB) getDB(query ...string) (db *sql.DB) {
 	if len(query) == 0 || !d.hasSlave {
 		db = d.master.db
@@ -102,12 +102,12 @@ func (d *DB) getDB(query ...string) (db *sql.DB) {
 	return
 }
 
-// Begin begins the transaction of the current database connection.
+// Begin 會基於目前的資料庫連線來開始一段新的交易過程。
 func (d *DB) Begin() (*sql.Tx, error) {
 	return d.master.db.Begin()
 }
 
-// Rollback rollbacks the transaction.
+// Rollback 會回溯交易時所發生的事情。
 func (d *DB) Rollback() error {
 	if d.master.tx == nil {
 		return ErrUnbegunTransaction
@@ -120,7 +120,7 @@ func (d *DB) Rollback() error {
 	return nil
 }
 
-// Commit commits the transaction.
+// Commit 會結束一個交易過程並保存其變更為永久資料。
 func (d *DB) Commit() error {
 	if d.master.tx == nil {
 		return ErrUnbegunTransaction
@@ -133,7 +133,7 @@ func (d *DB) Commit() error {
 	return nil
 }
 
-// Ping pings all the connections, includes the slave connections.
+// Ping 會以 ping 來檢查所有的資料庫連線（包括 Slave 連線）。
 func (d *DB) Ping() error {
 	var err error
 	err = d.master.db.Ping()
@@ -149,7 +149,7 @@ func (d *DB) Ping() error {
 	return nil
 }
 
-// Disconnect disconnects all the connections, includes the slave connections.
+// Disconnect 會斷開所有連線（包括 Slave 連線）。
 func (d *DB) Disconnect() error {
 	var err error
 	err = d.master.db.Close()
@@ -165,7 +165,7 @@ func (d *DB) Disconnect() error {
 	return nil
 }
 
-// Connect reconnects the database connections, includes the slave connections.
+// Connect 會重新連接所有資料庫連線（包括 Slave 連線）。
 func (d *DB) Connect() error {
 	db, err := sql.Open("mysql", d.master.dataSourceName)
 	if err != nil {
@@ -182,7 +182,7 @@ func (d *DB) Connect() error {
 	return nil
 }
 
-// Prepare prepares the query.
+// Prepare 會準備 SQL 查詢指令。
 func (d *DB) Prepare(query string) (*sql.Stmt, error) {
 	if d.master.tx != nil {
 		return d.master.tx.Prepare(query)
@@ -190,7 +190,7 @@ func (d *DB) Prepare(query string) (*sql.Stmt, error) {
 	return d.getDB(query).Prepare(query)
 }
 
-// Exec executes the queries and returns the result, not the rows.
+// Exec 會執行 SQL 查詢指令並且回傳一個原生結果表示影響的行列數和插入的編號。
 func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	if d.master.tx != nil {
 		return d.master.tx.Exec(query, args...)
@@ -198,7 +198,7 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return d.getDB(query).Exec(query, args...)
 }
 
-// Query executes the SQL queries.
+// Query 會執行 SQL 查詢指令並且回傳一個原生的行列結果供後續掃描列出。
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if d.master.tx != nil {
 		return d.master.tx.Query(query, args...)

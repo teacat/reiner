@@ -1,8 +1,7 @@
 package reiner
 
-// Source: https://github.com/bgaifullin/dbr
-// Source: https://github.com/bgaifullin/dbr/blob/master/load.go
-
+// 來源：https://github.com/bgaifullin/dbr
+// 來源：https://github.com/bgaifullin/dbr/blob/master/load.go
 import (
 	"bytes"
 	"database/sql"

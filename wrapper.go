@@ -7,8 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	// The MySQL driver.
+	// MySQL 驅動程式。
 	_ "github.com/go-sql-driver/mysql"
 )
 

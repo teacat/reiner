@@ -2,7 +2,7 @@ package reiner
 
 import "strings"
 
-// trim trims the input string by removing the last unnecessary comma and the trailing space.
+// trim 會清理接收到的字串，移除最後無謂的逗點與空白。
 func trim(input string) (result string) {
 	if len(input) == 0 {
 		result = strings.TrimSpace(input)
