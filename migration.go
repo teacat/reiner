@@ -521,22 +521,21 @@ func (m *Migration) Foreign(args ...interface{}) *Migration {
 	case 1:
 		// 透過分割字串中的 `.` 點號來分析 `資料表.欄位` 格式並取得資料表與欄位名稱。
 		targetTable := strings.Split(args[0].(string), ".")[0]
-
-		// Scan the current table foreign keys, to find if there's an exist target table or not.
+		// 掃描目前資料表格的所有外鍵，並查看是否有已經存在的目標資料表格。
 		index := -1
 		for k, v := range m.table.foreignKeys {
-			// Split the name of the foreign key by the dot to get the name of the target table of the foreign key.
+			// 分割 `資料表.欄位` 字串格式並取得外鍵的目標資料表與欄位名稱。
 			tableName := strings.Split(v.targetColumns[0], ".")[0]
 			if tableName == targetTable {
 				index = k
 				break
 			}
 		}
-		// If there's the same target table, we merge the new foreign key to the group.
+		// 如果已經有了相同的目標資料表，我們就將新的外鍵合併到該群組中。
 		if index != -1 {
 			m.table.foreignKeys[index].columns = append(m.table.foreignKeys[index].columns, m.columns[len(m.columns)-1].name)
 			m.table.foreignKeys[index].targetColumns = append(m.table.foreignKeys[index].targetColumns, args[0].(string))
-			// Otherwise we create a new group.
+			// 不然就建立新的群組。
 		} else {
 			m.table.foreignKeys = append(m.table.foreignKeys, key{
 				columns:       []string{m.columns[len(m.columns)-1].name},
@@ -712,11 +711,11 @@ func (m *Migration) clean() {
 	m.columns = []column{}
 }
 
-// indexBuilder builds the query for the indexes.
+// indexBuilder 會替資料表格的索引建置相關的 SQL 執行指令。
 func (m *Migration) indexBuilder(indexName string) (query string) {
 	var keys []key
 	var targetTable, targetColumns string
-	// Get the key groups by the index name.
+	// 透過指定的型態決定要從哪裡取得索引滋藥。
 	switch indexName {
 	case "PRIMARY KEY":
 		keys = m.table.primaryKeys
@@ -728,25 +727,24 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 		keys = m.table.foreignKeys
 	}
 
-	// Each index group.
+	// 每個索引群組。
 	for _, v := range keys {
-		// Build the column query. (`column_1`, `column_2`)
+		// 建立欄位執行指令（`column_1`, `column_2`）。
 		columns := fmt.Sprintf("`%s`", strings.Join(v.columns, "`,`"))
-
-		// Build the query for the target columns of the foreign keys.
+		// 替外鍵的目標欄位建立相關的 SQL 執行指令。
 		if len(v.targetColumns) != 0 {
 			targetColumns = ""
 			for _, c := range v.targetColumns {
-				// Get the target table name from the target columns. (targetTable.targetColumn)
-				targetTable = strings.Split(c, ".")[0]
-				// Remove the table name in the column name and build the query.
-				targetColumns += fmt.Sprintf("`%s`, ", strings.Split(c, ".")[1])
+				// 從字串的 `目標表格.目標欄位` 格式中取得表格和欄位的名稱。
+				splitedStr = strings.Split(c, ".")
+				targetTable = splitedStr[0]
+				// 將取得到的欄位名稱追加到 SQL 執行指令中。
+				targetColumns += fmt.Sprintf("`%s`, ", splitedStr[1])
 			}
-			// Remove the unnecessary comma and the space.
+			// 移除結尾多餘的逗號與空白。
 			targetColumns = trim(targetColumns)
 		}
-
-		// The on update/delete actions.
+		// 外鍵更新、移除時的相關動作執行指令。
 		var onUpdate, onDelete string
 		if v.onUpdate != "" {
 			onUpdate = fmt.Sprintf(" ON UPDATE %s", v.onUpdate)
@@ -754,33 +752,32 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 		if v.onDelete != "" {
 			onDelete = fmt.Sprintf(" ON DELETE %s", v.onDelete)
 		}
-
-		// Indexs without the group name.
+		// 沒有群組名稱的索引。
 		if v.name == "" && len(v.targetColumns) == 0 {
 			query += fmt.Sprintf("%s (%s), ", indexName, columns)
-			// Naming indexes.
+			// 命名索引。
 		} else if v.name != "" && len(v.targetColumns) == 0 {
 			query += fmt.Sprintf("%s `%s` (%s), ", indexName, v.name, columns)
-			// Foreign keys without the group name.
+			// 沒有群組名稱的外鍵。
 		} else if v.name == "" && len(v.targetColumns) != 0 {
 			query += fmt.Sprintf("%s (%s) REFERENCES `%s` (%s)%s%s, ", indexName, columns, targetTable, targetColumns, onUpdate, onDelete)
-			// Foreign keys.
+			// 多個外鍵。
 		} else if v.name != "" && len(v.targetColumns) != 0 {
 			query += fmt.Sprintf("%s %s (%s) REFERENCES `%s` (%s)%s%s, ", indexName, v.name, columns, targetTable, targetColumns, onUpdate, onDelete)
 		}
 	}
-	// Remove the unnecessary comma and the space.
+	// 移除結尾多餘的逗號與空白。
 	query = trim(query)
 	return
 }
 
-// columnBuilder builds the query from the columns.
+// columnBuilder 會替資料表格的欄位建置相關的 SQL 執行指令。
 func (m *Migration) columnBuilder() (query string) {
 	for _, v := range m.columns {
-		// Column name.
+		// 欄位名稱。
 		query += fmt.Sprintf("`%s` ", v.name)
 
-		// Data types.
+		// 資料型態。
 		dataType := strings.ToUpper(v.dataType)
 		switch t := v.length.(type) {
 		// VARCHAR(30)
@@ -788,14 +785,14 @@ func (m *Migration) columnBuilder() (query string) {
 			query += fmt.Sprintf("%s(%d) ", dataType, t)
 		// ENUM(1, 2, 3, 4)
 		case []int:
-			// Converts []int to a string and split by the comma.
+			// 將 `[]int`` 轉換成字串並且透過逗點分隔。
 			query += fmt.Sprintf("%s(%s) ", dataType, strings.Trim(strings.Join(strings.Split(fmt.Sprint(t), " "), ", "), "[]"))
 		// ENUM("A", "B", "C")
 		case []string:
 			query += fmt.Sprintf("%s(%s) ", dataType, strings.Join(t, ", "))
 		// FLOAT(1, 2) or ENUM(1, 2, "A", "B")
 		case []interface{}:
-			// Extracting the options from the length.
+			// 將選項從長度資料中展開。
 			options := ""
 			for _, o := range t {
 				switch tt := o.(type) {
@@ -805,27 +802,26 @@ func (m *Migration) columnBuilder() (query string) {
 					options += fmt.Sprintf("'%s', ", tt)
 				}
 			}
-			// Trim the comma and the space.
+			// 移除結尾多餘的逗號與空白。
 			query += fmt.Sprintf("%s(%s) ", dataType, trim(options))
 		// DATETIME
 		case nil:
 			query += fmt.Sprintf("%s ", dataType)
 		}
 
-		// Unsigned.
+		// 非負數。
 		if v.unsigned {
 			query += "UNSIGNED "
 		}
-		// Nullable.
+		// 允許空值。
 		if !v.nullable {
 			query += "NOT NULL "
 		}
-		// Auto increment.
+		// 自動遞增。
 		if v.autoIncrement {
 			query += "AUTO_INCREMENT "
 		}
-
-		// Default value.
+		// 預設值。
 		switch t := v.defaultValue.(type) {
 		case int:
 			query += fmt.Sprintf("DEFAULT %d ", t)
@@ -838,8 +834,7 @@ func (m *Migration) columnBuilder() (query string) {
 				query += fmt.Sprintf("DEFAULT '%s' ", t)
 			}
 		}
-
-		// Keys.
+		// 主鍵。
 		if v.primary {
 			query += "PRIMARY KEY "
 		}
@@ -852,16 +847,14 @@ func (m *Migration) columnBuilder() (query string) {
 				targetColumns: []string{v.foreign},
 			})
 		}
-
-		// Comment.
+		// 備註。
 		if v.comment != "" {
 			query += fmt.Sprintf("COMMENT '%s'", v.comment)
 		}
-
-		// End.
+		// 最終結尾。
 		query += ", "
 	}
-	// Remove the last unnecessary comma
+	// 移除結尾多餘的逗號與空白。
 	query = trim(query)
 	return
 }
