@@ -736,7 +736,7 @@ func (m *Migration) indexBuilder(indexName string) (query string) {
 			targetColumns = ""
 			for _, c := range v.targetColumns {
 				// 從字串的 `目標表格.目標欄位` 格式中取得表格和欄位的名稱。
-				splitedStr = strings.Split(c, ".")
+				splitedStr := strings.Split(c, ".")
 				targetTable = splitedStr[0]
 				// 將取得到的欄位名稱追加到 SQL 執行指令中。
 				targetColumns += fmt.Sprintf("`%s`, ", splitedStr[1])

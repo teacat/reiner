@@ -70,10 +70,10 @@ func TestMigrationDataTypes(t *testing.T) {
 
 func TestMigrationTableType(t *testing.T) {
 	assert := assert.New(t)
-	err := migration.Table("test_myisam_table").Column("test").Varchar(32).MyISAM().Create()
+	err := migration.Table("test_myisam_table").Column("test").Varchar(32).Engine(EngineMyISAM).Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_myisam_table` (`test` VARCHAR(32) NOT NULL) ENGINE=MYISAM", migration.LastQuery)
-	err = migration.Table("test_innodb_table").Column("test").Varchar(32).InnoDB().Create()
+	err = migration.Table("test_innodb_table").Column("test").Varchar(32).Engine(EngineInnoDB).Create()
 	assert.NoError(err)
 	assert.Equal("CREATE TABLE IF NOT EXISTS `test_innodb_table` (`test` VARCHAR(32) NOT NULL) ENGINE=INNODB", migration.LastQuery)
 }
