@@ -1,10 +1,10 @@
 # Reiner [![GoDoc](https://godoc.org/github.com/teacat/reiner?status.svg)](https://godoc.org/github.com/teacat/reiner) [![Coverage Status](https://coveralls.io/repos/github/teacat/reiner/badge.svg?branch=master)](https://coveralls.io/github/teacat/reiner?branch=master) [![Build Status](https://travis-ci.org/teacat/reiner.svg?branch=master)](https://travis-ci.org/teacat/reiner) [![Go Report Card](https://goreportcard.com/badge/github.com/teacat/reiner)](https://goreportcard.com/report/github.com/teacat/reiner)
 
-一個由 [Golang](https://golang.org/) 撰寫且比起部分 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 還要讚的 [MySQL](https://www.mysql.com/) 指令包覆函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 [Golang](https://golang.org/) 而已（但還是多了些功能）。
+一個由 [Golang](https://golang.org/) 撰寫且比起部分 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 還要讚的 [MySQL](https://www.mysql.com/) 指令建置函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 [Golang](https://golang.org/) 而已（但還是多了些功能）。
 
 # 這是什麼？
 
-萊納是一個由 [Golang](https://golang.org/) 撰寫的 [MySQL](https://www.mysql.com/) 的指令包覆函式庫（不是 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84)，永遠也不會是），幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
+萊納是一個由 [Golang](https://golang.org/) 撰寫的 [MySQL](https://www.mysql.com/) 的指令建置函式庫（不是 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84)，永遠也不會是），幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
 
 * 幾乎全功能的函式庫。
 * 支援 MySQL 複寫橫向擴展機制（區分讀／寫連線）。
@@ -23,7 +23,7 @@
 
 # 執行緒與併發安全性？
 
-我們都知道 [Golang](https://golang.org/) 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的包覆函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個包覆函式庫的複製體都不會出現效能問題。
+我們都知道 [Golang](https://golang.org/) 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的建置函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個建置函式庫的複製體都不會出現效能問題。
 
 ```go
 package main
@@ -173,7 +173,7 @@ Reiner 的使用方式十分直覺與簡易，類似基本的 SQL 指令集但�
 
 ## 資料庫連線
 
-首先你需要透過函式來將 Reiner 連上資料庫，如此一來才能夠初始化包覆函式庫與相關的資料庫表格建構函式。一個最基本的單資料庫連線，讀寫都將透過此連線，連線字串共用於其它套件是基於 DSN（[Data Source Name](https://en.wikipedia.org/wiki/Data_source_name)）。
+首先你需要透過函式來將 Reiner 連上資料庫，如此一來才能夠初始化建置函式庫與相關的資料庫表格建構函式。一個最基本的單資料庫連線，讀寫都將透過此連線，連線字串共用於其它套件是基於 DSN（[Data Source Name](https://en.wikipedia.org/wiki/Data_source_name)）。
 
 ```go
 import "github.com/teacat/reiner"
@@ -683,7 +683,7 @@ db.Get("Users.Name", "Products.ProductName")
 
 ## 子指令
 
-Reiner 支援複雜的子指令，欲要建立一個子指令請透過 `SubQuery` 函式，這將會建立一個不能被執行的資料庫包覆函式庫，令你可以透過 `Get`、`Update` 等建立相關 SQL 指令，但不會被資料庫執行。將其帶入到一個正常的資料庫函式中即可成為子指令。
+Reiner 支援複雜的子指令，欲要建立一個子指令請透過 `SubQuery` 函式，這將會建立一個不能被執行的資料庫建置函式庫，令你可以透過 `Get`、`Update` 等建立相關 SQL 指令，但不會被資料庫執行。將其帶入到一個正常的資料庫函式中即可成為子指令。
 
 ```go
 subQuery := db.SubQuery()
