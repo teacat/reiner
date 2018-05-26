@@ -107,7 +107,7 @@ func newBuilder(db *DB) *Builder {
 	return &Builder{executable: true, db: db, Timestamp: &Timestamp{}, joins: make(map[string]*join)}
 }
 
-// cloning 會複製現有的資料庫包覆函式。
+// cloning 會複製現有的資料庫建置函式與設定。
 func (b *Builder) cloning(deepCopy bool, database ...*DB) (clonedBuilder *Builder) {
 	db := b.db
 	if len(database) > 0 {
