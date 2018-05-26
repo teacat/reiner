@@ -28,7 +28,7 @@ type Function struct {
 	values []interface{}
 }
 
-// condition 是一個像 `WHERE` 或 `HAVING` 的條件。
+// condition 是一個 `WHERE` 或 `HAVING` 的條件式。
 type condition struct {
 	args      []interface{}
 	connector string
@@ -40,7 +40,7 @@ type order struct {
 	args   []interface{}
 }
 
-// join 帶有資料表格的加入、插入資訊。
+// join 帶有資料表格的加入資訊。
 type join struct {
 	typ        string
 	table      interface{}
@@ -62,7 +62,7 @@ type Wrapper struct {
 	// executable 表示是否該執行建置後的指令，當沒有連線的時候這會是 `false`。
 	// 這表示僅用於建置 SQL 指令，而不是執行它。
 	executable bool
-	// alias is the alias for the table when joining the table as a sub query.
+	// alias 是作為子指令時所帶有的別名，這會用在子指令資料表格的加入上。
 	alias string
 	// destination 呈現了資料的映射目的地指針。
 	destination        interface{}
@@ -86,7 +86,7 @@ type Wrapper struct {
 	Timestamp *Timestamp
 	// Traces 是最後執行的 SQL 指令蹤跡資訊，適合用於效能除錯上。
 	Traces []Trace
-	//
+	// TotalCount 是結果的總計筆數。
 	TotalCount int
 	// PageLimit 限制了一頁僅能有幾筆資料。
 	PageLimit int
@@ -96,13 +96,13 @@ type Wrapper struct {
 	LastQuery string
 	// LastInsertID 是最後所插入的資料 ID 編號。
 	LastInsertID int
-	//
+	// LastParams 是最後執行時的參數資料。
 	LastParams []interface{}
-	//
+	// LastResult 是最後執行時的 `sql.Result` 資料。
 	LastResult sql.Result
 }
 
-// newWrapper 會基於傳入的資料庫連線來建立一個新的包覆 SQL 指令建置系統。
+// newWrapper 會基於傳入的資料庫連線來建立一個新的 SQL 指令建置系統。
 func newWrapper(db *DB) *Wrapper {
 	return &Wrapper{executable: true, db: db, Timestamp: &Timestamp{}, joins: make(map[string]*join)}
 }
@@ -146,7 +146,7 @@ func (w *Wrapper) cloning(deepCopy bool, database ...*DB) (clonedWrapper *Wrappe
 	return
 }
 
-// cleanAfter cleans the last executed result after the new query was executed.
+// cleanAfter 會在 SQL 指令建置之後清除資料來避免下次使用到舊的資料。
 func (w *Wrapper) cleanAfter() {
 	w.queryOptions = []string{}
 	w.tableName = []string{}
@@ -161,7 +161,8 @@ func (w *Wrapper) cleanAfter() {
 	w.destination = nil
 }
 
-// cleanBefore cleans the last executed result before the new query was executed.
+// cleanBefore 會在 SQL 指令建置之前清除以往的資料，
+// 留到建置前才清除的原因是避免需要歷史資料的時候卻在執行後直接被清除了。
 func (w *Wrapper) cleanBefore() {
 	w.TotalCount = 0
 	w.TotalPage = 0
@@ -175,7 +176,7 @@ func (w *Wrapper) cleanBefore() {
 // 保存函式
 //=======================================================
 
-// saveTrace 會取得呼叫函式的名稱，並且計算執行時間然後將其保存於蹤跡資訊中。
+// saveTrace 會取得、紀錄呼叫函式的名稱，並且計算執行時間然後將其保存於蹤跡資訊中。
 func (w *Wrapper) saveTrace(err error, query string, startedAt time.Time) {
 	if !w.tracing {
 		return
@@ -201,17 +202,17 @@ func (w *Wrapper) saveTrace(err error, query string, startedAt time.Time) {
 	})
 }
 
-// saveJoin 會保存資料表格的插入資訊。
+// saveJoin 會保存資料表格的加入資訊。
 func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
 	switch v := table.(type) {
-	// 子指令插入。
+	// 子指令加入。
 	case *Wrapper:
 		w.joins[v.query] = &join{
 			typ:       typ,
 			table:     table,
 			condition: condition,
 		}
-	// 普通的表格插入。
+	// 普通的表格加入。
 	case string:
 		w.joins[v] = &join{
 			typ:       typ,
@@ -221,7 +222,7 @@ func (w *Wrapper) saveJoin(table interface{}, typ string, condition string) {
 	}
 }
 
-// saveJoinCondition 會將資料表格的插入條件式資訊保存到指定的資料表格插入資訊中。
+// saveJoinCondition 會將資料表格的加入條件式資訊保存到指定的資料表格加入資訊中。
 func (w *Wrapper) saveJoinCondition(connector string, table interface{}, args ...interface{}) {
 	switch v := table.(type) {
 	// 子指令條件式。
@@ -255,7 +256,7 @@ func (w *Wrapper) saveCondition(typ, connector string, args ...interface{}) {
 // 參數函式
 //=======================================================
 
-// bindParams binds the values of the interface slice to the database, and generates the prepared statement.
+// bindParams 會將接收到的多個變數綁定到本次的建置工作中，並且產生、回傳相對應的 SQL 指令片段。
 func (w *Wrapper) bindParams(data interface{}) (query string) {
 	switch d := data.(type) {
 	case []interface{}:
@@ -275,7 +276,7 @@ func (w *Wrapper) bindParams(data interface{}) (query string) {
 	return
 }
 
-// bindParam binds the single value to the database and generates the prepared statement.
+// bindParam 會將單個傳入的變數綁定到本次的建置工作中，並且依照變數型態來產生並回傳相對應的 SQL 指令片段與決定是否要以括號包覆。
 func (w *Wrapper) bindParam(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
 	case *Wrapper:
@@ -296,7 +297,7 @@ func (w *Wrapper) bindParam(data interface{}, parentheses ...bool) (param string
 	return
 }
 
-// paramToQuery converts the value to the prepare statement.
+// paramToQuery 會將參數的變數資料型態轉換成 SQL 指令片段，並決定是否要加上括號。
 func (w *Wrapper) paramToQuery(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
 	case *Wrapper:
@@ -383,12 +384,12 @@ func (w *Wrapper) buildSelect(columns ...string) (query string) {
 // buildConditions 會將傳入的條件式轉換成指定的 `WHERE` 或 `HAVING` SQL 指令。
 func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 	for i, v := range conditions {
-		// Add the connector if it's not the first condition.
+		// 如果不是第一個條件式的話，那麼就增加連結語句。
 		if i != 0 {
 			query += fmt.Sprintf("%s ", v.connector)
 		}
 
-		// Get the type of the column name, it might be a query, or normal column name, or even a sub query.
+		// 取得欄位名稱的種類，有可能是個 SQL 指令或普通的欄位名稱、甚至是子指令。
 		var typ string
 		switch q := v.args[0].(type) {
 		case string:
@@ -401,7 +402,7 @@ func (w *Wrapper) buildConditions(conditions []condition) (query string) {
 			typ = "SubQuery"
 		}
 
-		// Build the condition based on the type.
+		// 基於種類來建置相對應的條件式。
 		switch len(v.args) {
 		// .Where("Column = Column")
 		case 1:
@@ -464,8 +465,8 @@ func (w *Wrapper) buildDelete(tableNames ...string) (query string) {
 	return
 }
 
-// buildQueryOptions builds the query options and
-// return the two type of the options which is in the start of the query, another is in the end of the query.
+// buildQueryOptions 依照以保存的語句選項來建置執行選項的 SQL 指令片段。
+// 這會回傳兩個 SQL 指令片段，分別是放在整體 SQL 指令的前面與後面。
 func (w *Wrapper) buildQueryOptions() (before string, after string) {
 	for _, v := range w.queryOptions {
 		switch v {
@@ -535,7 +536,7 @@ func (w *Wrapper) buildGroupBy() (query string) {
 	return
 }
 
-// buildDuplicate builds the `ON DUPLICATE KEY UPDATE` statement.
+// buildDuplicate 會建置 `ON DUPLICATE KEY UPDATE` 的 SQL 指令。
 func (w *Wrapper) buildDuplicate() (query string) {
 	if len(w.onDuplicateColumns) == 0 {
 		return
@@ -556,7 +557,7 @@ func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) 
 	var columns, values string
 	beforeOptions, _ := w.buildQueryOptions()
 
-	// Build the query based on the data type.
+	// 會基於資料型態建置不同的指令。
 	switch realData := data.(type) {
 	case map[string]interface{}:
 		for column, value := range realData {
@@ -567,10 +568,10 @@ func (w *Wrapper) buildInsert(operator string, data interface{}) (query string) 
 
 	case []map[string]interface{}:
 		var columnNames []string
-		// Get the column names first, so we can range the map in order.
+		// 先取得欄位的名稱，這樣才能照順序遍歷整個 `map`。
 		for name := range realData[0] {
 			columnNames = append(columnNames, name)
-			// Build the column name query.
+			// 先建置欄位名稱的 SQL 指令片段。
 			columns += fmt.Sprintf("%s, ", name)
 		}
 		for _, single := range realData {
@@ -626,62 +627,62 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 	w.LastQuery = w.query
 	w.LastParams = w.params
 
-	// Calculate the execution time.
+	// 如果有啟用追蹤模式的話，開始計算執行時間。
 	var start time.Time
 	if w.tracing {
 		start = time.Now()
 	}
 
-	// Execute the query if the wrapper is executable.
+	// 如果這個建置建構體是可執行的話，就執行 SQL 指令。
 	if w.executable {
 		var stmt *sql.Stmt
 		var count int
 		var tx *sql.Tx
 
-		// Using a transaction if there's `SQL_CALC_FOUND_ROWS` in the query option,
-		// because it requires the same connection.
+		// 如果指令選項中有 `SQL_CALC_FOUND_ROWS` 的話就開始一段交易，
+		// 因為這個指令僅能用於同個連線中。
 		for _, v := range w.queryOptions {
 			if v == "SQL_CALC_FOUND_ROWS" {
-				// Start the transaction.
+				// 開始一個交易。
 				tx, err = w.db.Begin()
 				if err != nil {
 					w.saveTrace(err, w.query, start)
 					w.cleanAfter()
 					return
 				}
-				// Prepare the query.
+				// 準備執行指令。
 				stmt, err = tx.Prepare(w.query)
 				if err != nil {
 					w.saveTrace(err, w.query, start)
 					w.cleanAfter()
 					return
 				}
-				// Execute the query.
+				// 傳入參數並且執行指令。
 				rows, err = stmt.Query(w.params...)
 				if err != nil {
 					w.saveTrace(err, w.query, start)
 					w.cleanAfter()
 					return
 				}
-				// Loads the results to the destination.
-				// This also closes the `rows` so it won't trigger the `busy buffer` error.
+				// 將取得到的結果映射置目的地指標。
+				// 這同時會關閉 `rows` 所以就不會觸發 `busy buffer` 錯誤。
 				count, err = load(rows, w.destination)
 				if err != nil {
 					w.saveTrace(err, w.query, start)
 					w.cleanAfter()
 					return
 				}
-				// Save the count.
+				// 保存結果行數。
 				w.count = count
 
-				// Select the `FOUND_ROWS` to get the total count.
+				// 選擇 `FOUND_ROWS` 來取得總計的行數。
 				rows, err = tx.Query("SELECT FOUND_ROWS()")
 				if err != nil {
 					w.saveTrace(err, w.query, start)
 					w.cleanAfter()
 					return
 				}
-				// Scan the result to get the total count.
+				// 掃描資料來取得總計的行數。
 				for rows.Next() {
 					var totalCount int
 					rows.Scan(&totalCount)
@@ -693,7 +694,7 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 					}
 					w.TotalCount = totalCount
 				}
-				// Close the whole statement.
+				// 關閉、結束整個指令環境。
 				err = stmt.Close()
 				if err != nil {
 					w.saveTrace(err, w.query, start)
@@ -706,8 +707,7 @@ func (w *Wrapper) runQuery() (rows *sql.Rows, err error) {
 			}
 		}
 
-		// If there're no `SQL_CALC_FOUND_ROWS` setted,
-		// we use the normal connection pool.
+		// 如果沒有設置 `SQL_CALC_FOUND_ROWS` 的話就使用正常的連線池。
 		stmt, err = w.db.Prepare(w.query)
 		if err != nil {
 			w.saveTrace(err, w.query, start)
@@ -746,13 +746,13 @@ func (w *Wrapper) executeQuery() (res sql.Result, err error) {
 	w.LastQuery = w.query
 	w.LastParams = w.params
 
-	// Calculate the execution time.
+	// 如果有啟用追蹤模式的話，開始計算執行時間。
 	var start time.Time
 	if w.tracing {
 		start = time.Now()
 	}
 
-	// Execute the query if the wrapper is executable.
+	// 如果這個建置建構體是可執行的話，就執行 SQL 指令。
 	if w.executable {
 		var stmt *sql.Stmt
 		var count int64
@@ -885,7 +885,8 @@ func (w *Wrapper) Delete() (err error) {
 // 更新函式
 //=======================================================
 
-// Replace builds and executes the replace query just like what `Insert` does.
+// Replace 基本上和 `Insert` 無異，這會在有重複資料時移除該筆資料並重新插入。
+// 若無該筆資料則插入新的資料。
 func (w *Wrapper) Replace(data interface{}) (err error) {
 	w.query = w.buildInsert("REPLACE", data)
 	_, err = w.executeQuery()
@@ -899,7 +900,7 @@ func (w *Wrapper) Update(data interface{}) (err error) {
 	return
 }
 
-// OnDuplicate stores the columns which would be updated when the inserted row has duplicated.
+// OnDuplicate 能夠指定欲更新的欄位名稱，這會在插入的資料重複時自動更新相對應的欄位。
 func (w *Wrapper) OnDuplicate(columns []string, lastInsertID ...string) *Wrapper {
 	w.onDuplicateColumns = columns
 	if len(lastInsertID) != 0 {
