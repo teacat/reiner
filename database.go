@@ -86,7 +86,6 @@ func (d *DB) getSlave() (db *sql.DB) {
 }
 
 // getDB 會基於 SQL 查詢指令來取得一個適用的資料庫連線，這會被用在讀／寫區分的資料庫上。
-// BUG(r): Reimplemented needed.
 func (d *DB) getDB(query ...string) (db *sql.DB) {
 	if len(query) == 0 || !d.hasSlave {
 		db = d.master.db
