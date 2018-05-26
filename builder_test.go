@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var rw *Wrapper
+var rw *Builder
 
 func TestRealRealMain(t *testing.T) {
 	var err error

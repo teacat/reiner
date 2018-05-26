@@ -9,14 +9,14 @@ package reiner
 //     .New("root:root@/master", root:root@/slave")
 //     .New("root:root@/master", []string{"root:root@/slave", "root:root@/slave2"})
 // 查看 https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-scaleout.html 了解更多資訊。
-func New(dataSourceNames ...interface{}) (*Wrapper, error) {
+func New(dataSourceNames ...interface{}) (*Builder, error) {
 	var slaves []string
 	var master string
 
 	switch len(dataSourceNames) {
 	// SQL 指令建置模式。
 	case 0:
-		return &Wrapper{executable: false, Timestamp: &Timestamp{}}, nil
+		return &Builder{executable: false, Timestamp: &Timestamp{}}, nil
 	// 單個主要資料庫連線。
 	case 1:
 		master = dataSourceNames[0].(string)
@@ -34,7 +34,7 @@ func New(dataSourceNames ...interface{}) (*Wrapper, error) {
 	}
 	d, err := newDatabase(master, slaves)
 	if err != nil {
-		return &Wrapper{}, err
+		return &Builder{}, err
 	}
-	return newWrapper(d), nil
+	return newBuilder(d), nil
 }
