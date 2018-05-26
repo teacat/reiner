@@ -341,7 +341,11 @@ func (b *Builder) buildWhere(typ string) (query string) {
 }
 
 // buildUpdate 會建置 `UPDATE` 的 SQL 指令。
-func (b *Builder) buildUpdate(data interface{}) (query string) {
+func (b *Builder) buildUpdate(data interface{}) (query string, err error) {
+	if len(b.tableName) == 0 {
+		err = ErrNoTable
+		return
+	}
 	var set string
 	beforeOptions, _ := b.buildQueryOptions()
 	query = fmt.Sprintf("UPDATE %s%s SET ", beforeOptions, b.tableName[0])
@@ -370,7 +374,11 @@ func (b *Builder) buildLimit() (query string) {
 }
 
 // buildSelect 會建置 `SELECT` 的 SQL 指令。
-func (b *Builder) buildSelect(columns ...string) (query string) {
+func (b *Builder) buildSelect(columns ...string) (query string, err error) {
+	if len(b.tableName) == 0 {
+		err = ErrNoTable
+		return
+	}
 	beforeOptions, _ := b.buildQueryOptions()
 
 	if len(columns) == 0 {
@@ -459,7 +467,11 @@ func (b *Builder) buildConditions(conditions []condition) (query string) {
 }
 
 // buildDelete 會建置 `DELETE` 的 SQL 指令。
-func (b *Builder) buildDelete(tableNames ...string) (query string) {
+func (b *Builder) buildDelete(tableNames ...string) (query string, err error) {
+	if len(b.tableName) == 0 {
+		err = ErrNoTable
+		return
+	}
 	beforeOptions, _ := b.buildQueryOptions()
 	query += fmt.Sprintf("DELETE %sFROM %s ", beforeOptions, strings.Join(tableNames, ", "))
 	return
@@ -553,7 +565,11 @@ func (b *Builder) buildDuplicate() (query string) {
 }
 
 // buildInsert 會建置 `INSERT INTO` 的 SQL 指令。
-func (b *Builder) buildInsert(operator string, data interface{}) (query string) {
+func (b *Builder) buildInsert(operator string, data interface{}) (query string, err error) {
+	if len(b.tableName) == 0 {
+		err = ErrNoTable
+		return
+	}
 	var columns, values string
 	beforeOptions, _ := b.buildQueryOptions()
 
@@ -804,7 +820,10 @@ func (b *Builder) Table(tableName ...string) *Builder {
 
 // Get 會取得多列的資料結果，傳入的參數為欲取得的欄位名稱，不傳入參數表示取得所有欄位。
 func (b *Builder) Get(columns ...string) (err error) {
-	b.query = b.buildSelect(columns...)
+	b.query, err = b.buildSelect(columns...)
+	if err != nil {
+		return
+	}
 	_, err = b.runQuery()
 	if err != nil {
 		return
@@ -816,7 +835,10 @@ func (b *Builder) Get(columns ...string) (err error) {
 // 簡單說，這就是 `.Limit(1).Get()` 的縮寫用法。
 func (b *Builder) GetOne(columns ...string) (err error) {
 	b.Limit(1)
-	b.query = b.buildSelect(columns...)
+	b.query, err = b.buildSelect(columns...)
+	if err != nil {
+		return
+	}
 	_, err = b.runQuery()
 	if err != nil {
 		return
@@ -845,7 +867,10 @@ func (b *Builder) WithTotalCount() *Builder {
 
 // Insert 會插入一筆新的資料。
 func (b *Builder) Insert(data interface{}) (err error) {
-	b.query = b.buildInsert("INSERT", data)
+	b.query, err = b.buildInsert("INSERT", data)
+	if err != nil {
+		return
+	}
 	res, err := b.executeQuery()
 	if err != nil || !b.executable {
 		return
@@ -860,7 +885,10 @@ func (b *Builder) Insert(data interface{}) (err error) {
 
 // InsertMulti 會一次插入多筆資料。
 func (b *Builder) InsertMulti(data interface{}) (err error) {
-	b.query = b.buildInsert("INSERT", data)
+	b.query, err = b.buildInsert("INSERT", data)
+	if err != nil {
+		return
+	}
 	res, err := b.executeQuery()
 	if err != nil || !b.executable {
 		return
@@ -876,7 +904,10 @@ func (b *Builder) InsertMulti(data interface{}) (err error) {
 // Delete 會移除相符的資料列，記得用上 `Where` 條件式來避免整個資料表格被清空。
 // 這很重要好嗎，因為⋯你懂的⋯。喔，不。
 func (b *Builder) Delete() (err error) {
-	b.query = b.buildDelete(b.tableName...)
+	b.query, err = b.buildDelete(b.tableName...)
+	if err != nil {
+		return
+	}
 	_, err = b.executeQuery()
 	return
 }
@@ -888,14 +919,21 @@ func (b *Builder) Delete() (err error) {
 // Replace 基本上和 `Insert` 無異，這會在有重複資料時移除該筆資料並重新插入。
 // 若無該筆資料則插入新的資料。
 func (b *Builder) Replace(data interface{}) (err error) {
-	b.query = b.buildInsert("REPLACE", data)
+	b.query, err = b.buildInsert("REPLACE", data)
+	if err != nil {
+		return
+	}
 	_, err = b.executeQuery()
 	return
 }
 
 // Update 會以指定的資料來更新相對應的資料列。
 func (b *Builder) Update(data interface{}) (err error) {
-	b.query = b.buildUpdate(data)
+	b.query, err = b.buildUpdate(data)
+	if len(b.tableName) == 0 {
+		err = ErrNoTable
+		return
+	}
 	_, err = b.executeQuery()
 	return
 }
