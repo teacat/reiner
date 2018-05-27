@@ -107,42 +107,10 @@ func newBuilder(db *DB) *Builder {
 	return &Builder{executable: true, db: db, Timestamp: &Timestamp{}, joins: make(map[string]*join)}
 }
 
-// cloning 會複製資料庫建置函式，並決定是否一同複製現有的條件與設定。
-func (b *Builder) cloning(deepCopy bool, database ...*DB) (clonedBuilder *Builder) {
-	db := b.db
-	if len(database) > 0 {
-		db = database[0]
-	}
-	if !deepCopy {
-		clonedBuilder = &Builder{
-			db:         db,
-			executable: true,
-			Timestamp:  &Timestamp{},
-			joins:      make(map[string]*join),
-		}
-	} else {
-		clonedBuilder = &Builder{
-			db:                 db,
-			executable:         true,
-			Timestamp:          &Timestamp{},
-			alias:              b.alias,
-			destination:        b.destination,
-			tableName:          b.tableName,
-			conditions:         b.conditions,
-			havingConditions:   b.havingConditions,
-			queryOptions:       b.queryOptions,
-			joins:              b.joins,
-			onDuplicateColumns: b.onDuplicateColumns,
-			lastInsertIDColumn: b.lastInsertIDColumn,
-			limit:              b.limit,
-			orders:             b.orders,
-			groupBy:            b.groupBy,
-			lockMethod:         b.lockMethod,
-			tracing:            b.tracing,
-			query:              b.query,
-			params:             b.params,
-		}
-	}
+// clone 會複製資料庫建置函式，並決定是否一同複製現有的條件與設定。
+func (b *Builder) clone() (cloned *Builder) {
+	a := *b
+	cloned = &a
 	return
 }
 
@@ -809,9 +777,10 @@ func (b *Builder) executeQuery() (res sql.Result, err error) {
 //=======================================================
 
 // Table 能夠指定資料表格的名稱。
-func (b *Builder) Table(tableName ...string) *Builder {
-	b.tableName = tableName
-	return b
+func (b *Builder) Table(tableName ...string) (builder *Builder) {
+	builder = b.clone()
+	builder.tableName = tableName
+	return
 }
 
 //=======================================================
@@ -819,45 +788,51 @@ func (b *Builder) Table(tableName ...string) *Builder {
 //=======================================================
 
 // Get 會取得多列的資料結果，傳入的參數為欲取得的欄位名稱，不傳入參數表示取得所有欄位。
-func (b *Builder) Get(columns ...string) (err error) {
-	b.query, err = b.buildSelect(columns...)
+func (b *Builder) Get(columns ...string) (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query, err = builder.buildSelect(columns...)
 	if err != nil {
 		return
 	}
-	_, err = b.runQuery()
+	_, err = builder.runQuery()
 	if err != nil {
 		return
 	}
+	return
+}
+
+// GetValue 會取得單個欄位的資料（例如：字串、正整數）。
+func (b *Builder) GetValue(column string) (builder *Builder, err error) {
+	builder, err = b.GetOne(column)
+	return
+}
+
+// GetValues 會取得將多筆單個欄位的資料映射到本地的字串、正整數切片、陣列。
+func (b *Builder) GetValues(column string) (builder *Builder, err error) {
+	builder, err = b.Get(column)
 	return
 }
 
 // GetOne 會取得僅單列的資料作為結果，傳入的參數為欲取得的欄位名稱，不傳入參數表示取得所有欄位。
 // 簡單說，這就是 `.Limit(1).Get()` 的縮寫用法。
-func (b *Builder) GetOne(columns ...string) (err error) {
-	b.Limit(1)
-	b.query, err = b.buildSelect(columns...)
-	if err != nil {
-		return
-	}
-	_, err = b.runQuery()
-	if err != nil {
-		return
-	}
+func (b *Builder) GetOne(columns ...string) (builder *Builder, err error) {
+	builder, err = b.clone().Limit(1).Get(columns...)
 	return
 }
 
 // Paginate 基本上和 `Get` 取得函式無異，但此函式能夠自動依照分頁數來推算該從哪裡繼續取得資料。
 // 使用時須先確定是否有指定 `PageLimit`（預設為：20），這樣才能限制一頁有多少筆資料。
-func (b *Builder) Paginate(pageCount int, columns ...string) (err error) {
-	err = b.WithTotalCount().Limit(b.PageLimit*(pageCount-1), b.PageLimit).Get(columns...)
-	b.TotalPage = b.TotalCount / b.PageLimit
+func (b *Builder) Paginate(pageCount int, columns ...string) (builder *Builder, err error) {
+	builder, err = b.WithTotalCount().Limit(b.PageLimit*(pageCount-1), b.PageLimit).Get(columns...)
+	builder.TotalPage = b.TotalCount / b.PageLimit
 	return
 }
 
 // WithTotalCount 會在 SQL 執行指令中安插 `SQL_CALC_FOUND_ROWS` 選項，
 // 如此一來就能夠在執行完 SQL 指令後取得查詢的總計行數。在不同情況下，這可能會拖低執行效能。
-func (b *Builder) WithTotalCount() *Builder {
-	b.SetQueryOption("SQL_CALC_FOUND_ROWS")
+func (b *Builder) WithTotalCount() (builder *Builder) {
+	builder = b.clone()
+	builder.SetQueryOption("SQL_CALC_FOUND_ROWS")
 	return b
 }
 
@@ -866,49 +841,52 @@ func (b *Builder) WithTotalCount() *Builder {
 //=======================================================
 
 // Insert 會插入一筆新的資料。
-func (b *Builder) Insert(data interface{}) (err error) {
-	b.query, err = b.buildInsert("INSERT", data)
+func (b *Builder) Insert(data interface{}) (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query, err = builder.buildInsert("INSERT", data)
 	if err != nil {
 		return
 	}
-	res, err := b.executeQuery()
-	if err != nil || !b.executable {
+	res, err := builder.executeQuery()
+	if err != nil || !builder.executable {
 		return
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
 		return
 	}
-	b.LastInsertID = int(id)
+	builder.LastInsertID = int(id)
 	return
 }
 
 // InsertMulti 會一次插入多筆資料。
-func (b *Builder) InsertMulti(data interface{}) (err error) {
-	b.query, err = b.buildInsert("INSERT", data)
+func (b *Builder) InsertMulti(data interface{}) (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query, err = builder.buildInsert("INSERT", data)
 	if err != nil {
 		return
 	}
-	res, err := b.executeQuery()
-	if err != nil || !b.executable {
+	res, err := builder.executeQuery()
+	if err != nil || !builder.executable {
 		return
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
 		return
 	}
-	b.LastInsertID = int(id)
+	builder.LastInsertID = int(id)
 	return
 }
 
 // Delete 會移除相符的資料列，記得用上 `Where` 條件式來避免整個資料表格被清空。
 // 這很重要好嗎，因為⋯你懂的⋯。喔，不。
-func (b *Builder) Delete() (err error) {
-	b.query, err = b.buildDelete(b.tableName...)
+func (b *Builder) Delete() (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query, err = builder.buildDelete(b.tableName...)
 	if err != nil {
 		return
 	}
-	_, err = b.executeQuery()
+	_, err = builder.executeQuery()
 	return
 }
 
@@ -918,33 +896,32 @@ func (b *Builder) Delete() (err error) {
 
 // Replace 基本上和 `Insert` 無異，這會在有重複資料時移除該筆資料並重新插入。
 // 若無該筆資料則插入新的資料。
-func (b *Builder) Replace(data interface{}) (err error) {
-	b.query, err = b.buildInsert("REPLACE", data)
+func (b *Builder) Replace(data interface{}) (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query, err = builder.buildInsert("REPLACE", data)
 	if err != nil {
 		return
 	}
-	_, err = b.executeQuery()
+	_, err = builder.executeQuery()
 	return
 }
 
 // Update 會以指定的資料來更新相對應的資料列。
-func (b *Builder) Update(data interface{}) (err error) {
-	b.query, err = b.buildUpdate(data)
-	if len(b.tableName) == 0 {
-		err = ErrNoTable
-		return
-	}
-	_, err = b.executeQuery()
+func (b *Builder) Update(data interface{}) (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query, err = builder.buildUpdate(data)
+	_, err = builder.executeQuery()
 	return
 }
 
 // OnDuplicate 能夠指定欲更新的欄位名稱，這會在插入的資料重複時自動更新相對應的欄位。
-func (b *Builder) OnDuplicate(columns []string, lastInsertID ...string) *Builder {
-	b.onDuplicateColumns = columns
+func (b *Builder) OnDuplicate(columns []string, lastInsertID ...string) (builder *Builder) {
+	builder = b.clone()
+	builder.onDuplicateColumns = columns
 	if len(lastInsertID) != 0 {
-		b.lastInsertIDColumn = lastInsertID[0]
+		builder.lastInsertIDColumn = lastInsertID[0]
 	}
-	return b
+	return
 }
 
 //=======================================================
@@ -952,40 +929,64 @@ func (b *Builder) OnDuplicate(columns []string, lastInsertID ...string) *Builder
 //=======================================================
 
 // Limit 能夠在 SQL 查詢指令中建立限制筆數的條件。
-func (b *Builder) Limit(from int, count ...int) *Builder {
+func (b *Builder) Limit(from int, count ...int) (builder *Builder) {
+	builder = b.clone()
 	if len(count) == 0 {
-		b.limit = []int{from}
+		builder.limit = []int{from}
 	} else {
-		b.limit = []int{from, count[0]}
+		builder.limit = []int{from, count[0]}
 	}
-	return b
+	return
 }
 
 // OrderBy 會依照指定的欄位來替結果做出排序（例如：`DESC`、`ASC`）。
-func (b *Builder) OrderBy(column string, args ...interface{}) *Builder {
-	b.orders = append(b.orders, order{
+func (b *Builder) OrderBy(column string, args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.orders = append(builder.orders, order{
 		column: column,
 		args:   args,
 	})
-	return b
+	return
 }
 
 // GroupBy 會在執行 SQL 指令時依照特定的欄位來做執行區分。
-func (b *Builder) GroupBy(columns ...string) *Builder {
-	b.groupBy = columns
-	return b
+func (b *Builder) GroupBy(columns ...string) (builder *Builder) {
+	builder = b.clone()
+	builder.groupBy = columns
+	return
 }
 
 //=======================================================
 // 指令函式
 //=======================================================
 
-// RawQuery 會接收傳入的變數來執行傳入的 SQL 執行語句，
-// 變數可以在語句中以 `?`（Prepared Statements）使用來避免 SQL 注入攻擊。
-func (b *Builder) RawQuery(query string, values ...interface{}) (err error) {
-	b.query = query
-	b.params = values
-	_, err = b.runQuery()
+// RawQuery 會接收傳入的變數來執行傳入的 SQL 執行語句，變數可以在語句中以 `?`（Prepared Statements）使用來避免 SQL 注入攻擊。
+// 這會將多筆資料映射到本地的建構體切片、陣列上。
+func (b *Builder) RawQuery(query string, values ...interface{}) (builder *Builder, err error) {
+	builder = b.clone()
+	builder.query = query
+	builder.params = values
+	_, err = builder.runQuery()
+	return
+}
+
+// RawQueryValue 與 RawQuery 使用方法相同，但這會在 SQL 指令後追加 `LIMIT 1` 並將單個欄位的資料映射到本地的變數（字串、正整數），
+// 這很適合用於像是你想要取得單個使用者暱稱的時候。
+func (b *Builder) RawQueryValue(query string, values ...interface{}) (builder *Builder, err error) {
+	builder, err = b.RawQuery(fmt.Sprintf("%s LIMIT 1", strings.TrimSpace(query)), values...)
+	return
+}
+
+// RawQueryValues 與 RawQuery 使用方法相同，但這會將多筆單個欄位的資料映射到本地的字串、正整數切片、陣列。
+// 這很適合用於像是你想要取得多個使用者暱稱陣列的時候。
+func (b *Builder) RawQueryValues(query string, values ...interface{}) (builder *Builder, err error) {
+	builder, err = b.RawQuery(query, values...)
+	return
+}
+
+// RawQueryOne 與 RawQuery 使用方法相同，但這會在 SQL 指令後追加 `LIMIT 1` 且僅會將單筆資料映射到本地的建構體、`map`。
+func (b *Builder) RawQueryOne(query string, values ...interface{}) (builder *Builder, err error) {
+	builder, err = b.RawQuery(fmt.Sprintf("%s LIMIT 1", strings.TrimSpace(query)), values...)
 	return
 }
 
@@ -994,27 +995,31 @@ func (b *Builder) RawQuery(query string, values ...interface{}) (err error) {
 //=======================================================
 
 // Where 會增加一個 `WHERE AND` 條件式。
-func (b *Builder) Where(args ...interface{}) *Builder {
-	b.saveCondition("WHERE", "AND", args...)
-	return b
+func (b *Builder) Where(args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.saveCondition("WHERE", "AND", args...)
+	return
 }
 
 // OrWhere 會增加一個 `WHERE OR` 條件式。
-func (b *Builder) OrWhere(args ...interface{}) *Builder {
-	b.saveCondition("WHERE", "OR", args...)
-	return b
+func (b *Builder) OrWhere(args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.saveCondition("WHERE", "OR", args...)
+	return
 }
 
 // Having 會增加一個 `HAVING AND` 條件式。
-func (b *Builder) Having(args ...interface{}) *Builder {
-	b.saveCondition("HAVING", "AND", args...)
-	return b
+func (b *Builder) Having(args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.saveCondition("HAVING", "AND", args...)
+	return
 }
 
 // OrHaving 會增加一個 `HAVING OR` 條件式。
-func (b *Builder) OrHaving(args ...interface{}) *Builder {
-	b.saveCondition("HAVING", "OR", args...)
-	return b
+func (b *Builder) OrHaving(args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.saveCondition("HAVING", "OR", args...)
+	return
 }
 
 //=======================================================
@@ -1022,61 +1027,68 @@ func (b *Builder) OrHaving(args ...interface{}) *Builder {
 //=======================================================
 
 // LeftJoin 會向左插入一個資料表格。
-func (b *Builder) LeftJoin(table interface{}, condition string) *Builder {
-	b.saveJoin(table, "LEFT JOIN", condition)
-	return b
+func (b *Builder) LeftJoin(table interface{}, condition string) (builder *Builder) {
+	builder = b.clone()
+	builder.saveJoin(table, "LEFT JOIN", condition)
+	return
 }
 
 // RightJoin 會向右插入一個資料表格。
-func (b *Builder) RightJoin(table interface{}, condition string) *Builder {
-	b.saveJoin(table, "RIGHT JOIN", condition)
-	return b
+func (b *Builder) RightJoin(table interface{}, condition string) (builder *Builder) {
+	builder = b.clone()
+	builder.saveJoin(table, "RIGHT JOIN", condition)
+	return
 }
 
 // InnerJoin 會內部插入一個資料表格。
-func (b *Builder) InnerJoin(table interface{}, condition string) *Builder {
-	b.saveJoin(table, "INNER JOIN", condition)
-	return b
+func (b *Builder) InnerJoin(table interface{}, condition string) (builder *Builder) {
+	builder = b.clone()
+	builder.saveJoin(table, "INNER JOIN", condition)
+	return
 }
 
 // NaturalJoin 會自然插入一個資料表格。
-func (b *Builder) NaturalJoin(table interface{}, condition string) *Builder {
-	b.saveJoin(table, "NATURAL JOIN", condition)
-	return b
+func (b *Builder) NaturalJoin(table interface{}, condition string) (builder *Builder) {
+	builder = b.clone()
+	builder.saveJoin(table, "NATURAL JOIN", condition)
+	return
 }
 
 // JoinWhere 能夠建立一個基於 `WHERE AND` 的條件式給某個指定的插入資料表格。
-func (b *Builder) JoinWhere(table interface{}, args ...interface{}) *Builder {
-	b.saveJoinCondition("AND", table, args...)
-	return b
+func (b *Builder) JoinWhere(table interface{}, args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.saveJoinCondition("AND", table, args...)
+	return
 }
 
 // JoinOrWhere 能夠建立一個基於 `WHERE OR` 的條件式給某個指定的插入資料表格。
-func (b *Builder) JoinOrWhere(table interface{}, args ...interface{}) *Builder {
-	b.saveJoinCondition("OR", table, args...)
-	return b
+func (b *Builder) JoinOrWhere(table interface{}, args ...interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.saveJoinCondition("OR", table, args...)
+	return
 }
 
 // SubQuery 能夠將目前的 SQL 指令轉換為子指令（Sub Query）來防止建置後直接被執行，這讓你可以將子指令傳入其他的條件式（例如：`WHERE`），
 // 若欲將子指令傳入插入（Join）條件中，必須在參數指定此子指令的別名。
-func (b *Builder) SubQuery(alias ...string) *Builder {
-	newBuilder := &Builder{
+func (b *Builder) SubQuery(alias ...string) (newBuilder *Builder) {
+	newBuilder = &Builder{
 		executable: false,
 	}
 	if len(alias) > 0 {
 		newBuilder.alias = alias[0]
 	}
-	return newBuilder
+	return
 }
 
 // Has 會在有查詢結果時回傳 `true`，這很適合用於一些資料驗證的時機（例如：使用者名稱是否已存在⋯等）。
 func (b *Builder) Has() (has bool, err error) {
-	err = b.Limit(1).Get()
+	var builder *Builder
+	builder, err = b.Limit(1).Get()
 	if err != nil {
 		has = false
 		return
 	}
-	if b.Count() > 0 {
+	if builder.Count() > 0 {
 		has = true
 		return
 	}
@@ -1110,16 +1122,17 @@ func (b *Builder) Connect() (err error) {
 //=======================================================
 
 // Begin 會開始一個新的交易。
-func (b *Builder) Begin() (*Builder, error) {
-	anotherDB := *b.db
-	tx, err := anotherDB.Begin()
+func (b *Builder) Begin() (builder *Builder, err error) {
+	builder = b.clone()
+	var tx *sql.Tx
+	tx, err = builder.db.Begin()
 	if err != nil {
-		return b, err
+		return
 	}
-	anotherMaster := *b.db.master
-	anotherDB.master = &anotherMaster
-	anotherDB.master.tx = tx
-	return b.cloning(false, &anotherDB), nil
+	master := *builder.db.master
+	builder.db.master = &master
+	builder.db.master.tx = tx
+	return
 }
 
 // Rollback 能夠回溯到交易剛開始的時候，並且在不保存資料變動的情況下結束交易。
@@ -1175,60 +1188,54 @@ func (b *Builder) Now(formats ...string) Function {
 }
 
 // SetLockMethod 會設置鎖定資料表格的方式（例如：`WRITE`、`READ`）。
-func (b *Builder) SetLockMethod(method string) *Builder {
-	b.lockMethod = strings.ToUpper(method)
-	return b
+func (b *Builder) SetLockMethod(method string) (builder *Builder) {
+	builder = b.clone()
+	builder.lockMethod = strings.ToUpper(method)
+	return
 }
 
 // Lock 會以指定的上鎖方式來鎖定某個指定的資料表格，這能用以避免資料競爭問題。
-func (b *Builder) Lock(tableNames ...string) (err error) {
+func (b *Builder) Lock(tableNames ...string) (builder *Builder, err error) {
 	var tables string
 	for _, v := range tableNames {
 		tables += fmt.Sprintf("%s %s, ", v, b.lockMethod)
 	}
 	tables = trim(tables)
 
-	err = b.RawQuery(fmt.Sprintf("LOCK TABLES %s", tables))
+	builder, err = b.RawQuery(fmt.Sprintf("LOCK TABLES %s", tables))
 	return
 }
 
 // Unlock 能解鎖已鎖上的資料表格。
-func (b *Builder) Unlock(tableNames ...string) (err error) {
-	err = b.RawQuery("UNLOCK TABLES")
+func (b *Builder) Unlock(tableNames ...string) (builder *Builder, err error) {
+	builder, err = b.RawQuery("UNLOCK TABLES")
 	return
 }
 
 // SetQueryOption 會設置 SQL 指令的額外選項（例如：`SQL_NO_CACHE`）。
-func (b *Builder) SetQueryOption(options ...string) *Builder {
-	b.queryOptions = append(b.queryOptions, options...)
-	return b
+func (b *Builder) SetQueryOption(options ...string) (builder *Builder) {
+	builder = b.clone()
+	builder.queryOptions = append(builder.queryOptions, options...)
+	return
 }
 
 // SetTrace 會決定蹤跡模式的開關，當設置為 `true` 時會稍微地拖慢效能，
 // 但你就能夠從 `Trace` 屬性中取得 SQL 執行後的堆疊與路徑結果。
-func (b *Builder) SetTrace(status bool) *Builder {
-	b.tracing = status
-	return b
+func (b *Builder) SetTrace(status bool) (builder *Builder) {
+	builder = b.clone()
+	builder.tracing = status
+	return
 }
 
 //=======================================================
 // 物件函式
 //=======================================================
 
-// Clone 會複製一個的 SQL 指令建置建構體，但不包括已設置的資料與指令。
-func (b *Builder) Clone() *Builder {
-	return b.cloning(false)
-}
-
-// Copy 會複製目前的 SQL 指令建置建構體與已設置的資料與指令。
-func (b *Builder) Copy() *Builder {
-	return b.cloning(true)
-}
-
 // Bind 會設置資料的映射目的地，這樣就能在 SQL 指令執行後將資料映射到某個變數、記憶體指標。
-func (b *Builder) Bind(destination interface{}) *Builder {
-	b.destination = destination
-	return b
+func (b *Builder) Bind(destination interface{}) (builder *Builder) {
+	builder = b.clone()
+	builder.destination = destination
+	return
 }
 
 // Query 會回傳最後一次所建置的 SQL 執行指令，這和 `LastQuery` 相同功能但這函式的名稱可能更符合某些場合。

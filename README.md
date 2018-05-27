@@ -7,6 +7,7 @@
 萊納是一個由 [Golang](https://golang.org/) 撰寫的 [MySQL](https://www.mysql.com/) 的指令建置函式庫（不是 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84)，永遠也不會是），幾乎所有東西都能操控於你手中。類似自己撰寫資料庫指令但是更簡單，JOIN 表格也變得比以前更方便了。
 
 * 幾乎全功能的函式庫。
+* 自動避免於 Goroutine 發生資料競爭的設計。
 * 支援 MySQL 複寫橫向擴展機制（區分讀／寫連線）。
 * 容易理解與記住、且使用方式十分簡單。
 * SQL 指令建構函式。
@@ -23,18 +24,37 @@
 
 # 執行緒與併發安全性？
 
-我們都知道 [Golang](https://golang.org/) 的目標就是併發程式，當共用同個資料庫的時候請透過 `Copy()` 函式複製一份新的建置函式庫，這能避免函式遭受干擾或覆寫。此方式並不會使資料庫連線遞增而造成效能問題，因此你可以有好幾個併發程式且有好幾個建置函式庫的複製體都不會出現效能問題。
+我們都知道 [Golang](https://golang.org/) 的目標就是併發程式，為了避免 Goroutine 導致資料競爭問題，Reiner 會在每有變更的時候自動複製 SQL 指令建置函式庫來避免所有併發程式共用同個 SQL 指令建置函式庫（此方式並不會使資料庫連線遞增而造成效能問題）。
+
+在原先的舊版本中則需要手動透過 `Copy` 或 `Clone` 複製建置函式庫，這繁雜的手續正是重新設計的原因。但也因為如此，現在 SQL 指令建置函式若需要分散串接則需要重新地不斷賦值，簡單來說就是像這樣。
 
 ```go
 package main
 
 func main() {
 	db, _ := reiner.New("...")
-	// 透過 Copy() 建立新的 Reiner 複製體，
-	// 這能避免兩個 Goroutine 編輯相同的 Reiner 進而確保執行緒（或 Goroutine）安全性。
-	go doSomething(db.Copy())
-	// Clone() 也是相同用法，但是先前的條件、資料表格名稱會重設。
-	go doSomething(db.Clone())
+
+	// 在舊有的版本中原本能夠這樣直覺地分散串接一段 SQL 指令。
+	// 注意！這是舊版本的做法，目前已經被廢除。
+	db.Table("Users")
+	if ... {
+		db.Where("Username", "YamiOdymel")
+	}
+	if ... {
+		db.Limit(1, 10)
+	}
+	db.Get()
+
+	// 新的版本中因為 Reiner 會不斷地回傳一個新的建置資料函式，
+	// 因此必須不斷地重新賦值。
+	myDB := db.Table("Users")
+	if ... {
+		myDB = myDB.Where("Username", "YamiOdymel")
+	}
+	if ... {
+		myDB = myDB.Limit(1, 10)
+	}
+	myDB, _ = myDB.Get()
 }
 ```
 
@@ -81,18 +101,17 @@ BenchmarkXormSelect100-4            2000            868688 ns/op          103358
 		* [當重複時](#當重複時)
 		* [多筆資料](#多筆資料)
 			* [省略重複鍵名](#省略重複鍵名)
+	* [筆數限制](#筆數限制)
 	* [更新](#更新)
-		* [筆數限制](#筆數限制)
 	* [選擇與取得](#選擇與取得)
 		* [筆數限制](#筆數限制-1)
 		* [指定欄位](#指定欄位)
 		* [單行資料](#單行資料)
-		* [取得單值](#取得單值)
+		* [單欄位值](#單欄位值)
 		* [分頁功能](#分頁功能)
 	* [執行生指令](#執行生指令)
 		* [單行資料](#單行資料-1)
-		* [取得單值](#取得單值-1)
-		* [單值多行](#單值多行)
+		* [單欄位值](#單欄位值-1)
 		* [進階方式](#進階方式)
 	* [條件宣告](#條件宣告)
 		* [擁有](#擁有)
@@ -122,7 +141,6 @@ BenchmarkXormSelect100-4            2000            868688 ns/op          103358
 	* [是否擁有該筆資料](#是否擁有該筆資料)
 	* [輔助函式](#輔助函式)
 		* [資料庫連線](#資料庫連線)
-		* [複製](#複製)
 		* [最後執行的 SQL 指令](#最後執行的-sql-指令)
 		* [結果／影響的行數](#結果影響的行數)
 		* [最後插入的編號](#最後插入的編號)
@@ -207,7 +225,7 @@ if err != nil {
 
 ```go
 db, _ := reiner.New()
-db.Table("Users").Where("Username", "YamiOdymel").Get()
+db, _ = db.Table("Users").Where("Username", "YamiOdymel").Get()
 
 // 透過 `Query` 取得 Reiner 所建立的 Query 當作欲執行的資料庫指令。
 sql.Prepare(db.Query())
@@ -218,11 +236,11 @@ sql.Exec(db.Params()...)
 
 ## 資料綁定與處理
 
-Reiner 允許你將結果與結構體切片或結構體綁定在一起。
+Reiner 允許你將查詢結果映射到結構體切片或結構體。
 
 ```go
 var user []*User
-err := db.Bind(&user).Table("Users").Get()
+db.Bind(&user).Table("Users").Get()
 ```
 
 ## 插入
@@ -230,7 +248,7 @@ err := db.Bind(&user).Table("Users").Get()
 透過 Reiner 你可以很輕鬆地透過建構體或是 map 來插入一筆資料。這是最傳統的插入方式，若該表格有自動遞增的編號欄位，插入後你就能透過 `LastInsertID` 獲得最後一次插入的編號。
 
 ```go
-err := db.Table("Users").Insert(map[string]interface{}{
+db.Table("Users").Insert(map[string]interface{}{
 	"Username": "YamiOdymel",
 	"Password": "test",
 })
@@ -242,7 +260,7 @@ err := db.Table("Users").Insert(map[string]interface{}{
 覆蓋的用法與插入相同，當有同筆資料時會先進行刪除，然後再插入一筆新的，這對有外鍵的表格來說十分危險。
 
 ```go
-err := db.Table("Users").Replace(map[string]interface{}{
+db.Table("Users").Replace(map[string]interface{}{
 	"Username": "YamiOdymel",
 	"Password": "test",
 })
@@ -254,7 +272,7 @@ err := db.Table("Users").Replace(map[string]interface{}{
 插入時你可以透過 Reiner 提供的函式來執行像是 `SHA1()` 或者取得目前時間的 `NOW()`，甚至將目前時間加上一年⋯等。
 
 ```go
-err := db.Table("Users").Insert(map[string]interface{}{
+db.Table("Users").Insert(map[string]interface{}{
 	"Username":  "YamiOdymel",
 	"Password":  db.Func("SHA1(?)", "secretpassword+salt"),
 	"Expires":   db.Now("+1Y"),
@@ -265,11 +283,11 @@ err := db.Table("Users").Insert(map[string]interface{}{
 
 ### 當重複時
 
-Reiner 支援了插入資料若重複時可以更新該筆資料的指定欄位，這類似「覆蓋」，但這並不會先刪除原先的資料，這種方式僅會在插入時檢查是否重複，若重複則更新該筆資料。
+Reiner 支援了插入資料若重複時可以更新該筆資料的指定欄位>這類似「覆蓋」，但這並不會先刪除原先的資料，這種方式僅會在插入時檢查是否重複，若重複則更新該筆資料。
 
 ```go
 lastInsertID := "ID"
-err := db.Table("Users").OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert(map[string]interface{}{
+db.Table("Users").OnDuplicate([]string{"UpdatedAt"}, lastInsertID).Insert(map[string]interface{}{
 	"Username":  "YamiOdymel",
 	"Password":  "test",
 	"UpdatedAt": db.Now(),
@@ -295,6 +313,15 @@ db.Table("Users").InsertMulti(data)
 // 等效於：INSERT INTO Users (Username, Password) VALUES (?, ?), (?, ?)
 ```
 
+## 筆數限制
+
+`Limit` 能夠限制 SQL 執行的筆數，如果是 10，那就表示只處理最前面 10 筆資料而非全部（例如：選擇、更新、移除）。
+
+```go
+db.Table("Users").Limit(10).Update(data)
+// 等效於：UPDATE Users SET ... LIMIT 10
+```
+
 ## 更新
 
 更新一筆資料在 Reiner 中極為簡單，你只需要指定表格名稱還有資料即可。
@@ -307,38 +334,13 @@ db.Table("Users").Where("Username", "YamiOdymel").Update(map[string]interface{}{
 // 等效於：UPDATE Users SET Username = ?, Password = ? WHERE Username = ?
 ```
 
-### 筆數限制
-
-`Limit` 能夠限制更新的筆數，如果是 10，那就表示只更新最前面 10 筆資料而非全部。
-
-```go
-db.Table("Users").Limit(10).Update(data)
-// 等效於：UPDATE Users SET ... LIMIT 10
-```
-
 ## 選擇與取得
 
 最基本的選擇在 Reiner 中稱之為 `Get` 而不是 `Select`。
 
 ```go
-err := db.Table("Users").Get()
+db.Table("Users").Get()
 // 等效於：SELECT * FROM Users
-```
-
-### 筆數限制
-
-`Limit` 能夠限制取得的筆數，如果是 10，那就表示只取得最前面 10 筆資料而非全部。
-
-```go
-db.Table("Users").Limit(10).Get()
-// 等效於：SELECT * FROM Users LIMIT 10
-```
-
-你亦能透過 `GetOne` 直接套用 `Limit(1)`。
-
-```go
-db.Table("Users").GetOne()
-// 等效於：SELECT * FROM Users LIMIT 1
 ```
 
 ### 指定欄位
@@ -355,37 +357,42 @@ db.Table("Users").Get("COUNT(*) AS Count")
 
 ### 單行資料
 
-`Get` 是 Reiner 中唯一取得資料的方式，除了將結果映射到一個切片或是陣列，還能夠映射到建構體、字串。當透過 `map[string]interface{}` 當作映射對象的時候，請注意資料庫並不會自動辨別 `int`、`string` 等資料型態，反倒有可能會是 `int64`、`[]uint8{[]byte}`，因此使用 `map` 時請多加注意在型態轉換上的部分。
+通常多筆結果會映射到一個切片或是陣列，而 `GetOne` 可以取得單筆資料並將其結果映射到單個建構體或 `map`，令使用上更加方便。
+
+當透過 `map[string]interface{}` 當作映射對象的時候，請注意資料庫並不會自動辨別 `int`、`string` 等資料型態，反倒有可能會是 `int64`、`[]uint8{[]byte}`，因此使用 `map` 時請多加注意在型態轉換上的部分。
 
 ```go
 var u User
-db.Bind(&u).Table("Users").Where("ID", 1).Get()
-// 等效於：SELECT * FROM Users WHERE ID = ?
+db.Bind(&u).Table("Users").Where("ID", 1).GetOne()
+// 等效於：SELECT * FROM Users WHERE ID = ? LIMIT 1
 
 var d map[string]interface{}
-db.Bind(&d).Table("Users").Get("SUM(ID) AS Sum", "COUNT(*) AS Count")
-// 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM Users
+db.Bind(&d).Table("Users").GetOne("SUM(ID) AS Sum", "COUNT(*) AS Count")
+// 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM Users LIMIT 1
 
 fmt.Println(d["Sum"])
 fmt.Println(d["Count"])
 ```
 
-### 取得單值
+### 單欄位值
 
-`Get` 也能取得的是單個欄位的內容，例如說你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
+透過 `GetValue` 和 `GetValues` 來取得單個欄位的內容。例如說：你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
-// 取得多個 `Username` 資料。
+// 取得多筆資料的 `Username` 欄位資料。
 var us []string
-db.Bind(&u).Table("Users").Get("Username")
+db.Bind(&u).Table("Users").GetValues("Username")
+// 等效於：SELECT Username FROM Users
 
-// 也能搭配 Limit 取得單筆資料。
+// 取得單筆資料的某個欄位值。
 var u string
-db.Bind(&u).Table("Users").Limit(1).Get("Username")
+db.Bind(&u).Table("Users").GetValue("Username")
+// 等效於：SELECT Username FROM Users LIMIT 1
 
 // 或者是函式。
 var i int
-db.Bind(&i).Table("Users").Get("COUNT(*)")
+db.Bind(&i).Table("Users").GetValue("COUNT(*)")
+// 等效於：SELECT COUNT(*) FROM Users LIMIT 1
 ```
 
 ### 分頁功能
@@ -397,7 +404,7 @@ db.Bind(&i).Table("Users").Get("COUNT(*)")
 page := 1
 // 設置一頁最多能有幾筆資料。
 db.PageLimit = 10
-db.Table("Users").Paginate(page)
+db = db.Table("Users").Paginate(page)
 // 等效於：SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 10
 
 fmt.Println("目前頁數為 %d，共有 %d 頁", page, db.TotalPages)
@@ -410,34 +417,45 @@ Reiner 已經提供了近乎日常中 80% 會用到的方式，但如果好死�
 其中亦能帶有預置聲明（Prepared Statement），也就是指令中的問號符號替代了原本的值。這能避免你的 SQL 指令遭受注入攻擊。
 
 ```go
-db.RawQuery("SELECT * FROM Users WHERE ID >= ?", 10)
+var us []User
+db.Bind(&us).RawQuery("SELECT * FROM Users WHERE ID >= ?", 10)
 ```
 
 ### 單行資料
 
-僅選擇單筆資料的生指令函式，這意味著你能夠將取得的資料直接映射到一個建構體上。
+`RawQueryOne` 是個僅選擇單筆資料的生指令函式，這意味著你能夠將取得的資料映射到建構體或是 `map` 上。
 
 ```go
 var u User
-db.Bind(&u).RawQuery("SELECT * FROM Users WHERE ID = ? LIMIT 1", 10)
+db.Bind(&u).RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
+// 等效於：SELECT * FROM Users WHERE ID = ? LIMIT 1
+
+var d map[string]interface{}
+db.Bind(&d).RawQueryOne("SELECT SUM(ID), COUNT(*) AS Count FROM Users")
+// 等效於：SELECT SUM(ID), COUNT(*) AS Count FROM Users LIMIT 1
+
+fmt.Println(d["Sum"])
+fmt.Println(d["Count"])
 ```
 
-### 取得單值
+### 單欄位值
 
-透過 `RawQuery` 就像 `Get` ㄧ樣萬用，你能直接取得單個欄位得值，而不是一個陣列或切片。
-
-```go
-var pwd string
-db.Bind(&pwd).RawQuery("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
-```
-
-### 單值多行
-
-`RawQuery` 除了能夠取得單一欄位的值，還可以取得一個值陣列。
+透過 `RawQueryValue` 與 `RawQueryValues` 可以取得單個欄位的內容。例如說：你想要單個使用者的暱稱，甚至是多個使用者的暱稱陣列就很適用。
 
 ```go
+// 取得多筆資料的 `Username` 欄位資料。
 var us []string
-db.Bind(&us).RawQuery("SELECT Username FROM Users LIMIT 10")
+db.Bind(&us).RawQueryValues("SELECT Username FROM Users")
+
+// 取得單筆資料的某個欄位值。
+var pwd string
+db.Bind(&pwd).RawQueryValue("SELECT Password FROM Users WHERE ID = ?", 10)
+// 等效於：SELECT Password FROM Users WHERE ID = ? LIMIT 1
+
+// 或者是函式。
+var i int
+db.Bind(&i).RawQueryValue("SELECT COUNT(*) FROM Users")
+// 等效於：SELECT COUNT(*) FROM Users LIMIT 1
 ```
 
 ### 進階方式
@@ -449,13 +467,11 @@ db.RawQuery("SELECT ID, FirstName, LastName FROM Users WHERE ID = ? AND Username
 
 params := []int{10, 1, 10, 11, 2, 10}
 query := (`
-    SELECT A FROM TestTable
-        WHERE A = ? AND B = ?
-        ORDER BY A LIMIT ?
-) UNION (
-    SELECT A FROM TestTable2
-        WHERE A = ? AND B = ?
-        ORDER BY A LIMIT ?
+	(SELECT A FROM t1 WHERE A = ? AND B = ?)
+	UNION ALL
+	(SELECT A FROM t2 WHERE A = ? AND B = ?)
+	UNION ALL
+	(SELECT A FROM t3 WHERE A = ? AND B = ?)
 `)
 db.RawQuery(query, params...)
 ```
@@ -623,7 +639,8 @@ db.Table("Users").Where("(ID = ? OR ID = ?)", 6, 2).Where("Login", "Mike").Get()
 刪除一筆資料再簡單不過了，透過 `Count` 計數能夠清楚知道你的 SQL 指令影響了幾行資料，如果是零的話即是無刪除任何資料。
 
 ```go
-err := db.Table("Users").Where("ID", 1).Delete()
+var err error
+db, err = db.Table("Users").Where("ID", 1).Delete()
 if count := db.Count(); err == nil && count != 0 {
     fmt.Printf("成功地刪除了 %d 筆資料！", count)
 }
@@ -662,10 +679,11 @@ db.Table("Users").GroupBy("Name").Get()
 Reiner 支援多種表格加入方式，如：`InnerJoin`、`LeftJoin`、`RightJoin`、`NaturalJoin`、`CrossJoin`。
 
 ```go
-db.Table("Products")
-db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
-db.Where("Users.ID", 6)
-db.Get("Users.Name", "Products.ProductName")
+db.
+	Table("Products").
+	LeftJoin("Users", "Products.TenantID = Users.TenantID").
+	Where("Users.ID", 6).
+	Get("Users.Name", "Products.ProductName")
 // 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?
 ```
 
@@ -674,10 +692,11 @@ db.Get("Users.Name", "Products.ProductName")
 你亦能透過 `JoinWhere` 或 `JoinOrWhere` 擴展表格加入的限制條件。
 
 ```go
-db.Table("Products")
-db.LeftJoin("Users", "Products.TenantID = Users.TenantID")
-db.JoinOrWhere("Users", "Users.TenantID", 5)
-db.Get("Users.Name", "Products.ProductName")
+db.
+	Table("Products").
+	LeftJoin("Users", "Products.TenantID = Users.TenantID").
+	JoinOrWhere("Users", "Users.TenantID", 5).
+	Get("Users.Name", "Products.ProductName")
 // 等效於：SELECT Users.Name, Products.ProductName FROM Products AS Products LEFT JOIN Users AS Users ON (Products.TenantID = Users.TenantID OR Users.TenantID = ?)
 ```
 
@@ -780,25 +799,12 @@ if err := db.Ping(); err != nil {
 }
 ```
 
-### 複製
-
-如果要將 Reiner 傳遞到另一個 Goroutine，你必須複製目前的 Reiner，否則會因為多執行緒問題而起衝突。透過 `Copy` 複製另一個和現有資料庫設置一模一樣的 Reiner，這會保存所有目前的條件、表格名稱、加入表格等設置。若你希望複製一個相同資料庫連線，但重設條件設置、表格名稱，請使用 `Clone`。
-
-```go
-db.Where("Username", "YamiOdymel")
-
-// anotherDB 和 db 有相同的條件資料。
-anotherDB := db.Copy()
-// newDB 並沒有 db 的條件資料。
-newDB := db.Clone()
-```
-
 ### 最後執行的 SQL 指令
 
 取得最後一次所執行的 SQL 指令，這能夠用來記錄你所執行的所有動作。
 
 ```go
-db.Table("Users").Get()
+db = db.Table("Users").Get()
 fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 // 輸出：SELECT * FROM Users
 ```
@@ -808,11 +814,11 @@ fmt.Println("最後一次執行的 SQL 指令是：%s", db.LastQuery)
 行數很常用於檢查是否有資料、作出變更。資料庫不會因為沒有變更任何資料而回傳一個錯誤（資料庫僅會在真正發生錯誤時回傳錯誤資料），所以這是很好的檢查方法。
 
 ```go
-db.Table("Users").Get()
+db, _ = db.Table("Users").Get()
 fmt.Println("總共獲取 %s 筆資料", db.Count())
-db.Table("Users").Delete()
+db, _ = db.Table("Users").Delete()
 fmt.Println("總共刪除 %s 筆資料", db.Count())
-db.Table("Users").Update(data)
+db, _ = db.Table("Users").Update(data)
 fmt.Println("總共更新 %s 筆資料", db.Count())
 ```
 
@@ -823,7 +829,7 @@ fmt.Println("總共更新 %s 筆資料", db.Count())
 ```go
 var id int
 
-db.Table("Users").Insert(data)
+db, _ = db.Table("Users").Insert(data)
 id = db.LastInsertID
 ```
 
@@ -833,7 +839,8 @@ id = db.LastInsertID
 var ids []int
 
 for ... {
-	err := db.Table("Users").Insert(data)
+	var err error
+	db, err = db.Table("Users").Insert(data)
 	if err != nil {
 		ids = append(ids, db.LastInsertID)
 	}
@@ -845,7 +852,7 @@ for ... {
 如果你想取得這個指令總共能夠取得多少筆資料，透過 `WithTotalCount` 就能夠啟用總筆數查詢，這可能會稍微降低一點資料庫效能。
 
 ```go
-db.Table("Users").WithTotalCount().Get()
+db, _ = db.Table("Users").WithTotalCount().Get()
 fmt.Println(db.TotalCount)
 ```
 
@@ -861,11 +868,11 @@ if err != nil {
 }
 
 // 如果插入資料時發生錯誤，則呼叫 `Rollback()` 回到交易剛開始的時候。
-if err = tx.Table("Wallets").Insert(data); err != nil {
+if _, err = tx.Table("Wallets").Insert(data); err != nil {
 	tx.Rollback()
 	panic(err)
 }
-if err = tx.Table("Users").Insert(data); err != nil {
+if _, err = tx.Table("Users").Insert(data); err != nil {
 	tx.Rollback()
 	panic(err)
 }
@@ -921,12 +928,11 @@ db.Table("Users").SetQueryOption("LOW_PRIORITY", "IGNORE").Insert(data)
 這會降低執行效能，但透過追蹤功能能夠有效地得知每個指令所花費的執行時間和建置指令，並且取得相關執行檔案路徑與行號。
 
 ```go
-db.SetTrace(true)
-db.Table("Users").Get()
+db = db.SetTrace(true).Table("Users").Get()
 fmt.Printf("%+v", db.Traces[0])
 
 //[{Query:SELECT * FROM Users Duration:808.698µs Stacks:[map
-//[File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper.go Line:559 Skip:0 PC:19399228] map[Line:666 Skip:1 PC:19405153 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper.go] map[Skip:2 PC:19407043 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper.go Line:705] map[Line:74 Skip:3 PC:19548011 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/wrapper_test.go] map[PC:17610310 //File:/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go Line:657 Skip:4] map
+//[File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/builder.go Line:559 Skip:0 PC:19399228] map[Line:666 Skip:1 PC:19405153 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/builder.go] map[Skip:2 PC:19407043 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/builder.go Line:705] map[Line:74 Skip:3 PC:19548011 //File:/Users/YamiOdymel/go/src/github.com/teacat/reiner/builder.go] map[PC:17610310 //File:/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go Line:657 Skip:4] map
 //[File:/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s Line:2197 Skip:5 PC:17143345]] Error:<nil>}]
 ```
 
