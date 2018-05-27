@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 	// MySQL 驅動程式。
@@ -320,9 +321,20 @@ func (b *Builder) buildUpdate(data interface{}) (query string, err error) {
 
 	switch realData := data.(type) {
 	case map[string]interface{}:
-		for column, value := range realData {
-			set += fmt.Sprintf("%s = %s, ", column, b.bindParam(value))
+
+		var columnNames []string
+		for name := range realData {
+			columnNames = append(columnNames, name)
 		}
+
+		sort.Slice(columnNames, func(i, j int) bool {
+			return columnNames[i] < columnNames[j]
+		})
+
+		for _, name := range columnNames {
+			set += fmt.Sprintf("%s = %s, ", name, b.bindParam(realData[name]))
+		}
+
 	}
 	query += fmt.Sprintf("%s ", trim(set))
 	return
@@ -544,9 +556,18 @@ func (b *Builder) buildInsert(operator string, data interface{}) (query string, 
 	// 會基於資料型態建置不同的指令。
 	switch realData := data.(type) {
 	case map[string]interface{}:
-		for column, value := range realData {
-			columns += fmt.Sprintf("%s, ", column)
-			values += fmt.Sprintf("%s, ", b.bindParam(value))
+		var columnNames []string
+		for name := range realData {
+			columnNames = append(columnNames, name)
+		}
+
+		sort.Slice(columnNames, func(i, j int) bool {
+			return columnNames[i] < columnNames[j]
+		})
+
+		for _, name := range columnNames {
+			columns += fmt.Sprintf("%s, ", name)
+			values += fmt.Sprintf("%s, ", b.bindParam(realData[name]))
 		}
 		values = fmt.Sprintf("(%s)", trim(values))
 
@@ -555,8 +576,20 @@ func (b *Builder) buildInsert(operator string, data interface{}) (query string, 
 		// 先取得欄位的名稱，這樣才能照順序遍歷整個 `map`。
 		for name := range realData[0] {
 			columnNames = append(columnNames, name)
+
+		}
+
+		sort.Slice(columnNames, func(i, j int) bool {
+			return columnNames[i] < columnNames[j]
+		})
+
+		for _, name := range columnNames {
 			// 先建置欄位名稱的 SQL 指令片段。
 			columns += fmt.Sprintf("%s, ", name)
+			//
+			//
+			//
+
 		}
 		for _, single := range realData {
 			var currentValues string
@@ -824,16 +857,15 @@ func (b *Builder) GetOne(columns ...string) (builder *Builder, err error) {
 // 使用時須先確定是否有指定 `PageLimit`（預設為：20），這樣才能限制一頁有多少筆資料。
 func (b *Builder) Paginate(pageCount int, columns ...string) (builder *Builder, err error) {
 	builder, err = b.WithTotalCount().Limit(b.PageLimit*(pageCount-1), b.PageLimit).Get(columns...)
-	builder.TotalPage = b.TotalCount / b.PageLimit
+	builder.TotalPage = builder.TotalCount / builder.PageLimit
 	return
 }
 
 // WithTotalCount 會在 SQL 執行指令中安插 `SQL_CALC_FOUND_ROWS` 選項，
 // 如此一來就能夠在執行完 SQL 指令後取得查詢的總計行數。在不同情況下，這可能會拖低執行效能。
 func (b *Builder) WithTotalCount() (builder *Builder) {
-	builder = b.clone()
-	builder.SetQueryOption("SQL_CALC_FOUND_ROWS")
-	return b
+	builder = b.clone().SetQueryOption("SQL_CALC_FOUND_ROWS")
+	return
 }
 
 //=======================================================
@@ -1081,8 +1113,7 @@ func (b *Builder) SubQuery(alias ...string) (newBuilder *Builder) {
 }
 
 // Has 會在有查詢結果時回傳 `true`，這很適合用於一些資料驗證的時機（例如：使用者名稱是否已存在⋯等）。
-func (b *Builder) Has() (has bool, err error) {
-	var builder *Builder
+func (b *Builder) Has() (builder *Builder, has bool, err error) {
 	builder, err = b.Limit(1).Get()
 	if err != nil {
 		has = false
