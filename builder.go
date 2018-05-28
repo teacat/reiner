@@ -633,7 +633,7 @@ func (b *Builder) runQuery() (rows *sql.Rows, err error) {
 		for _, v := range b.queryOptions {
 			if v == "SQL_CALC_FOUND_ROWS" {
 				// 開始一個交易。
-				tx, err = b.db.Begin()
+				tx, err = b.db.begin()
 				if err != nil {
 					b.saveTrace(err, b.query, start)
 					b.cleanAfter()
@@ -697,7 +697,7 @@ func (b *Builder) runQuery() (rows *sql.Rows, err error) {
 		}
 
 		// 如果沒有設置 `SQL_CALC_FOUND_ROWS` 的話就使用正常的連線池。
-		stmt, err = b.db.Prepare(b.query)
+		stmt, err = b.db.prepare(b.query)
 		if err != nil {
 			b.saveTrace(err, b.query, start)
 			b.cleanAfter()
@@ -745,7 +745,7 @@ func (b *Builder) executeQuery() (res sql.Result, err error) {
 	if b.executable {
 		var stmt *sql.Stmt
 		var count int64
-		stmt, err = b.db.Prepare(b.query)
+		stmt, err = b.db.prepare(b.query)
 		if err != nil {
 			b.saveTrace(err, b.query, start)
 			b.cleanAfter()
@@ -1106,19 +1106,19 @@ func (b *Builder) Has() (builder *Builder, has bool, err error) {
 
 // Disconnect 會結束目前的資料庫連線。
 func (b *Builder) Disconnect() (err error) {
-	err = b.db.Disconnect()
+	err = b.db.disconnect()
 	return
 }
 
 // Ping 會以 ping 來檢查資料庫連線。
 func (b *Builder) Ping() (err error) {
-	err = b.db.Ping()
+	err = b.db.ping()
 	return
 }
 
 // Connect 會試圖在斷線之後重新連線至資料庫。
 func (b *Builder) Connect() (err error) {
-	err = b.db.Connect()
+	err = b.db.connect()
 	return
 }
 
@@ -1130,7 +1130,7 @@ func (b *Builder) Connect() (err error) {
 func (b *Builder) Begin() (builder *Builder, err error) {
 	builder = b.clone()
 	var tx *sql.Tx
-	tx, err = builder.db.Begin()
+	tx, err = builder.db.begin()
 	if err != nil {
 		return
 	}
@@ -1144,12 +1144,12 @@ func (b *Builder) Begin() (builder *Builder, err error) {
 
 // Rollback 能夠回溯到交易剛開始的時候，並且在不保存資料變動的情況下結束交易。
 func (b *Builder) Rollback() error {
-	return b.db.Rollback()
+	return b.db.rollback()
 }
 
 // Commit 會讓交易中所產生的資料異動成為永久紀錄並保存於資料庫中且結束交易。
 func (b *Builder) Commit() error {
-	return b.db.Commit()
+	return b.db.commit()
 }
 
 //=======================================================

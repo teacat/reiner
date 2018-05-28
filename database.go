@@ -102,12 +102,12 @@ func (d *DB) getDB(query ...string) (db *sql.DB) {
 }
 
 // Begin 會基於目前的資料庫連線來開始一段新的交易過程。
-func (d *DB) Begin() (*sql.Tx, error) {
+func (d *DB) begin() (*sql.Tx, error) {
 	return d.master.db.Begin()
 }
 
 // Rollback 會回溯交易時所發生的事情。
-func (d *DB) Rollback() error {
+func (d *DB) rollback() error {
 	if d.master.tx == nil {
 		return ErrUnbegunTransaction
 	}
@@ -120,7 +120,7 @@ func (d *DB) Rollback() error {
 }
 
 // Commit 會結束一個交易過程並保存其變更為永久資料。
-func (d *DB) Commit() error {
+func (d *DB) commit() error {
 	if d.master.tx == nil {
 		return ErrUnbegunTransaction
 	}
@@ -133,7 +133,7 @@ func (d *DB) Commit() error {
 }
 
 // Ping 會以 ping 來檢查所有的資料庫連線（包括 Slave 連線）。
-func (d *DB) Ping() error {
+func (d *DB) ping() error {
 	var err error
 	err = d.master.db.Ping()
 	if err != nil {
@@ -149,7 +149,7 @@ func (d *DB) Ping() error {
 }
 
 // Disconnect 會斷開所有連線（包括 Slave 連線）。
-func (d *DB) Disconnect() error {
+func (d *DB) disconnect() error {
 	var err error
 	err = d.master.db.Close()
 	if err != nil {
@@ -165,7 +165,7 @@ func (d *DB) Disconnect() error {
 }
 
 // Connect 會重新連接所有資料庫連線（包括 Slave 連線）。
-func (d *DB) Connect() error {
+func (d *DB) connect() error {
 	db, err := sql.Open("mysql", d.master.dataSourceName)
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func (d *DB) Connect() error {
 }
 
 // Prepare 會準備 SQL 查詢指令。
-func (d *DB) Prepare(query string) (*sql.Stmt, error) {
+func (d *DB) prepare(query string) (*sql.Stmt, error) {
 	if d.master.tx != nil {
 		return d.master.tx.Prepare(query)
 	}
@@ -190,7 +190,7 @@ func (d *DB) Prepare(query string) (*sql.Stmt, error) {
 }
 
 // Exec 會執行 SQL 查詢指令並且回傳一個原生結果表示影響的行列數和插入的編號。
-func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (d *DB) exec(query string, args ...interface{}) (sql.Result, error) {
 	if d.master.tx != nil {
 		return d.master.tx.Exec(query, args...)
 	}
@@ -198,7 +198,7 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 }
 
 // Query 會執行 SQL 查詢指令並且回傳一個原生的行列結果供後續掃描列出。
-func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (d *DB) query(query string, args ...interface{}) (*sql.Rows, error) {
 	if d.master.tx != nil {
 		return d.master.tx.Query(query, args...)
 	}

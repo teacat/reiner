@@ -608,7 +608,7 @@ func (m *Migration) Create() (err error) {
 	// 建置出主要的 SQL 執行指令。
 	query := m.tableBuilder()
 	// 執行指令來建立相關的資料表格與欄位。
-	_, err = m.connection.Exec(query)
+	_, err = m.connection.exec(query)
 	// 保存最後一次所執行的 SQL 指令。
 	m.LastQuery = query
 	// 清除資料、欄位來重新開始一個資料表格遷移系統。
@@ -712,7 +712,7 @@ func (m *Migration) dropBuilder(check bool, tableNames ...string) error {
 		if check {
 			query = fmt.Sprintf("DROP TABLE IF EXISTS `%s`", name)
 		}
-		_, err := m.connection.Exec(query)
+		_, err := m.connection.exec(query)
 		// 保存最後一次執行的 SQL 指令。
 		m.LastQuery = query
 		// 清除資料、欄位來重新開始一個資料表格遷移系統。
