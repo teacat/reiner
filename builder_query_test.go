@@ -342,6 +342,28 @@ func TestJoin(t *testing.T) {
 		Where("Users.ID", 6).
 		Get("Users.Name", "Products.ProductName")
 	assertEqual(assert, "SELECT Users.Name, Products.ProductName FROM Products LEFT JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", builder.Query())
+
+	builder, _ = builder.
+		Table("Products").
+		RightJoin("Users", "Products.TenantID = Users.TenantID").
+		Where("Users.ID", 6).
+		Get("Users.Name", "Products.ProductName")
+	assertEqual(assert, "SELECT Users.Name, Products.ProductName FROM Products RIGHT JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", builder.Query())
+
+	builder, _ = builder.
+		Table("Products").
+		InnerJoin("Users", "Products.TenantID = Users.TenantID").
+		Where("Users.ID", 6).
+		Get("Users.Name", "Products.ProductName")
+	assertEqual(assert, "SELECT Users.Name, Products.ProductName FROM Products INNER JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", builder.Query())
+
+	builder, _ = builder.
+		Table("Products").
+		NaturalJoin("Users", "Products.TenantID = Users.TenantID").
+		Where("Users.ID", 6).
+		Get("Users.Name", "Products.ProductName")
+	assertEqual(assert, "SELECT Users.Name, Products.ProductName FROM Products NATURAL JOIN Users ON (Products.TenantID = Users.TenantID) WHERE Users.ID = ?", builder.Query())
+
 	builder, _ = builder.
 		Table("Products").
 		LeftJoin("Users", "Products.TenantID = Users.TenantID").

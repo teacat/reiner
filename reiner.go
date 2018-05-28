@@ -16,7 +16,7 @@ func New(dataSourceNames ...interface{}) (*Builder, error) {
 	switch len(dataSourceNames) {
 	// SQL 指令建置模式。
 	case 0:
-		return &Builder{executable: false, Timestamp: &Timestamp{}}, nil
+		return &Builder{executable: false, Timestamp: &Timestamp{}, PageLimit: 20}, nil
 	// 單個主要資料庫連線。
 	case 1:
 		master = dataSourceNames[0].(string)

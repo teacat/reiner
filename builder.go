@@ -104,7 +104,7 @@ type Builder struct {
 
 // newBuilder 會基於傳入的資料庫連線來建立一個新的 SQL 指令建置系統。
 func newBuilder(db *DB) *Builder {
-	return &Builder{executable: true, db: db, Timestamp: &Timestamp{}, joins: make(map[string]*join)}
+	return &Builder{executable: true, db: db, Timestamp: &Timestamp{}, PageLimit: 20, joins: make(map[string]*join)}
 }
 
 // clone 會複製資料庫建置函式來避免多個 Goroutine 編輯同個資料庫建置函式指標建構體。
@@ -829,7 +829,10 @@ func (b *Builder) GetOne(columns ...string) (builder *Builder, err error) {
 // 使用時須先確定是否有指定 `PageLimit`（預設為：20），這樣才能限制一頁有多少筆資料。
 func (b *Builder) Paginate(pageCount int, columns ...string) (builder *Builder, err error) {
 	builder, err = b.WithTotalCount().Limit(b.PageLimit*(pageCount-1), b.PageLimit).Get(columns...)
-	builder.TotalPage = builder.TotalCount / builder.PageLimit
+	builder.TotalPage = 0
+	if builder.TotalCount != 0 {
+		builder.TotalPage = builder.TotalCount / builder.PageLimit
+	}
 	return
 }
 
@@ -1076,6 +1079,7 @@ func (b *Builder) JoinOrWhere(table interface{}, args ...interface{}) (builder *
 // 若欲將子指令傳入插入（Join）條件中，必須在參數指定此子指令的別名。
 func (b *Builder) SubQuery(alias ...string) (subQuery *SubQuery) {
 	subQuery = &SubQuery{
+		PageLimit: b.PageLimit,
 		builder: &Builder{
 			executable: false,
 		},
