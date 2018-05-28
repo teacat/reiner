@@ -35,8 +35,14 @@ func TestSubQueryWhere(t *testing.T) {
 	assert := assert.New(t)
 	subQuery = builder.SubQuery().Table("Users").Where("ID", 1).Where("Username", "admin").Get()
 	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? AND Username = ?", subQuery.builder.Query())
-	subQuery = builder.SubQuery().Table("Users").Where("ID", 1).OrWhere("Username", "admin").Get()
-	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? OR Username = ?", subQuery.builder.Query())
+}
+
+func TestSubQueryOrWhere(t *testing.T) {
+	assert := assert.New(t)
+	subQuery = builder.SubQuery().Table("Users").Where("FirstName", "John").OrWhere("FirstName", "Peter").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE FirstName = ? OR FirstName = ?", subQuery.builder.Query())
+	subQuery = builder.SubQuery().Table("Users").Where("A = B").OrWhere("(A = C OR A = D)").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE A = B OR (A = C OR A = D)", subQuery.builder.Query())
 }
 
 func TestSubQueryWhereHaving(t *testing.T) {

@@ -202,8 +202,6 @@ func TestWhere(t *testing.T) {
 	assert := assert.New(t)
 	builder, _ = builder.Table("Users").Where("ID", 1).Where("Username", "admin").Get()
 	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? AND Username = ?", builder.Query())
-	builder, _ = builder.Table("Users").Where("ID", 1).OrWhere("Username", "admin").Get()
-	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? OR Username = ?", builder.Query())
 }
 
 func TestWhereHaving(t *testing.T) {
