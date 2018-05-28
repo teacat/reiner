@@ -31,6 +31,22 @@ func TestSubQueryPaginate(t *testing.T) {
 	assertEqual(assert, "SELECT SQL_CALC_FOUND_ROWS * FROM Users LIMIT 0, 20", subQuery.builder.Query())
 }
 
+func TestSubQueryWhere(t *testing.T) {
+	assert := assert.New(t)
+	subQuery = builder.SubQuery().Table("Users").Where("ID", 1).Where("Username", "admin").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? AND Username = ?", subQuery.builder.Query())
+	subQuery = builder.SubQuery().Table("Users").Where("ID", 1).OrWhere("Username", "admin").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? OR Username = ?", subQuery.builder.Query())
+}
+
+func TestSubQueryWhereHaving(t *testing.T) {
+	assert := assert.New(t)
+	subQuery = builder.SubQuery().Table("Users").Where("ID", 1).Having("Username", "admin").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? HAVING Username = ?", subQuery.builder.Query())
+	subQuery = builder.SubQuery().Table("Users").Where("ID", 1).Having("Username", "admin").OrHaving("Password", "test").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? HAVING Username = ? OR Password = ?", subQuery.builder.Query())
+}
+
 func TestSubQueryLimit(t *testing.T) {
 	assert := assert.New(t)
 	subQuery = builder.SubQuery().Table("Users").Limit(10).Get()

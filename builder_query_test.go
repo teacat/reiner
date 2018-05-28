@@ -188,13 +188,13 @@ func TestRawQueryOne(t *testing.T) {
 
 func TestRawQueryValue(t *testing.T) {
 	assert := assert.New(t)
-	builder, _ = builder.RawQuery("SELECT Password FROM Users WHERE ID = ?", 10)
+	builder, _ = builder.RawQueryValue("SELECT Password FROM Users WHERE ID = ?", 10)
 	assertEqual(assert, "SELECT Password FROM Users WHERE ID = ? LIMIT 1", builder.Query())
 }
 
 func TestRawQueryValues(t *testing.T) {
 	assert := assert.New(t)
-	builder, _ = builder.RawQuery("SELECT Password FROM Users WHERE ID = ?", 10)
+	builder, _ = builder.RawQueryValues("SELECT Password FROM Users WHERE ID = ?", 10)
 	assertEqual(assert, "SELECT Password FROM Users WHERE ID = ?", builder.Query())
 }
 
@@ -202,12 +202,16 @@ func TestWhere(t *testing.T) {
 	assert := assert.New(t)
 	builder, _ = builder.Table("Users").Where("ID", 1).Where("Username", "admin").Get()
 	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? AND Username = ?", builder.Query())
+	builder, _ = builder.Table("Users").Where("ID", 1).OrWhere("Username", "admin").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? OR Username = ?", builder.Query())
 }
 
 func TestWhereHaving(t *testing.T) {
 	assert := assert.New(t)
 	builder, _ = builder.Table("Users").Where("ID", 1).Having("Username", "admin").Get()
 	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? HAVING Username = ?", builder.Query())
+	builder, _ = builder.Table("Users").Where("ID", 1).Having("Username", "admin").OrHaving("Password", "test").Get()
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? HAVING Username = ? OR Password = ?", builder.Query())
 }
 
 func TestWhereColumns(t *testing.T) {
