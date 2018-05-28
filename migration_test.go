@@ -30,6 +30,13 @@ func TestMigrationDrop(t *testing.T) {
 	assert.Equal("DROP TABLE `test_table`", migration.LastQuery)
 }
 
+func TestMigrationDropIfExists(t *testing.T) {
+	assert := assert.New(t)
+	err := migration.DropIfExists("test_table")
+	assert.NoError(err)
+	assert.Equal("DROP TABLE IF EXISTS `test_table`", migration.LastQuery)
+}
+
 func TestMigrationDataTypes(t *testing.T) {
 	assert := assert.New(t)
 	err := migration.

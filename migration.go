@@ -616,22 +616,14 @@ func (m *Migration) Create() (err error) {
 	return
 }
 
-// Drop 會移除指定的資料表格。
+// Drop 會移除指定的資料表格，並在找不到資料表格時回傳錯誤。
 func (m *Migration) Drop(tableNames ...string) error {
-	// 遍歷資料表名稱切片來移除指定的資料表格。
-	for _, name := range tableNames {
-		// 建立 SQL 執行指令來準備移除指定資料表格。
-		query := fmt.Sprintf("DROP TABLE `%s`", name)
-		_, err := m.connection.Exec(query)
-		// 保存最後一次執行的 SQL 指令。
-		m.LastQuery = query
-		// 清除資料、欄位來重新開始一個資料表格遷移系統。
-		m.clean()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return m.dropBuilder(false, tableNames...)
+}
+
+// DropIfExists 會移除指定的資料表格，若指定的資料表格存在的話。
+func (m *Migration) DropIfExists(tableNames ...string) error {
+	return m.dropBuilder(true, tableNames...)
 }
 
 // setColumnType 會替最後一個欄位設置其資料型態與長度。
@@ -709,6 +701,27 @@ func (m *Migration) clean() {
 	m.table.uniqueKeys = []key{}
 	m.table.name = ""
 	m.columns = []column{}
+}
+
+// indexBuilder 會建置移除資料表格的 SQL 執行指令。。
+func (m *Migration) dropBuilder(check bool, tableNames ...string) error {
+	// 遍歷資料表名稱切片來移除指定的資料表格。
+	for _, name := range tableNames {
+		// 建立 SQL 執行指令來準備移除指定資料表格。
+		query := fmt.Sprintf("DROP TABLE `%s`", name)
+		if check {
+			query = fmt.Sprintf("DROP TABLE IF EXISTS `%s`", name)
+		}
+		_, err := m.connection.Exec(query)
+		// 保存最後一次執行的 SQL 指令。
+		m.LastQuery = query
+		// 清除資料、欄位來重新開始一個資料表格遷移系統。
+		m.clean()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // indexBuilder 會替資料表格的索引建置相關的 SQL 執行指令。

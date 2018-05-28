@@ -18,8 +18,8 @@ func TestRealRealMain(t *testing.T) {
 
 	migration = rb.Migration()
 
-	migration.Drop("Users", "Posts", "Products", "NullAllowed")
-	//assert.NoError(err)
+	migration.DropIfExists("Users", "Posts", "Products", "NullAllowed")
+	assert.NoError(err)
 
 	err = migration.Table("Users").
 		Column("Username").Varchar(32).Primary().
