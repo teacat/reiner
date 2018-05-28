@@ -154,14 +154,17 @@ func TestGetOne(t *testing.T) {
 
 func TestGetValue(t *testing.T) {
 	assert := assert.New(t)
-	builder, _ = builder.Table("Users").Get("Username")
-	assertEqual(assert, "SELECT Username FROM Users", builder.Query())
+	builder, _ = builder.Table("Users").GetValue("Username")
+	assertEqual(assert, "SELECT Username FROM Users LIMIT 1", builder.Query())
 
-	builder, _ = builder.Table("Users").Limit(5).Get("Username")
+	builder, _ = builder.Table("Users").GetValue("COUNT(*)")
+	assertEqual(assert, "SELECT COUNT(*) FROM Users LIMIT 1", builder.Query())
+}
+
+func TestGetValues(t *testing.T) {
+	assert := assert.New(t)
+	builder, _ = builder.Table("Users").Limit(5).GetValues("Username")
 	assertEqual(assert, "SELECT Username FROM Users LIMIT 5", builder.Query())
-
-	builder, _ = builder.Table("Users").Get("COUNT(*)")
-	assertEqual(assert, "SELECT COUNT(*) FROM Users", builder.Query())
 }
 
 func TestPaginate(t *testing.T) {
@@ -179,14 +182,20 @@ func TestRawQuery(t *testing.T) {
 
 func TestRawQueryOne(t *testing.T) {
 	assert := assert.New(t)
-	builder, _ = builder.RawQuery("SELECT * FROM Users WHERE ID = ?", 10)
-	assertEqual(assert, "SELECT * FROM Users WHERE ID = ?", builder.Query())
+	builder, _ = builder.RawQueryOne("SELECT * FROM Users WHERE ID = ?", 10)
+	assertEqual(assert, "SELECT * FROM Users WHERE ID = ? LIMIT 1", builder.Query())
 }
 
 func TestRawQueryValue(t *testing.T) {
 	assert := assert.New(t)
-	builder, _ = builder.RawQuery("SELECT Password FROM Users WHERE ID = ? LIMIT 1", 10)
+	builder, _ = builder.RawQuery("SELECT Password FROM Users WHERE ID = ?", 10)
 	assertEqual(assert, "SELECT Password FROM Users WHERE ID = ? LIMIT 1", builder.Query())
+}
+
+func TestRawQueryValues(t *testing.T) {
+	assert := assert.New(t)
+	builder, _ = builder.RawQuery("SELECT Password FROM Users WHERE ID = ?", 10)
+	assertEqual(assert, "SELECT Password FROM Users WHERE ID = ?", builder.Query())
 }
 
 func TestWhere(t *testing.T) {

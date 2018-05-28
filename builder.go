@@ -110,6 +110,11 @@ func newBuilder(db *DB) *Builder {
 // clone 會複製資料庫建置函式，並決定是否一同複製現有的條件與設定。
 func (b *Builder) clone() (cloned *Builder) {
 	a := *b
+	newJoins := make(map[string]*join)
+	for k, v := range a.joins {
+		newJoins[k] = v
+	}
+	a.joins = newJoins
 	cloned = &a
 	return
 }
@@ -1127,9 +1132,11 @@ func (b *Builder) Begin() (builder *Builder, err error) {
 	if err != nil {
 		return
 	}
-	master := *builder.db.master
-	builder.db.master = &master
-	builder.db.master.tx = tx
+	newDB := *builder.db
+	newMaster := *newDB.master
+	newDB.master = &newMaster
+	newDB.master.tx = tx
+	builder.db = &newDB
 	return
 }
 
