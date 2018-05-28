@@ -705,8 +705,7 @@ db.
 Reiner 支援複雜的子指令，欲要建立一個子指令請透過 `SubQuery` 函式，這將會建立一個不能被執行的資料庫建置函式庫，令你可以透過 `Get`、`Update` 等建立相關 SQL 指令，但不會被資料庫執行。將其帶入到一個正常的資料庫函式中即可成為子指令。
 
 ```go
-subQuery := db.SubQuery()
-subQuery.Table("Users").Get()
+subQuery := db.SubQuery().Table("Users").Get()
 // 等效於不會被執行的：SELECT * FROM Users
 ```
 
@@ -715,8 +714,7 @@ subQuery.Table("Users").Get()
 你能夠輕易地將子指令放置在選擇／取得指令中。
 
 ```go
-subQuery := db.SubQuery()
-subQuery.Table("Products").Where("Quantity", ">", 2).Get("UserID")
+subQuery := db.SubQuery().Table("Products").Where("Quantity", ">", 2).Get("UserID")
 
 db.Table("Users").Where("ID", "IN", subQuery).Get()
 // 等效於：SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)
@@ -727,8 +725,7 @@ db.Table("Users").Where("ID", "IN", subQuery).Get()
 插入新資料時也可以使用子指令。
 
 ```go
-subQuery := db.SubQuery()
-subQuery.Table("Users").Where("ID", 6).Get("Name")
+subQuery := db.SubQuery().Table("Users").Where("ID", 6).Get("Name")
 
 db.Table("Products").Insert(map[string]interface{}{
 	"ProductName": "測試商品",
@@ -743,8 +740,7 @@ db.Table("Products").Insert(map[string]interface{}{
 就算是加入表格的時候也可以用上子指令，但你需要為子指令建立別名。
 
 ```go
-subQuery := db.SubQuery("Users")
-subQuery.Table("Users").Where("Active", 1).Get()
+subQuery := db.SubQuery("Users").Table("Users").Where("Active", 1).Get()
 
 db.Table("Products")
 db.LeftJoin(subQuery, "Products.UserID = U.ID")
@@ -757,8 +753,7 @@ db.Get("Users.Username", "Products.ProductName")
 你同時也能夠透過子指令來確定某筆資料是否存在。
 
 ```go
-subQuery := db.SubQuery()
-subQuery.Table("Users").Where("Company", "測試公司").Get("UserID")
+subQuery := db.SubQuery().Table("Users").Where("Company", "測試公司").Get("UserID")
 
 db.Table("Products").Where(subQuery, "EXISTS").Get()
 // 等效於：SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)

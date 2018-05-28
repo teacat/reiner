@@ -107,7 +107,7 @@ func newBuilder(db *DB) *Builder {
 	return &Builder{executable: true, db: db, Timestamp: &Timestamp{}, joins: make(map[string]*join)}
 }
 
-// clone 會複製資料庫建置函式，並決定是否一同複製現有的條件與設定。
+// clone 會複製資料庫建置函式來避免多個 Goroutine 編輯同個資料庫建置函式指標建構體。
 func (b *Builder) clone() (cloned *Builder) {
 	a := *b
 	newJoins := make(map[string]*join)
@@ -179,8 +179,8 @@ func (b *Builder) saveTrace(err error, query string, startedAt time.Time) {
 func (b *Builder) saveJoin(table interface{}, typ string, condition string) {
 	switch v := table.(type) {
 	// 子指令加入。
-	case *Builder:
-		b.joins[v.query] = &join{
+	case *SubQuery:
+		b.joins[v.builder.query] = &join{
 			typ:       typ,
 			table:     table,
 			condition: condition,
@@ -199,8 +199,8 @@ func (b *Builder) saveJoin(table interface{}, typ string, condition string) {
 func (b *Builder) saveJoinCondition(connector string, table interface{}, args ...interface{}) {
 	switch v := table.(type) {
 	// 子指令條件式。
-	case *Builder:
-		b.joins[v.query].conditions = append(b.joins[v.query].conditions, condition{
+	case *SubQuery:
+		b.joins[v.builder.query].conditions = append(b.joins[v.builder.query].conditions, condition{
 			args:      args,
 			connector: connector,
 		})
@@ -252,9 +252,9 @@ func (b *Builder) bindParams(data interface{}) (query string) {
 // bindParam 會將單個傳入的變數綁定到本次的建置工作中，並且依照變數型態來產生並回傳相對應的 SQL 指令片段與決定是否要以括號包覆。
 func (b *Builder) bindParam(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
-	case *Builder:
-		if len(v.Params()) > 0 {
-			b.params = append(b.params, v.Params()...)
+	case *SubQuery:
+		if len(v.builder.Params()) > 0 {
+			b.params = append(b.params, v.builder.Params()...)
 		}
 	case Function:
 		if len(v.values) > 0 {
@@ -273,13 +273,13 @@ func (b *Builder) bindParam(data interface{}, parentheses ...bool) (param string
 // paramToQuery 會將參數的變數資料型態轉換成 SQL 指令片段，並決定是否要加上括號。
 func (b *Builder) paramToQuery(data interface{}, parentheses ...bool) (param string) {
 	switch v := data.(type) {
-	case *Builder:
+	case *SubQuery:
 		if len(parentheses) > 0 {
 			if parentheses[0] == false {
-				param = fmt.Sprintf("%s", v.query)
+				param = fmt.Sprintf("%s", v.builder.query)
 			}
 		} else {
-			param = fmt.Sprintf("(%s)", v.query)
+			param = fmt.Sprintf("(%s)", v.builder.query)
 		}
 	case Function:
 		param = v.query
@@ -379,7 +379,7 @@ func (b *Builder) buildConditions(conditions []condition) (query string) {
 			} else {
 				typ = "Column"
 			}
-		case *Builder:
+		case *SubQuery:
 			typ = "SubQuery"
 		}
 
@@ -588,8 +588,8 @@ func (b *Builder) buildJoin() (query string) {
 		query += fmt.Sprintf("%s ", v.typ)
 		switch d := v.table.(type) {
 		// 子指令。
-		case *Builder:
-			query += fmt.Sprintf("%s AS %s ON ", b.bindParam(d), d.alias)
+		case *SubQuery:
+			query += fmt.Sprintf("%s AS %s ON ", b.bindParam(d), d.builder.alias)
 		// 資料表格名稱。
 		case string:
 			query += fmt.Sprintf("%s ON ", d)
@@ -1074,12 +1074,14 @@ func (b *Builder) JoinOrWhere(table interface{}, args ...interface{}) (builder *
 
 // SubQuery 能夠將目前的 SQL 指令轉換為子指令（Sub Query）來防止建置後直接被執行，這讓你可以將子指令傳入其他的條件式（例如：`WHERE`），
 // 若欲將子指令傳入插入（Join）條件中，必須在參數指定此子指令的別名。
-func (b *Builder) SubQuery(alias ...string) (newBuilder *Builder) {
-	newBuilder = &Builder{
-		executable: false,
+func (b *Builder) SubQuery(alias ...string) (subQuery *SubQuery) {
+	subQuery = &SubQuery{
+		builder: &Builder{
+			executable: false,
+		},
 	}
 	if len(alias) > 0 {
-		newBuilder.alias = alias[0]
+		subQuery.builder.alias = alias[0]
 	}
 	return
 }

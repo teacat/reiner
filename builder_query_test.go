@@ -377,14 +377,14 @@ func TestJoinWhere(t *testing.T) {
 
 func TestSubQueryGet(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := builder.SubQuery().Table("Products").Where("Quantity", ">", 2).Get("UserID")
+	subQuery := builder.SubQuery().Table("Products").Where("Quantity", ">", 2).Get("UserID")
 	builder, _ = builder.Table("Users").Where("ID", "IN", subQuery).Get()
 	assertEqual(assert, "SELECT * FROM Users WHERE ID IN (SELECT UserID FROM Products WHERE Quantity > ?)", builder.Query())
 }
 
 func TestSubQueryInsert(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := builder.SubQuery().Table("Users").Where("ID", 6).Get("Name")
+	subQuery := builder.SubQuery().Table("Users").Where("ID", 6).Get("Name")
 	builder, _ = builder.Table("Products").Insert(map[string]interface{}{
 		"ProductName": "測試商品",
 		"UserID":      subQuery,
@@ -395,7 +395,7 @@ func TestSubQueryInsert(t *testing.T) {
 
 func TestSubQueryJoin(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := builder.SubQuery("Users").Table("Users").Where("Active", 1).Get()
+	subQuery := builder.SubQuery("Users").Table("Users").Where("Active", 1).Get()
 	builder, _ = builder.
 		Table("Products").
 		LeftJoin(subQuery, "Products.UserID = Users.ID").
@@ -405,7 +405,14 @@ func TestSubQueryJoin(t *testing.T) {
 
 func TestSubQueryExist(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := builder.SubQuery("Users").Table("Users").Where("Company", "測試公司").Get("UserID")
+	subQuery := builder.SubQuery("Users").Table("Users").Where("Company", "測試公司").Get("UserID")
+	builder, _ = builder.Table("Products").Where(subQuery, "EXISTS").Get()
+	assertEqual(assert, "SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)", builder.Query())
+}
+
+func TestSubQueryRawQuery(t *testing.T) {
+	assert := assert.New(t)
+	subQuery := builder.SubQuery("Users").RawQuery("SELECT UserID FROM Users WHERE Company = ?", "測試公司")
 	builder, _ = builder.Table("Products").Where(subQuery, "EXISTS").Get()
 	assertEqual(assert, "SELECT * FROM Products WHERE EXISTS (SELECT UserID FROM Users WHERE Company = ?)", builder.Query())
 }

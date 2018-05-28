@@ -580,7 +580,7 @@ func TestRealJoinWhere(t *testing.T) {
 
 func TestRealSubQueryGet(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := rb.SubQuery().Table("Products").Get("Username")
+	subQuery := rb.SubQuery().Table("Products").Get("Username")
 	b, err := rb.Table("Users").Where("Username", "IN", subQuery).Get()
 	assert.NoError(err, b.Query())
 	assertEqual(assert, "SELECT * FROM Users WHERE Username IN (SELECT Username FROM Products)", b.Query())
@@ -589,7 +589,7 @@ func TestRealSubQueryGet(t *testing.T) {
 
 func TestRealSubQueryInsert(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := rb.SubQuery().Table("Users").Where("Username", "YamiOdymel").Get("Username")
+	subQuery := rb.SubQuery().Table("Users").Where("Username", "YamiOdymel").Get("Username")
 	b, err := rb.Table("Posts").Insert(map[string]interface{}{
 		"ID":       1,
 		"Title":    "測試商品",
@@ -602,7 +602,7 @@ func TestRealSubQueryInsert(t *testing.T) {
 
 func TestRealSubQueryJoin(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := rb.SubQuery("Users").Table("Users").Where("Username", "YamiOdymel").Get()
+	subQuery := rb.SubQuery("Users").Table("Users").Where("Username", "YamiOdymel").Get()
 	b, err := rb.
 		Table("Products").
 		LeftJoin(subQuery, "Products.Username = Users.Username").
@@ -614,7 +614,16 @@ func TestRealSubQueryJoin(t *testing.T) {
 
 func TestRealSubQueryExist(t *testing.T) {
 	assert := assert.New(t)
-	subQuery, _ := rb.SubQuery("Users").Table("Users").Where("Username", "YamiOdymel").Get("Username")
+	subQuery := rb.SubQuery("Users").Table("Users").Where("Username", "YamiOdymel").Get("Username")
+	b, err := rb.Table("Products").Where(subQuery, "EXISTS").Get()
+	assert.NoError(err)
+	assertEqual(assert, "SELECT * FROM Products WHERE EXISTS (SELECT Username FROM Users WHERE Username = ?)", b.Query())
+	assert.Equal(1, b.Count())
+}
+
+func TestRealSubQueryRawQuery(t *testing.T) {
+	assert := assert.New(t)
+	subQuery := rb.SubQuery("Users").RawQuery("SELECT Username FROM Users WHERE Username = ?", "YamiOdymel")
 	b, err := rb.Table("Products").Where(subQuery, "EXISTS").Get()
 	assert.NoError(err)
 	assertEqual(assert, "SELECT * FROM Products WHERE EXISTS (SELECT Username FROM Users WHERE Username = ?)", b.Query())
