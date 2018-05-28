@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"sort"
 	"strings"
 	"time"
 	// MySQL 驅動程式。
@@ -321,20 +320,9 @@ func (b *Builder) buildUpdate(data interface{}) (query string, err error) {
 
 	switch realData := data.(type) {
 	case map[string]interface{}:
-
-		var columnNames []string
-		for name := range realData {
-			columnNames = append(columnNames, name)
+		for column, value := range realData {
+			set += fmt.Sprintf("%s = %s, ", column, b.bindParam(value))
 		}
-
-		sort.Slice(columnNames, func(i, j int) bool {
-			return columnNames[i] < columnNames[j]
-		})
-
-		for _, name := range columnNames {
-			set += fmt.Sprintf("%s = %s, ", name, b.bindParam(realData[name]))
-		}
-
 	}
 	query += fmt.Sprintf("%s ", trim(set))
 	return
@@ -556,18 +544,9 @@ func (b *Builder) buildInsert(operator string, data interface{}) (query string, 
 	// 會基於資料型態建置不同的指令。
 	switch realData := data.(type) {
 	case map[string]interface{}:
-		var columnNames []string
-		for name := range realData {
-			columnNames = append(columnNames, name)
-		}
-
-		sort.Slice(columnNames, func(i, j int) bool {
-			return columnNames[i] < columnNames[j]
-		})
-
-		for _, name := range columnNames {
-			columns += fmt.Sprintf("%s, ", name)
-			values += fmt.Sprintf("%s, ", b.bindParam(realData[name]))
+		for column, value := range realData {
+			columns += fmt.Sprintf("%s, ", column)
+			values += fmt.Sprintf("%s, ", b.bindParam(value))
 		}
 		values = fmt.Sprintf("(%s)", trim(values))
 
@@ -576,20 +555,8 @@ func (b *Builder) buildInsert(operator string, data interface{}) (query string, 
 		// 先取得欄位的名稱，這樣才能照順序遍歷整個 `map`。
 		for name := range realData[0] {
 			columnNames = append(columnNames, name)
-
-		}
-
-		sort.Slice(columnNames, func(i, j int) bool {
-			return columnNames[i] < columnNames[j]
-		})
-
-		for _, name := range columnNames {
 			// 先建置欄位名稱的 SQL 指令片段。
 			columns += fmt.Sprintf("%s, ", name)
-			//
-			//
-			//
-
 		}
 		for _, single := range realData {
 			var currentValues string
