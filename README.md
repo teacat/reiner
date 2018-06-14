@@ -224,13 +224,15 @@ if err != nil {
 如果你已經有喜好的 SQL 資料庫處理套件，那麼你就可以在建立 Reiner 時不要傳入任何資料，這會使 Reiner 避免與資料庫互動，透過這個設計你可以將 Reiner 作為你的 SQL 指令建構函式。
 
 ```go
-db, _ := reiner.New()
-db, _ = db.Table("Users").Where("Username", "YamiOdymel").Get()
+// 當沒有傳入 MySQL 連線資料時，Reiner 僅會建置 SQL 執行指令而非與資料庫有實際互動。
+builder, _ := reiner.New()
+// 然後像這樣透過 Reiner 建立執行指令。
+myQuery, _ := builder.Table("Users").Where("Username", "YamiOdymel").Get()
 
 // 透過 `Query` 取得 Reiner 所建立的 Query 當作欲執行的資料庫指令。
-sql.Prepare(db.Query())
+sql.Prepare(myQuery.Query())
 // 接著展開 `Params` 即是我們在 Reiner 中存放的值。
-sql.Exec(db.Params()...)
+sql.Exec(myQuery.Params()...)
 // 等效於：SELECT * FROM Users WHERE Username = ?
 ```
 
