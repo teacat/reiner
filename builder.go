@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
 	// MySQL 驅動程式。
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -71,6 +72,7 @@ type Builder struct {
 	havingConditions   []condition
 	queryOptions       []string
 	joins              map[string]*join
+	joinOrder          []string
 	onDuplicateColumns []string
 	lastInsertIDColumn string
 	limit              []int
@@ -111,10 +113,11 @@ func newBuilder(db *DB) *Builder {
 func (b *Builder) clone() (cloned *Builder) {
 	a := *b
 	newJoins := make(map[string]*join)
-	for k, v := range a.joins {
-		newJoins[k] = v
+	for _, v := range a.joinOrder {
+		newJoins[v] = a.joins[v]
 	}
 	a.joins = newJoins
+
 	cloned = &a
 	return
 }
@@ -127,6 +130,7 @@ func (b *Builder) cleanAfter() {
 	b.onDuplicateColumns = []string{}
 	b.groupBy = []string{}
 	b.joins = map[string]*join{}
+	b.joinOrder = []string{}
 	b.orders = []order{}
 	b.conditions = []condition{}
 	b.havingConditions = []condition{}
@@ -185,6 +189,7 @@ func (b *Builder) saveJoin(table interface{}, typ string, condition string) {
 			table:     table,
 			condition: condition,
 		}
+		b.joinOrder = append(b.joinOrder, v.builder.query)
 	// 普通的表格加入。
 	case string:
 		b.joins[v] = &join{
@@ -192,6 +197,7 @@ func (b *Builder) saveJoin(table interface{}, typ string, condition string) {
 			table:     table,
 			condition: condition,
 		}
+		b.joinOrder = append(b.joinOrder, v)
 	}
 }
 
@@ -579,11 +585,11 @@ func (b *Builder) buildInsert(operator string, data interface{}) (query string, 
 
 // buildJoin 會建置資料表的插入 SQL 指令。
 func (b *Builder) buildJoin() (query string) {
-	if len(b.joins) == 0 {
+	if len(b.joinOrder) == 0 {
 		return
 	}
-
-	for _, v := range b.joins {
+	for _, k := range b.joinOrder {
+		v := b.joins[k]
 		// 插入的種類（例如：`LEFT JOIN`、`RIGHT JOIN`、`INNER JOIN`）。
 		query += fmt.Sprintf("%s ", v.typ)
 		switch d := v.table.(type) {
