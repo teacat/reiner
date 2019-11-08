@@ -156,7 +156,7 @@ BenchmarkXormSelect100-4            2000            868688 ns/op          103358
 打開終端機並且透過 `go get` 安裝此套件即可。
 
 ```bash
-$ go get github.com/teacat/reiner
+$ go get gopkg.in/teacat/reiner.v2
 ```
 
 # 命名建議
