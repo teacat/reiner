@@ -1,5 +1,8 @@
 # Reiner [![GoDoc](https://godoc.org/github.com/teacat/reiner?status.svg)](https://godoc.org/github.com/teacat/reiner) [![Coverage Status](https://coveralls.io/repos/github/teacat/reiner/badge.svg?branch=master)](https://coveralls.io/github/teacat/reiner?branch=master) [![Build Status](https://travis-ci.org/teacat/reiner.svg?branch=master)](https://travis-ci.org/teacat/reiner) [![Go Report Card](https://goreportcard.com/badge/github.com/teacat/reiner)](https://goreportcard.com/report/github.com/teacat/reiner)
 
+# 注意：這個倉庫目前已經被中止維護，並轉為單純的 SQL Builder（SQL 建置工具）了：[https://github.com/teacat/rushia](https://github.com/teacat/rushia)
+# 注意：這個倉庫目前已經被中止維護，並轉為單純的 SQL Builder（SQL 建置工具）了：[https://github.com/teacat/rushia](https://github.com/teacat/rushia)
+
 一個由 [Golang](https://golang.org/) 撰寫且比起部分 [ORM](https://zh.wikipedia.org/wiki/%E5%AF%B9%E8%B1%A1%E5%85%B3%E7%B3%BB%E6%98%A0%E5%B0%84) 還要讚的 [MySQL](https://www.mysql.com/) 指令建置函式庫。彈性高、不需要建構體標籤。實際上，這就只是 [PHP-MySQLi-Database-Class](https://github.com/joshcam/PHP-MySQLi-Database-Class) 不過是用在 [Golang](https://golang.org/) 而已（但還是多了些功能）。
 
 # 這是什麼？
